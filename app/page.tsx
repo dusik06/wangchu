@@ -11,7 +11,7 @@ import db from "@/lib/db";
 async function getYoutubeVideo() {
   try {
     const baseUrl =
-      process.env.NEXTAUTH_URL || "www.왕츄.com";
+      process.env.NEXTAUTH_URL || "https://wangchu.vercel.app";
 
     const res = await fetch(`${baseUrl}/api/youtube`, {
       cache: "no-store",
