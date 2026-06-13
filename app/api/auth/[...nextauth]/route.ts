@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
           INSERT INTO users (email, nickname, image, role, dotori)
           VALUES (?, ?, ?, 'user', 0)
           `,
-          [user.email, user.name || null, user.image || null]
+          [user.email, user.name || "회원", user.image || null]
         );
       }
 
@@ -48,16 +48,16 @@ export const authOptions: NextAuthOptions = {
       );
 
       if (rows.length > 0) {
-        const user = rows[0];
+        const dbUser = rows[0];
 
         session.user = {
           ...session.user,
-          id: user.id,
-          email: user.email,
-          name: user.nickname,
-          image: user.image,
-          role: user.role,
-          dotori: user.dotori,
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.nickname || "회원",
+          image: dbUser.image || session.user.image,
+          role: dbUser.role,
+          dotori: dbUser.dotori,
         } as any;
       }
 
