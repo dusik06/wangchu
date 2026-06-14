@@ -11,7 +11,7 @@ import db from "@/lib/db";
 async function getYoutubeVideo() {
   try {
     const baseUrl =
-      process.env.NEXTAUTH_URL || "https://wangchu.vercel.app";
+      process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
 
     const res = await fetch(`${baseUrl}/api/youtube`, {
       cache: "no-store",
@@ -135,17 +135,17 @@ export default async function Home() {
               </div>
 
               <p className="mb-2 text-sm font-bold text-pink-300">
-                워니왕츄 공식 팬사이트
+                박왕츄 공식 팬사이트
               </p>
 
               <h1 className="text-4xl font-black leading-tight">
                 왕츄와 함께하는
                 <br />
-                특별한 공간 💕
+                노리터 💕
               </h1>
 
               <p className="mt-4 max-w-xl text-zinc-300">
-                출석체크, 도토리, 게시판, 게임까지 한 곳에서 즐기는 왕츄 커뮤니티입니다.
+                왕츄관련 정보, 게시판, 게임까지 한 곳에서 즐기는 왕츄 커뮤니티입니다.
               </p>
 
               <div className="mt-8 rounded-3xl bg-white/10 p-5">
