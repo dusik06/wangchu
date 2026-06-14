@@ -59,7 +59,7 @@ export default async function FreeBoardPage({
     `
     SELECT 
       p.id,
-      CAST(p.title AS CHAR) AS title,
+      p.title,
       p.views,
       p.likes,
       p.is_notice,
