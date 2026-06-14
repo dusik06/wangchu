@@ -22,13 +22,13 @@ export default async function MyPage() {
   }
 
   const [posts]: any = await db.query(
-    "SELECT id, title, created_at FROM community_posts WHERE user_email = ? ORDER BY id DESC LIMIT 5",
-    [session.user.email]
+    "SELECT id, title, created_at FROM community_posts WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+    [user.id]
   );
 
   const [comments]: any = await db.query(
-    "SELECT id, post_id, content, created_at FROM community_comments WHERE user_email = ? ORDER BY id DESC LIMIT 5",
-    [session.user.email]
+    "SELECT id, post_id, content, created_at FROM community_comments WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+    [user.id]
   );
 
   const [titles]: any = await db.query(
@@ -51,7 +51,7 @@ export default async function MyPage() {
         <section className="bg-[#151522] border border-white/10 rounded-2xl p-6 mb-6">
           <div className="flex items-center gap-5">
             <img
-              src={user.profile_image || session.user.image || "/default-profile.png"}
+              src={user.profile_image || user.image || "/default-profile.png"}
               alt="profile"
               className="w-24 h-24 rounded-full object-cover border border-white/20"
             />
@@ -71,10 +71,10 @@ export default async function MyPage() {
               </div>
 
               <div className="flex gap-2 mt-4">
-                <Link href="/mypage/profile" className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500">
+                <Link href="/mypage/profile" className="px-4 py-2 rounded-lg bg-purple-600">
                   프로필 사진 변경
                 </Link>
-                <Link href="/mypage/nickname" className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500">
+                <Link href="/mypage/nickname" className="px-4 py-2 rounded-lg bg-green-600">
                   닉네임 변경
                 </Link>
               </div>
@@ -91,7 +91,7 @@ export default async function MyPage() {
                 <Link
                   key={post.id}
                   href={`/board/free/${post.id}`}
-                  className="block bg-white/5 rounded-lg p-3 hover:bg-white/10"
+                  className="block bg-white/5 rounded-lg p-3"
                 >
                   {post.title}
                 </Link>
@@ -107,7 +107,7 @@ export default async function MyPage() {
                 <Link
                   key={comment.id}
                   href={`/board/free/${comment.post_id}`}
-                  className="block bg-white/5 rounded-lg p-3 hover:bg-white/10"
+                  className="block bg-white/5 rounded-lg p-3"
                 >
                   {comment.content}
                 </Link>
