@@ -1,6 +1,25 @@
+import { getServerSession } from "next-auth";
+import db from "@/lib/db";
 import PostForm from "./post-form";
 
-export default function FreeBoardWritePage() {
+export const dynamic = "force-dynamic";
+
+export default async function FreeBoardWritePage() {
+  const session = await getServerSession();
+
+  let isAdmin = false;
+
+  if (session?.user?.email) {
+    const [users]: any = await db.query(
+      "SELECT role FROM users WHERE email = ? LIMIT 1",
+      [session.user.email]
+    );
+
+    if (users.length && users[0].role === "admin") {
+      isAdmin = true;
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-4xl mx-auto p-6">
@@ -14,7 +33,7 @@ export default function FreeBoardWritePage() {
           </a>
         </div>
 
-        <PostForm />
+        <PostForm isAdmin={isAdmin} />
       </div>
     </main>
   );

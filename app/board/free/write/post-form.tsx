@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function PostForm() {
+export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("free");
@@ -41,7 +41,7 @@ export default function PostForm() {
         title,
         content,
         category,
-        isNotice,
+        isNotice: isAdmin ? isNotice : false,
         imageUrls,
       }),
     });
@@ -70,16 +70,18 @@ export default function PostForm() {
         </select>
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={isNotice}
-          onChange={(e) => setIsNotice(e.target.checked)}
-        />
-        <span className="text-sm text-yellow-400">
-          관리자일 경우 공지로 등록
-        </span>
-      </div>
+      {isAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isNotice}
+            onChange={(e) => setIsNotice(e.target.checked)}
+          />
+          <span className="text-sm text-yellow-400">
+            공지로 등록
+          </span>
+        </div>
+      )}
 
       <input
         value={title}
@@ -97,12 +99,12 @@ export default function PostForm() {
 
       <div className="mb-4">
         <label className="block mb-2 text-sm text-gray-300">
-          이미지 첨부
+          이미지 / GIF 첨부
         </label>
 
         <input
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) uploadImage(file);
@@ -111,7 +113,7 @@ export default function PostForm() {
         />
 
         {uploading && (
-          <p className="text-sm text-pink-400 mt-2">이미지 업로드 중...</p>
+          <p className="text-sm text-pink-400 mt-2">업로드 중...</p>
         )}
 
         {imageUrls.length > 0 && (

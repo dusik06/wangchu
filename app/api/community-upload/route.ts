@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { writeFile } from "fs/promises";
 import path from "path";
 
 export async function POST(req: Request) {
+  const session = await getServerSession();
+
+  if (!session?.user?.email) {
+    return NextResponse.json({
+      success: false,
+      message: "로그인이 필요합니다.",
+    });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -38,7 +48,6 @@ export async function POST(req: Request) {
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase();
-
   const allowedExt = ["png", "jpg", "jpeg", "webp", "gif"];
 
   if (!ext || !allowedExt.includes(ext)) {
@@ -55,17 +64,13 @@ export async function POST(req: Request) {
     .toString(36)
     .slice(2)}.${ext}`;
 
-  const uploadPath = path.join(
-    process.cwd(),
-    "public",
-    "uploads",
-    fileName
-  );
+  const uploadPath = path.join(process.cwd(), "public", "uploads", fileName);
 
   await writeFile(uploadPath, buffer);
 
   return NextResponse.json({
     success: true,
-    url: `/uploads/${fileName}`,
+    message: "업로드 완료",
+    imageUrl: `/uploads/${fileName}`,
   });
 }
