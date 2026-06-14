@@ -1,5 +1,6 @@
 import db from "@/lib/db";
 import { getServerSession } from "next-auth";
+import AdminBoardActions from "./admin-board-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -48,9 +49,18 @@ export default async function AdminBoardPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-pink-400 mb-8">
-          게시판 관리
-        </h1>
+        <div className="flex justify-between mb-8">
+          <h1 className="text-3xl font-bold text-pink-400">
+            게시판 관리
+          </h1>
+
+          <a
+            href="/admin/board/stats"
+            className="bg-pink-500 px-4 py-2 rounded-lg font-bold"
+          >
+            통계 보기
+          </a>
+        </div>
 
         <div className="bg-slate-900 rounded-2xl overflow-hidden">
           <table className="w-full text-left">
@@ -69,14 +79,14 @@ export default async function AdminBoardPage() {
 
             <tbody>
               {posts.map((post: any) => (
-                <tr
-                  key={post.id}
-                  className="border-t border-slate-800"
-                >
+                <tr key={post.id} className="border-t border-slate-800">
                   <td className="p-4">{post.id}</td>
 
                   <td className="p-4">
-                    <a href={`/board/free/${post.id}`}>
+                    <a
+                      href={`/board/free/${post.id}`}
+                      className="hover:text-pink-400"
+                    >
                       {post.title}
                     </a>
                   </td>
@@ -95,15 +105,21 @@ export default async function AdminBoardPage() {
                   </td>
 
                   <td className="p-4">
-                    <a
-                      href={`/board/free/${post.id}`}
-                      className="bg-blue-600 px-3 py-1 rounded-lg"
-                    >
-                      보기
-                    </a>
+                    <AdminBoardActions
+                      postId={post.id}
+                      isBlind={post.is_blind}
+                    />
                   </td>
                 </tr>
               ))}
+
+              {posts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-gray-400">
+                    게시글이 없습니다.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

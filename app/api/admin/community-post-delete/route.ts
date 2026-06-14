@@ -18,12 +18,12 @@ export async function POST(req: Request) {
   if (!postId) {
     return NextResponse.json({
       success: false,
-      message: "잘못된 요청입니다.",
+      message: "게시글 번호가 없습니다.",
     });
   }
 
   const [users]: any = await db.query(
-    "SELECT id, role FROM users WHERE email = ? LIMIT 1",
+    "SELECT id, email, role FROM users WHERE email = ? LIMIT 1",
     [session.user.email]
   );
 
@@ -34,11 +34,10 @@ export async function POST(req: Request) {
     });
   }
 
-  const userId = users[0].id;
-  const role = users[0].role;
+  const currentUser = users[0];
 
   const [posts]: any = await db.query(
-    "SELECT user_id FROM community_posts WHERE id = ? LIMIT 1",
+    "SELECT id, user_id FROM community_posts WHERE id = ? LIMIT 1",
     [postId]
   );
 
@@ -49,9 +48,12 @@ export async function POST(req: Request) {
     });
   }
 
-  const postOwnerId = posts[0].user_id;
+  const post = posts[0];
 
-  if (role !== "admin" && userId !== postOwnerId) {
+  const isAdmin = currentUser.role === "admin";
+  const isOwner = currentUser.id === post.user_id;
+
+  if (!isAdmin && !isOwner) {
     return NextResponse.json({
       success: false,
       message: "삭제 권한이 없습니다.",
