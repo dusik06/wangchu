@@ -1,20 +1,13 @@
 "use client";
 
-export default function VoteButtons({
-  postId,
-}: {
-  postId: number;
-}) {
+export default function VoteButtons({ postId }: { postId: number }) {
   async function vote(type: "like" | "dislike") {
     const res = await fetch("/api/community-post-vote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        postId,
-        type,
-      }),
+      body: JSON.stringify({ postId, type }),
     });
 
     const data = await res.json();
@@ -26,20 +19,20 @@ export default function VoteButtons({
   }
 
   return (
-    <div className="flex gap-4 mt-8">
+    <>
       <button
         onClick={() => vote("like")}
-        className="bg-green-600 px-5 py-2 rounded-lg font-bold"
+        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold hover:bg-emerald-500"
       >
         👍 추천
       </button>
 
       <button
         onClick={() => vote("dislike")}
-        className="bg-red-600 px-5 py-2 rounded-lg font-bold"
+        className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold hover:bg-rose-500"
       >
         👎 비추천
       </button>
-    </div>
+    </>
   );
 }

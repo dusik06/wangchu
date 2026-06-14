@@ -12,6 +12,13 @@ import BlindToggleButton from "./blind-toggle-button";
 
 export const dynamic = "force-dynamic";
 
+function formatMonthDay(date: any) {
+  const d = new Date(date);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${month}/${day}`;
+}
+
 export default async function FreeBoardDetailPage({
   params,
 }: {
@@ -38,9 +45,10 @@ export default async function FreeBoardDetailPage({
     }
   }
 
-  await db.query("UPDATE community_posts SET views = views + 1 WHERE id = ?", [
-    postId,
-  ]);
+  await db.query(
+    "UPDATE community_posts SET views = views + 1 WHERE id = ?",
+    [postId]
+  );
 
   const [posts]: any = await db.query(
     `
@@ -106,62 +114,69 @@ export default async function FreeBoardDetailPage({
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-4xl mx-auto p-6">
-        <div className="flex justify-between mb-6">
-          <h1 className="text-3xl font-bold text-pink-400">자유게시판</h1>
+        <div className="mb-5 flex items-center justify-between">
+          <h1 className="text-2xl font-black text-pink-400">자유게시판</h1>
 
-          <a href="/board/free" className="bg-slate-800 px-4 py-2 rounded-lg">
-            목록으로
+          <a
+            href="/board/free"
+            className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold hover:bg-slate-700"
+          >
+            목록
           </a>
         </div>
 
-        <article className="bg-slate-900 rounded-2xl p-6">
-          {post.is_notice ? (
-            <div className="mb-4 inline-block bg-yellow-500 text-black px-3 py-1 rounded-lg font-bold">
-              공지사항
-            </div>
-          ) : null}
+        <article className="rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-xl">
+          <div className="mb-4 flex flex-wrap gap-2">
+            {post.is_notice ? (
+              <span className="rounded-full bg-yellow-500 px-3 py-1 text-xs font-black text-black">
+                공지사항
+              </span>
+            ) : null}
 
-          {post.is_blind ? (
-            <div className="mb-4 inline-block bg-red-600 text-white px-3 py-1 rounded-lg font-bold">
-              블라인드 처리된 글
-            </div>
-          ) : null}
+            {post.is_blind ? (
+              <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white">
+                블라인드 처리됨
+              </span>
+            ) : null}
+          </div>
 
-          <h2 className="text-2xl font-bold mb-4">{post.title}</h2>
+          <h2 className="mb-4 text-2xl font-black leading-snug">
+            {post.title}
+          </h2>
 
-          <div className="flex gap-4 text-gray-400 text-sm mb-6 flex-wrap">
+          <div className="mb-6 flex flex-wrap gap-x-4 gap-y-2 border-b border-white/10 pb-5 text-sm text-slate-400">
             <span>
               작성자:{" "}
               {post.role === "admin" ? (
-                <span className="bg-purple-600 text-white px-2 py-1 rounded-md mr-1">
+                <span className="mr-1 rounded-md bg-purple-600 px-2 py-0.5 text-xs text-white">
                   관리자
                 </span>
               ) : null}
-              {post.nickname}
+              <span className="text-slate-200">{post.nickname}</span>
             </span>
 
             <span>조회수: {post.views}</span>
             <span>추천: {post.likes}</span>
             <span>비추천: {post.dislikes}</span>
             <span>신고: {post.reports}</span>
-            <span>{String(post.created_at).slice(0, 10)}</span>
+            <span>{formatMonthDay(post.created_at)}</span>
           </div>
 
-          <div className="whitespace-pre-wrap leading-8 text-gray-100 border-t border-slate-800 pt-6">
+          <div className="min-h-32 whitespace-pre-wrap rounded-2xl bg-slate-950/40 p-5 leading-8 text-slate-100">
             {post.content}
           </div>
 
           {images.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 mt-6">
+            <div className="mt-6 grid grid-cols-1 gap-4">
               {images.map((image: any) => (
                 <div key={image.id}>
                   <img
                     src={image.image_url}
                     alt="첨부 이미지"
-                    className="w-full rounded-xl"
+                    className="w-full rounded-2xl border border-white/10"
                   />
 
-                  {isOwner || isAdmin ? (
+                  {(isOwner || isAdmin) ? (
                     <ImageDeleteButton imageId={image.id} />
                   ) : null}
                 </div>
@@ -169,32 +184,30 @@ export default async function FreeBoardDetailPage({
             </div>
           ) : null}
 
-          <VoteButtons postId={postId} />
-
-          <div className="mt-4 flex gap-3 flex-wrap">
+          <div className="mt-6 flex flex-wrap gap-2">
+            <VoteButtons postId={postId} />
             <ReportButton postId={postId} />
 
-            {isOwner || isAdmin ? (
-              <>
-                <a
-                  href={`/board/free/${postId}/edit`}
-                  className="bg-blue-600 px-5 py-2 rounded-lg font-bold"
-                >
-                  수정
-                </a>
-
-                <AdminDeleteButton postId={postId} />
-              </>
+            {(isOwner || isAdmin) ? (
+              <a
+                href={`/board/free/${postId}/edit`}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold hover:bg-blue-500"
+              >
+                수정
+              </a>
             ) : null}
 
             {isAdmin ? (
-              <BlindToggleButton postId={postId} isBlind={post.is_blind} />
+              <>
+                <AdminDeleteButton postId={postId} />
+                <BlindToggleButton postId={postId} isBlind={post.is_blind} />
+              </>
             ) : null}
           </div>
         </article>
 
-        <section className="bg-slate-900 rounded-2xl p-5 mt-6">
-          <h2 className="text-xl font-bold mb-4">댓글 {comments.length}개</h2>
+        <section className="mt-6 rounded-3xl border border-white/10 bg-slate-900 p-6">
+          <h2 className="mb-4 text-xl font-black">댓글 {comments.length}개</h2>
 
           <div className="space-y-4">
             {parentComments.map((comment: any) => {
@@ -209,8 +222,8 @@ export default async function FreeBoardDetailPage({
 
               return (
                 <div key={comment.id}>
-                  <div className="bg-slate-800 rounded-xl p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">
+                  <div className="rounded-2xl bg-slate-800 p-4">
+                    <p className="whitespace-pre-wrap text-slate-200">
                       {comment.content}
                     </p>
 
@@ -237,9 +250,9 @@ export default async function FreeBoardDetailPage({
                     return (
                       <div
                         key={reply.id}
-                        className="ml-8 mt-3 bg-slate-800/70 border-l-4 border-pink-500 rounded-xl p-4"
+                        className="ml-8 mt-3 rounded-2xl border-l-4 border-pink-500 bg-slate-800/70 p-4"
                       >
-                        <p className="text-gray-200 whitespace-pre-wrap">
+                        <p className="whitespace-pre-wrap text-slate-200">
                           {reply.content}
                         </p>
 
@@ -261,7 +274,7 @@ export default async function FreeBoardDetailPage({
             })}
 
             {comments.length === 0 ? (
-              <p className="text-gray-400">아직 댓글이 없습니다.</p>
+              <p className="text-slate-400">아직 댓글이 없습니다.</p>
             ) : null}
           </div>
         </section>

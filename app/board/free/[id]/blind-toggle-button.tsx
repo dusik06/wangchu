@@ -30,8 +30,10 @@ export default function BlindToggleButton({
   return (
     <button
       onClick={toggleBlind}
-      className={`px-5 py-2 rounded-lg font-bold ${
-        isBlind ? "bg-green-600" : "bg-yellow-600"
+      className={`rounded-xl px-4 py-2 text-sm font-bold ${
+        isBlind
+          ? "bg-green-600 hover:bg-green-500"
+          : "bg-yellow-600 hover:bg-yellow-500"
       }`}
     >
       {isBlind ? "블라인드 해제" : "블라인드 처리"}

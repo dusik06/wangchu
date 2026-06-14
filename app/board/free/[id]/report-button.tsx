@@ -1,10 +1,6 @@
 "use client";
 
-export default function ReportButton({
-  postId,
-}: {
-  postId: number;
-}) {
+export default function ReportButton({ postId }: { postId: number }) {
   async function reportPost() {
     const reason = prompt("신고 사유를 입력하세요.");
 
@@ -15,10 +11,7 @@ export default function ReportButton({
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        postId,
-        reason,
-      }),
+      body: JSON.stringify({ postId, reason }),
     });
 
     const data = await res.json();
@@ -28,7 +21,7 @@ export default function ReportButton({
   return (
     <button
       onClick={reportPost}
-      className="bg-yellow-600 px-5 py-2 rounded-lg font-bold"
+      className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold hover:bg-amber-500"
     >
       🚨 신고
     </button>
