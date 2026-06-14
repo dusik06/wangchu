@@ -22,19 +22,28 @@ export default function GameRanking() {
   }, []);
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 mt-8">
-      <h2 className="text-2xl font-bold mb-4">🏆 배팅 랭킹</h2>
+    <div className="rounded-3xl border border-white/10 bg-[#151027] p-6 text-white">
+      <h2 className="mb-4 text-2xl font-black text-yellow-400">
+        🏆 배팅 랭킹
+      </h2>
 
       <div className="space-y-3">
+        {ranking.length === 0 && (
+          <p className="text-zinc-400">아직 랭킹 데이터가 없습니다.</p>
+        )}
+
         {ranking.map((user, index) => (
           <div
             key={user.user_id}
-            className="flex justify-between bg-gray-50 rounded-2xl p-4"
+            className="flex justify-between rounded-2xl border border-white/10 bg-white/5 p-4"
           >
-            <span>
+            <span className="font-semibold text-zinc-100">
               {index + 1}위 {user.nickname}
             </span>
-            <span>{Number(user.total_bet).toLocaleString()}개</span>
+
+            <span className="font-bold text-pink-300">
+              {Number(user.total_bet).toLocaleString()}개
+            </span>
           </div>
         ))}
       </div>
