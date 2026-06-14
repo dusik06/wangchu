@@ -13,8 +13,12 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
+
   const title = String(body.title || "").trim();
   const content = String(body.content || "").trim();
+  const category = String(body.category || "free");
+  const isNotice = Boolean(body.isNotice || false);
+  const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
 
   if (!title || !content) {
     return NextResponse.json({
@@ -24,7 +28,7 @@ export async function POST(req: Request) {
   }
 
   const [users]: any = await db.query(
-    "SELECT id FROM users WHERE email = ? LIMIT 1",
+    "SELECT id, role FROM users WHERE email = ? LIMIT 1",
     [session.user.email]
   );
 
@@ -36,6 +40,13 @@ export async function POST(req: Request) {
   }
 
   const userId = users[0].id;
+  const role = users[0].role;
+
+  let noticeValue = 0;
+
+  if (isNotice && role === "admin") {
+    noticeValue = 1;
+  }
 
   const [settings]: any = await db.query(
     "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('post_reward', 'post_daily_limit')"
@@ -66,9 +77,18 @@ export async function POST(req: Request) {
   }
 
   const [result]: any = await db.query(
-    "INSERT INTO community_posts (user_id, title, content, reward_given) VALUES (?, ?, ?, ?)",
-    [userId, title, content, rewardGiven]
+    "INSERT INTO community_posts (user_id, title, content, reward_given, category, is_notice) VALUES (?, ?, ?, ?, ?, ?)",
+    [userId, title, content, rewardGiven, category, noticeValue]
   );
+
+  const postId = result.insertId;
+
+  for (const imageUrl of imageUrls) {
+    await db.query(
+      "INSERT INTO post_images (post_id, image_url) VALUES (?, ?)",
+      [postId, imageUrl]
+    );
+  }
 
   if (rewardGiven) {
     await db.query(
@@ -87,6 +107,6 @@ export async function POST(req: Request) {
     message: rewardGiven
       ? `게시글 작성 완료! 도토리 ${postReward}개 지급`
       : "게시글 작성 완료!",
-    postId: result.insertId,
+    postId,
   });
 }
