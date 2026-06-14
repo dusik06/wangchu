@@ -2,6 +2,19 @@ import db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+function formatMonthDay(date: any) {
+  const d = new Date(date);
+
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${month}/${day}`;
+}
+
 export default async function FreeBoardPage({
   searchParams,
 }: {
@@ -34,10 +47,7 @@ export default async function FreeBoardPage({
     FROM community_posts
     WHERE category = 'free'
     AND is_blind = 0
-    AND (
-      title LIKE ?
-      OR content LIKE ?
-    )
+    AND (title LIKE ? OR content LIKE ?)
     `,
     [`%${keyword}%`, `%${keyword}%`]
   );
@@ -49,7 +59,7 @@ export default async function FreeBoardPage({
     `
     SELECT 
       p.id,
-      p.title,
+      CAST(p.title AS CHAR) AS title,
       p.views,
       p.likes,
       p.is_notice,
@@ -63,10 +73,7 @@ export default async function FreeBoardPage({
     LEFT JOIN community_comments c ON p.id = c.post_id
     WHERE p.category = 'free'
     AND p.is_blind = 0
-    AND (
-      p.title LIKE ?
-      OR p.content LIKE ?
-    )
+    AND (p.title LIKE ? OR p.content LIKE ?)
     GROUP BY p.id
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
@@ -96,11 +103,7 @@ export default async function FreeBoardPage({
           </div>
         </div>
 
-        <form
-          action="/board/free"
-          method="GET"
-          className="flex gap-2 mb-4"
-        >
+        <form action="/board/free" method="GET" className="flex gap-2 mb-4">
           <input
             name="keyword"
             defaultValue={keyword}
@@ -160,30 +163,48 @@ export default async function FreeBoardPage({
                   </td>
 
                   <td className="p-4">
-                    <a href={`/board/free/${post.id}`}>
-                      {post.is_best && (
+                    <a
+                      href={`/board/free/${post.id}`}
+                      className="hover:text-pink-400"
+                    >
+                      {post.is_best ? (
                         <span className="text-green-400 mr-2 font-bold">
                           BEST
                         </span>
-                      )}
+                      ) : null}
+
                       {post.title}
 
-                      {post.comment_count > 0 && (
+                      {post.comment_count > 0 ? (
                         <span className="text-pink-400 ml-2">
                           [{post.comment_count}]
                         </span>
-                      )}
+                      ) : null}
                     </a>
                   </td>
 
-                  <td className="p-4">{post.nickname}</td>
+                  <td className="p-4">
+                    {post.role === "admin" ? (
+                      <span className="bg-purple-600 px-2 py-1 rounded-md text-xs mr-2">
+                        관리자
+                      </span>
+                    ) : null}
+                    {post.nickname}
+                  </td>
+
                   <td className="p-4">{post.views}</td>
                   <td className="p-4">{post.likes}</td>
-                  <td className="p-4">
-                    {String(post.created_at).slice(0, 10)}
-                  </td>
+                  <td className="p-4">{formatMonthDay(post.created_at)}</td>
                 </tr>
               ))}
+
+              {posts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-400">
+                    게시글이 없습니다.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
