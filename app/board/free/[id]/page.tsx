@@ -15,10 +15,11 @@ export const dynamic = "force-dynamic";
 export default async function FreeBoardDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const resolvedParams = await params;
   const session = await getServerSession();
-  const postId = Number(params.id);
+  const postId = Number(resolvedParams.id);
 
   if (!postId) {
     notFound();
@@ -37,10 +38,9 @@ export default async function FreeBoardDetailPage({
     }
   }
 
-  await db.query(
-    "UPDATE community_posts SET views = views + 1 WHERE id = ?",
-    [postId]
-  );
+  await db.query("UPDATE community_posts SET views = views + 1 WHERE id = ?", [
+    postId,
+  ]);
 
   const [posts]: any = await db.query(
     `
@@ -79,12 +79,7 @@ export default async function FreeBoardDetailPage({
   }
 
   const [images]: any = await db.query(
-    `
-    SELECT id, image_url
-    FROM post_images
-    WHERE post_id = ?
-    ORDER BY id ASC
-    `,
+    "SELECT id, image_url FROM post_images WHERE post_id = ? ORDER BY id ASC",
     [postId]
   );
 
@@ -166,7 +161,7 @@ export default async function FreeBoardDetailPage({
                     className="w-full rounded-xl"
                   />
 
-                  {(isOwner || isAdmin) ? (
+                  {isOwner || isAdmin ? (
                     <ImageDeleteButton imageId={image.id} />
                   ) : null}
                 </div>
@@ -179,7 +174,7 @@ export default async function FreeBoardDetailPage({
           <div className="mt-4 flex gap-3 flex-wrap">
             <ReportButton postId={postId} />
 
-            {(isOwner || isAdmin) ? (
+            {isOwner || isAdmin ? (
               <>
                 <a
                   href={`/board/free/${postId}/edit`}
@@ -215,21 +210,6 @@ export default async function FreeBoardDetailPage({
               return (
                 <div key={comment.id}>
                   <div className="bg-slate-800 rounded-xl p-4">
-                    <div className="flex justify-between mb-2">
-                      <p className="font-bold">
-                        {comment.role === "admin" ? (
-                          <span className="bg-purple-600 text-white px-2 py-1 rounded-md text-xs mr-1">
-                            관리자
-                          </span>
-                        ) : null}
-                        {comment.nickname}
-                      </p>
-
-                      <p className="text-gray-500 text-sm">
-                        {String(comment.created_at).slice(0, 10)}
-                      </p>
-                    </div>
-
                     <p className="text-gray-200 whitespace-pre-wrap">
                       {comment.content}
                     </p>
@@ -248,54 +228,34 @@ export default async function FreeBoardDetailPage({
                     <CommentForm postId={postId} parentId={comment.id} />
                   </div>
 
-                  {replies.length > 0 ? (
-                    <div className="ml-8 mt-3 space-y-3">
-                      {replies.map((reply: any) => {
-                        const canManageReply =
-                          currentUser &&
-                          (currentUser.id === reply.user_id ||
-                            currentUser.role === "admin");
+                  {replies.map((reply: any) => {
+                    const canManageReply =
+                      currentUser &&
+                      (currentUser.id === reply.user_id ||
+                        currentUser.role === "admin");
 
-                        return (
-                          <div
-                            key={reply.id}
-                            className="bg-slate-800/70 border-l-4 border-pink-500 rounded-xl p-4"
-                          >
-                            <div className="flex justify-between mb-2">
-                              <p className="font-bold">
-                                ↳{" "}
-                                {reply.role === "admin" ? (
-                                  <span className="bg-purple-600 text-white px-2 py-1 rounded-md text-xs mr-1">
-                                    관리자
-                                  </span>
-                                ) : null}
-                                {reply.nickname}
-                              </p>
+                    return (
+                      <div
+                        key={reply.id}
+                        className="ml-8 mt-3 bg-slate-800/70 border-l-4 border-pink-500 rounded-xl p-4"
+                      >
+                        <p className="text-gray-200 whitespace-pre-wrap">
+                          {reply.content}
+                        </p>
 
-                              <p className="text-gray-500 text-sm">
-                                {String(reply.created_at).slice(0, 10)}
-                              </p>
-                            </div>
+                        {canManageReply ? (
+                          <div className="mt-3 flex gap-2">
+                            <CommentEditButton
+                              commentId={reply.id}
+                              defaultContent={reply.content}
+                            />
 
-                            <p className="text-gray-200 whitespace-pre-wrap">
-                              {reply.content}
-                            </p>
-
-                            {canManageReply ? (
-                              <div className="mt-3 flex gap-2">
-                                <CommentEditButton
-                                  commentId={reply.id}
-                                  defaultContent={reply.content}
-                                />
-
-                                <CommentDeleteButton commentId={reply.id} />
-                              </div>
-                            ) : null}
+                            <CommentDeleteButton commentId={reply.id} />
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
