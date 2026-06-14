@@ -1,7 +1,6 @@
 import VideoPlayer from "./video-player";
 import MyDotori from "./my-dotori";
 import AttendanceButton from "./attendance-button";
-import OnlineUsers from "./online-users";
 import LoginButton from "./login-button";
 import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
@@ -288,7 +287,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="notice" className="mt-6 grid gap-5 md:grid-cols-4">
+        <section id="notice" className="mt-6 grid gap-5 md:grid-cols-3">
           <div className="rounded-[28px] border border-white/10 bg-[#151027] p-6 shadow-xl">
             <h2 className="mb-4 text-xl font-black">📢 공지사항</h2>
 
@@ -347,11 +346,6 @@ export default async function Home() {
                 <p className="text-zinc-400">게시글이 없습니다.</p>
               )}
             </div>
-          </div>
-
-          <div className="rounded-[28px] border border-white/10 bg-[#151027] p-6 shadow-xl">
-            <h2 className="mb-4 text-xl font-black">👀 실시간 접속자</h2>
-            <OnlineUsers />
           </div>
         </section>
       </div>

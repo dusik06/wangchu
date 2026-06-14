@@ -23,18 +23,20 @@ export default function GameHighlights() {
   }, []);
 
   return (
-    <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 mt-8">
-      <h2 className="text-2xl font-bold mb-4">🔥 게임 현황</h2>
+    <div className="rounded-3xl border border-white/10 bg-[#151027] p-6 text-white">
+      <h2 className="mb-4 text-2xl font-black text-pink-300">
+        🔥 게임 현황
+      </h2>
 
       <div className="space-y-3">
         {logs.length === 0 && (
-          <p className="text-gray-400">아직 4.5배 성공 기록이 없어요.</p>
+          <p className="text-zinc-400">아직 4.5배 성공 기록이 없어요.</p>
         )}
 
         {logs.map((log) => (
           <div
             key={log.id}
-            className="bg-yellow-50 rounded-2xl p-4 font-semibold"
+            className="rounded-2xl border border-pink-400/20 bg-white/10 p-4 font-semibold text-zinc-100"
           >
             🎉 {log.nickname}님{" "}
             {Number(log.bet_amount).toLocaleString()}개 배팅 →{" "}
