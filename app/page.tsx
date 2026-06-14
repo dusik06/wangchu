@@ -47,7 +47,7 @@ async function getSiteLogo() {
 async function getNoticePosts() {
   try {
     const [rows]: any = await db.query(`
-      SELECT id, title
+      SELECT id, CONVERT(title USING utf8) AS title
       FROM community_posts
       WHERE is_notice = 1
       AND is_blind = 0
@@ -64,7 +64,7 @@ async function getNoticePosts() {
 async function getRecentPosts() {
   try {
     const [rows]: any = await db.query(`
-      SELECT id, title
+      SELECT id, CONVERT(title USING utf8) AS title
       FROM community_posts
       WHERE is_blind = 0
       ORDER BY id DESC
@@ -80,7 +80,7 @@ async function getRecentPosts() {
 async function getBestPosts() {
   try {
     const [rows]: any = await db.query(`
-      SELECT id, title, likes
+      SELECT id, CONVERT(title USING utf8) AS title
       FROM community_posts
       WHERE is_best = 1
       AND is_blind = 0
