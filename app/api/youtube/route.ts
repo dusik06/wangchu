@@ -23,15 +23,18 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
-    // 0순위: 예약/고정 라이브 영상 ID 직접 확인
+    // 0순위: 고정 라이브 영상이 실제 라이브 중인지 확인
     if (liveVideoId) {
       const liveDetail = await fetchJson(
-        `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveVideoId}&part=snippet,liveStreamingDetails`
+        `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveVideoId}&part=snippet,liveStreamingDetails,status`
       );
 
       const item = liveDetail?.items?.[0];
 
-      if (item) {
+      const isActuallyLive =
+        item?.snippet?.liveBroadcastContent === "live";
+
+      if (item && isActuallyLive) {
         return NextResponse.json({
           isLive: true,
           title: item.snippet?.title || "실시간 방송 중",
@@ -45,7 +48,7 @@ export async function GET() {
       }
     }
 
-    // 1순위: 일반 라이브 검색
+    // 1순위: 현재 실제 라이브 검색
     const liveSearchData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
     );
