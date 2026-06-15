@@ -11,7 +11,20 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData();
+
   const titleId = Number(formData.get("titleId"));
+  const titleColor = String(formData.get("titleColor") || "#facc15").trim();
+
+  const allowedColors = [
+    "#facc15",
+    "#fb7185",
+    "#c084fc",
+    "#38bdf8",
+    "#34d399",
+    "#f8fafc",
+  ];
+
+  const safeColor = allowedColors.includes(titleColor) ? titleColor : "#facc15";
 
   if (!titleId) {
     return NextResponse.json({ error: "칭호 정보가 없습니다." }, { status: 400 });
@@ -43,8 +56,8 @@ export async function POST(req: Request) {
   );
 
   await db.query(
-    "UPDATE user_titles SET equipped = 1 WHERE id = ? AND user_id = ?",
-    [titleId, user.id]
+    "UPDATE user_titles SET equipped = 1, title_color = ? WHERE id = ? AND user_id = ?",
+    [safeColor, titleId, user.id]
   );
 
   await db.query(
@@ -52,5 +65,5 @@ export async function POST(req: Request) {
     [titleId, user.id]
   );
 
-  return NextResponse.redirect(new URL("/mypage", req.url));
+  return NextResponse.redirect(new URL("/mypage/titles", req.url));
 }
