@@ -3,15 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Link from "next/link";
 import UserNameWithTitle from "@/components/UserNameWithTitle";
-
-const titleColors = [
-  { name: "골드", value: "#facc15" },
-  { name: "핑크", value: "#fb7185" },
-  { name: "보라", value: "#c084fc" },
-  { name: "하늘", value: "#38bdf8" },
-  { name: "민트", value: "#34d399" },
-  { name: "화이트", value: "#f8fafc" },
-];
+import TitleEquipCard from "@/components/TitleEquipCard";
 
 export default async function TitlesPage() {
   const session = await getServerSession(authOptions);
@@ -46,7 +38,7 @@ export default async function TitlesPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">칭호 변경</h1>
-          <Link href="/mypage" className="text-zinc-400 hover:text-white">
+          <Link href="/mypage" className="text-zinc-400 hover:text-white cursor-pointer">
             마이페이지로
           </Link>
         </div>
@@ -72,54 +64,12 @@ export default async function TitlesPage() {
             )}
 
             {titles.map((title: any) => (
-              <div key={title.id} className="bg-white/5 border border-white/10 rounded-xl p-5">
-                <p className="text-zinc-400 mb-3">미리보기</p>
-
-                <UserNameWithTitle
-                  nickname={user.nickname}
-                  profileImage={user.profile_image || user.image}
-                  titleName={title.title_name}
-                  titleColor={title.title_color || "#facc15"}
-                  size="md"
-                />
-
-                <form action="/api/mypage/title-equip" method="POST" className="mt-5">
-                  <input type="hidden" name="titleId" value={title.id} />
-
-                  <p className="text-sm text-zinc-400 mb-2">칭호 색상 선택</p>
-
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {titleColors.map((color) => (
-                      <label
-                        key={color.value}
-                        className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2 cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="titleColor"
-                          value={color.value}
-                          defaultChecked={(title.title_color || "#facc15") === color.value}
-                        />
-                        <span
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: color.value }}
-                        />
-                        <span className="text-sm">{color.name}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {user.current_title_id === title.id ? (
-                    <button className="w-full py-3 rounded-xl bg-zinc-700 text-yellow-300 font-bold" disabled>
-                      현재 장착중
-                    </button>
-                  ) : (
-                    <button className="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold">
-                      이 칭호로 변경
-                    </button>
-                  )}
-                </form>
-              </div>
+              <TitleEquipCard
+                key={title.id}
+                title={title}
+                user={user}
+                isEquipped={user.current_title_id === title.id}
+              />
             ))}
           </div>
         </section>
