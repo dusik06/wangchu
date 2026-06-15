@@ -6,11 +6,12 @@ import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
 import HomePredictionBox from "@/components/prediction/HomePredictionBox";
 import db from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 async function getYoutubeVideo() {
   try {
-    const baseUrl =
-      process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
 
     const res = await fetch(`${baseUrl}/api/youtube`, {
       cache: "no-store",
@@ -29,6 +30,21 @@ async function getYoutubeVideo() {
       title: "유튜브 영상을 불러오는 중 문제가 발생했습니다.",
       videos: [],
     };
+  }
+}
+
+async function getCurrentUser(email?: string | null) {
+  if (!email) return null;
+
+  try {
+    const [rows]: any = await db.query(
+      "SELECT id, email, nickname, role FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+
+    return rows[0] || null;
+  } catch {
+    return null;
   }
 }
 
@@ -80,7 +96,7 @@ async function getRecentPosts() {
 async function getBestPosts() {
   try {
     const [rows]: any = await db.query(`
-      SELECT id, CONVERT(title USING utf8) AS title
+      SELECT id, title, likes
       FROM community_posts
       WHERE is_best = 1
       AND is_blind = 0
@@ -95,11 +111,16 @@ async function getBestPosts() {
 }
 
 export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const currentUser = await getCurrentUser(session?.user?.email);
+
   const video = await getYoutubeVideo();
   const siteLogo = await getSiteLogo();
   const noticePosts = await getNoticePosts();
   const recentPosts = await getRecentPosts();
   const bestPosts = await getBestPosts();
+
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <main className="min-h-screen bg-[#0b0718] text-white">
@@ -126,10 +147,7 @@ export default async function Home() {
               공지사항
             </a>
 
-            <a
-              className="cursor-pointer hover:text-pink-400"
-              href="/board/free"
-            >
+            <a className="cursor-pointer hover:text-pink-400" href="/board/free">
               게시판
             </a>
 
@@ -162,6 +180,18 @@ export default async function Home() {
             <a className="cursor-pointer hover:text-pink-400" href="#">
               랭킹
             </a>
+
+            {currentUser && (
+              <a className="cursor-pointer hover:text-pink-400" href="/mypage">
+                마이페이지
+              </a>
+            )}
+
+            {isAdmin && (
+              <a className="cursor-pointer text-yellow-300 hover:text-yellow-200" href="/admin">
+                관리자
+              </a>
+            )}
           </nav>
 
           <LoginButton />
@@ -234,6 +264,26 @@ export default async function Home() {
             <div className="rounded-[24px] border border-white/10 bg-[#151027] p-5 shadow-xl">
               <p className="mb-3 text-sm font-bold text-zinc-400">내 정보</p>
               <MyDotori />
+
+              {currentUser && (
+                <div className="mt-4 grid gap-2">
+                  <a
+                    href="/mypage"
+                    className="block cursor-pointer rounded-2xl bg-pink-500 px-4 py-3 text-center text-sm font-black transition hover:scale-[1.02] hover:bg-pink-400"
+                  >
+                    👤 마이페이지
+                  </a>
+
+                  {isAdmin && (
+                    <a
+                      href="/admin"
+                      className="block cursor-pointer rounded-2xl bg-yellow-500 px-4 py-3 text-center text-sm font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400"
+                    >
+                      ⚙ 관리자 대시보드
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-[#151027] p-5 shadow-xl">
