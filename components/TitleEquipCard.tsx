@@ -23,17 +23,24 @@ export default function TitleEquipCard({ title, user, isEquipped }: TitleEquipCa
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <p className="text-zinc-400 mb-3">미리보기</p>
+      <div className="mb-4">
+        <p className="text-sm text-zinc-400 mb-2">칭호명</p>
+        <div className="text-xl font-extrabold">{title.title_name}</div>
+      </div>
 
-      <UserNameWithTitle
-        nickname={user.nickname}
-        profileImage={user.profile_image || user.image}
-        titleName={title.title_name}
-        titleColor={selectedColor}
-        size="md"
-      />
+      <div className="mb-5 rounded-xl bg-black/20 border border-white/10 p-4">
+        <p className="text-sm text-zinc-400 mb-3">적용 미리보기</p>
 
-      <form action="/api/mypage/title-equip" method="POST" className="mt-5">
+        <UserNameWithTitle
+          nickname={user.nickname}
+          profileImage={user.profile_image || user.image}
+          titleName={title.title_name}
+          titleColor={selectedColor}
+          size="md"
+        />
+      </div>
+
+      <form action="/api/mypage/title-equip" method="POST">
         <input type="hidden" name="titleId" value={title.id} />
 
         <p className="text-sm text-zinc-400 mb-2">칭호 색상 선택</p>
@@ -42,7 +49,9 @@ export default function TitleEquipCard({ title, user, isEquipped }: TitleEquipCa
           {titleColors.map((color) => (
             <label
               key={color.value}
-              className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/10"
+              className={`flex items-center gap-2 bg-black/30 border rounded-lg px-3 py-2 cursor-pointer hover:bg-white/10 ${
+                selectedColor === color.value ? "border-white/80" : "border-white/10"
+              }`}
             >
               <input
                 type="radio"
