@@ -6,6 +6,17 @@ async function fetchJson(url: string) {
   return res.json();
 }
 
+function isLiveItem(item: any) {
+  const liveBroadcastContent = item?.snippet?.liveBroadcastContent;
+  const actualStartTime = item?.liveStreamingDetails?.actualStartTime;
+  const actualEndTime = item?.liveStreamingDetails?.actualEndTime;
+
+  return (
+    liveBroadcastContent === "live" ||
+    (!!actualStartTime && !actualEndTime)
+  );
+}
+
 export async function GET() {
   const channelId = process.env.YOUTUBE_CHANNEL_ID;
   const apiKey = process.env.YOUTUBE_API_KEY;
@@ -23,7 +34,6 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
-    // 0순위: 고정 라이브 영상이 실제 라이브 중인지 확인
     if (liveVideoId) {
       const liveDetail = await fetchJson(
         `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveVideoId}&part=snippet,liveStreamingDetails,status`
@@ -31,10 +41,7 @@ export async function GET() {
 
       const item = liveDetail?.items?.[0];
 
-      const isActuallyLive =
-        item?.snippet?.liveBroadcastContent === "live";
-
-      if (item && isActuallyLive) {
+      if (item && isLiveItem(item)) {
         return NextResponse.json({
           isLive: true,
           title: item.snippet?.title || "실시간 방송 중",
@@ -48,7 +55,6 @@ export async function GET() {
       }
     }
 
-    // 1순위: 현재 실제 라이브 검색
     const liveSearchData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
     );
@@ -56,19 +62,26 @@ export async function GET() {
     const liveItem = liveSearchData?.items?.[0];
 
     if (liveItem?.id?.videoId) {
-      return NextResponse.json({
-        isLive: true,
-        title: liveItem.snippet?.title || "실시간 방송 중",
-        videos: [
-          {
-            videoId: liveItem.id.videoId,
-            title: liveItem.snippet?.title || "실시간 방송 중",
-          },
-        ],
-      });
+      const liveDetail = await fetchJson(
+        `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveItem.id.videoId}&part=snippet,liveStreamingDetails,status`
+      );
+
+      const item = liveDetail?.items?.[0];
+
+      if (item && isLiveItem(item)) {
+        return NextResponse.json({
+          isLive: true,
+          title: item.snippet?.title || "실시간 방송 중",
+          videos: [
+            {
+              videoId: liveItem.id.videoId,
+              title: item.snippet?.title || "실시간 방송 중",
+            },
+          ],
+        });
+      }
     }
 
-    // 2순위: 최신 업로드 영상
     const playlistData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
     );
