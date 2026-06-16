@@ -132,14 +132,24 @@ async function getBestPosts() {
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  const currentUser = await getCurrentUser(session?.user?.email);
 
-  const video = await getYoutubeVideo();
-  const liveSettings = await getLiveSettings();
-  const siteLogo = await getSiteLogo();
-  const noticePosts = await getNoticePosts();
-  const recentPosts = await getRecentPosts();
-  const bestPosts = await getBestPosts();
+  const [
+    currentUser,
+    video,
+    liveSettings,
+    siteLogo,
+    noticePosts,
+    recentPosts,
+    bestPosts,
+  ] = await Promise.all([
+    getCurrentUser(session?.user?.email),
+    getYoutubeVideo(),
+    getLiveSettings(),
+    getSiteLogo(),
+    getNoticePosts(),
+    getRecentPosts(),
+    getBestPosts(),
+  ]);
 
   const isAdmin = currentUser?.role === "admin";
   const isLiveOn = liveSettings.liveStatus === "on";
@@ -379,7 +389,8 @@ export default async function Home() {
               </h1>
 
               <p className="mt-4 max-w-xl text-zinc-300">
-                왕츄관련 정보, 게시판, 상점, 게임까지 한 곳에서 즐기는 왕츄 커뮤니티입니다.
+                왕츄관련 정보, 게시판, 상점, 게임까지 한 곳에서 즐기는 왕츄
+                커뮤니티입니다.
               </p>
 
               <div className="mt-8 rounded-3xl bg-white/10 p-5">
@@ -388,10 +399,10 @@ export default async function Home() {
                 </h2>
 
                 <p className="mt-3 text-sm text-zinc-300">
-  {isLiveOn
-    ? "지금 유튜브에서 방송 중입니다!"
-    : "현재 방송 종료, 최근 다시보기 영상입니다."}
-</p>
+                  {isLiveOn
+                    ? "지금 유튜브에서 방송 중입니다!"
+                    : "현재 방송 종료, 최근 다시보기 영상입니다."}
+                </p>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -485,7 +496,10 @@ export default async function Home() {
           </aside>
         </section>
 
-        <section id="ranking" className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section
+          id="ranking"
+          className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]"
+        >
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/10 bg-[#151027] p-5 shadow-xl">
               <div className="mb-4 flex items-center justify-between">

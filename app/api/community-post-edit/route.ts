@@ -17,6 +17,7 @@ export async function POST(req: Request) {
   const postId = Number(body.postId);
   const title = String(body.title || "").trim();
   const content = String(body.content || "").trim();
+  const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
 
   if (!postId || !title || !content) {
     return NextResponse.json({
@@ -59,13 +60,47 @@ export async function POST(req: Request) {
     });
   }
 
-  await db.query(
-    "UPDATE community_posts SET title = ?, content = ? WHERE id = ?",
-    [title, content, postId]
-  );
+  const connection = await db.getConnection();
 
-  return NextResponse.json({
-    success: true,
-    message: "게시글 수정 완료",
-  });
+  try {
+    await connection.beginTransaction();
+
+    await connection.query(
+      "UPDATE community_posts SET title = ?, content = ? WHERE id = ?",
+      [title, content, postId]
+    );
+
+    for (const imageUrl of imageUrls) {
+      const cleanUrl = String(imageUrl || "").trim();
+
+      if (!cleanUrl) continue;
+
+      await connection.query(
+        `
+        INSERT INTO post_images
+          (post_id, image_url)
+        VALUES
+          (?, ?)
+        `,
+        [postId, cleanUrl]
+      );
+    }
+
+    await connection.commit();
+
+    return NextResponse.json({
+      success: true,
+      message: "게시글 수정 완료",
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+
+    return NextResponse.json({
+      success: false,
+      message: "게시글 수정 중 오류가 발생했습니다.",
+    });
+  } finally {
+    connection.release();
+  }
 }
