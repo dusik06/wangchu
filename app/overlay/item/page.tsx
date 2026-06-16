@@ -80,13 +80,10 @@ export default function ItemOverlayPage() {
         audio.currentTime = 0;
         audio.src = nextItem.item_audio;
         audio.volume = 1;
+        audio.loop = false;
 
-        await audio.play().catch((error) => {
-          console.error("오디오 재생 실패:", error);
-
-          timerRef.current = setTimeout(() => {
-            markDone(nextItem.id);
-          }, 20000);
+        audio.play().catch((error) => {
+          console.error("오디오 재생 promise 실패. OBS에서는 실제로 재생될 수 있음:", error);
         });
       } else {
         timerRef.current = setTimeout(() => {
@@ -120,14 +117,15 @@ export default function ItemOverlayPage() {
             <img
               src={current.item_image}
               alt={current.item_name}
-              className="w-[360px] max-h-[360px] object-contain mb-8 rounded-2xl"
+              className="w-[400px] max-h-[400px] object-contain mb-8 rounded-2xl"
             />
           )}
 
           <div
-            className="text-6xl font-black text-center leading-tight"
+            className="text-[82px] font-black text-center leading-[1.08]"
             style={{
               color: "white",
+              fontWeight: 1000,
               WebkitTextStroke: "4px black",
               textShadow:
                 "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
@@ -136,6 +134,7 @@ export default function ItemOverlayPage() {
             <span
               style={{
                 color: "#39ff14",
+                fontWeight: 1000,
                 WebkitTextStroke: "4px black",
                 textShadow:
                   "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
@@ -149,9 +148,10 @@ export default function ItemOverlayPage() {
           </div>
 
           <div
-            className="mt-8 text-5xl font-black text-center max-w-[1200px] leading-tight"
+            className="mt-8 text-[72px] font-black text-center max-w-[1300px] leading-[1.08]"
             style={{
               color: "#ffffff",
+              fontWeight: 1000,
               WebkitTextStroke: "3px black",
               textShadow:
                 "4px 4px 0 #000, -4px 4px 0 #000, 4px -4px 0 #000, -4px -4px 0 #000",
