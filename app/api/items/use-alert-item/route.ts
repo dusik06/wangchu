@@ -4,14 +4,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 async function checkLiveStatus(req: Request) {
-  try {
-    const url = new URL("/api/youtube", req.url);
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    const data = await res.json();
-    return data?.isLive === true;
-  } catch {
-    return false;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const url = new URL("/api/youtube", req.url);
+      const res = await fetch(url.toString(), { cache: "no-store" });
+      const data = await res.json();
+
+      if (data?.isLive === true) {
+        return true;
+      }
+    } catch {}
+
+    await new Promise((resolve) => setTimeout(resolve, 700));
   }
+
+  return false;
 }
 
 export async function POST(req: Request) {
