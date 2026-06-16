@@ -2,12 +2,19 @@ import db from "@/lib/db";
 import { notFound } from "next/navigation";
 import EditForm from "./edit-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const postId = Number(params.id);
+  const resolvedParams = await params;
+  const postId = Number(resolvedParams.id);
+
+  if (!postId) {
+    notFound();
+  }
 
   const [posts]: any = await db.query(
     `
@@ -23,6 +30,16 @@ export default async function EditPage({
     notFound();
   }
 
+  const [images]: any = await db.query(
+    `
+    SELECT id, image_url
+    FROM post_images
+    WHERE post_id = ?
+    ORDER BY id ASC
+    `,
+    [postId]
+  );
+
   const post = posts[0];
 
   return (
@@ -36,6 +53,7 @@ export default async function EditPage({
           postId={post.id}
           defaultTitle={post.title}
           defaultContent={post.content}
+          defaultImages={images}
         />
       </div>
     </main>
