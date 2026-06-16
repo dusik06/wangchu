@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 
+const FALLBACK_LIVE_VIDEO_ID = "P9fMwfGrucU";
+
 type YoutubeVideo = {
   videoId: string;
   title: string;
@@ -27,11 +29,11 @@ function parseDurationToSeconds(duration: string) {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return 999999;
 
-  const hours = Number(match[1] || 0);
-  const minutes = Number(match[2] || 0);
-  const seconds = Number(match[3] || 0);
-
-  return hours * 3600 + minutes * 60 + seconds;
+  return (
+    Number(match[1] || 0) * 3600 +
+    Number(match[2] || 0) * 60 +
+    Number(match[3] || 0)
+  );
 }
 
 function isLiveItem(item: any) {
@@ -58,6 +60,28 @@ async function saveAutoLiveStatus(status: "on" | "off") {
     "UPDATE site_settings SET live_status = ? WHERE live_force = 'auto' LIMIT 1",
     [status]
   );
+}
+
+async function getVideoDetail(apiKey: string, videoId: string) {
+  const data = await fetchJson(
+    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoId}&part=snippet,liveStreamingDetails,status,contentDetails`
+  );
+
+  const item = data?.items?.[0];
+
+  if (!item) {
+    return {
+      videoId,
+      title: "박왕츄 공식 방송",
+      thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+    };
+  }
+
+  return {
+    videoId,
+    title: item.snippet?.title || "박왕츄 공식 방송",
+    thumbnail: getThumbnail(item),
+  };
 }
 
 async function getCurrentLiveVideo(apiKey: string, channelId: string) {
@@ -122,7 +146,6 @@ async function getRecentShorts(apiKey: string, uploadsPlaylistId: string) {
 export async function GET() {
   const channelId = process.env.YOUTUBE_CHANNEL_ID;
   const apiKey = process.env.YOUTUBE_API_KEY;
-
   const forceState = await getLiveForce();
 
   if (!channelId || !apiKey) {
@@ -153,12 +176,11 @@ export async function GET() {
       });
     }
 
-    const liveVideo = await getCurrentLiveVideo(apiKey, channelId);
+    const detectedLiveVideo = await getCurrentLiveVideo(apiKey, channelId);
 
-    if (liveVideo) {
-      if (forceState.liveForce === "auto") {
-        await saveAutoLiveStatus("on");
-      }
+    if (forceState.liveForce === "on") {
+      const liveVideo =
+        detectedLiveVideo || (await getVideoDetail(apiKey, FALLBACK_LIVE_VIDEO_ID));
 
       return NextResponse.json({
         isLive: true,
@@ -166,21 +188,32 @@ export async function GET() {
         videos: [liveVideo],
         shorts,
         liveStatus: "on",
-        liveForce: forceState.liveForce,
+        liveForce: "on",
       });
     }
 
-    if (forceState.liveForce === "auto") {
-      await saveAutoLiveStatus("off");
+    if (detectedLiveVideo) {
+      await saveAutoLiveStatus("on");
+
+      return NextResponse.json({
+        isLive: true,
+        title: detectedLiveVideo.title,
+        videos: [detectedLiveVideo],
+        shorts,
+        liveStatus: "on",
+        liveForce: "auto",
+      });
     }
+
+    await saveAutoLiveStatus("off");
 
     return NextResponse.json({
       isLive: false,
       title: shorts[0]?.title || "표시할 쇼츠가 없습니다.",
       videos: shorts,
       shorts,
-      liveStatus: forceState.liveForce === "on" ? "on" : "off",
-      liveForce: forceState.liveForce,
+      liveStatus: "off",
+      liveForce: "auto",
     });
   } catch {
     return NextResponse.json({
