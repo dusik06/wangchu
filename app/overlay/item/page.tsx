@@ -131,7 +131,7 @@ export default function ItemOverlayPage() {
             <img
               src={current.item_image}
               alt={current.item_name}
-              className="w-[360px] max-h-[360px] object-contain mb-7 rounded-2xl"
+              className="w-[300px] max-h-[300px] object-contain mb-6 rounded-2xl"
             />
           )}
 
@@ -156,7 +156,7 @@ export default function ItemOverlayPage() {
           </div>
 
           <div
-            className="mt-7 text-[54px] font-black text-center max-w-[1200px] leading-[1.12]"
+            className="mt-5 text-[40px] font-black text-center max-w-[1100px] leading-[1.15]"
             style={{
               color: "#000000",
               fontWeight: 1000,
