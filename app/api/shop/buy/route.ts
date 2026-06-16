@@ -12,9 +12,14 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const itemId = Number(body.itemId);
+  const quantity = Math.floor(Number(body.quantity || 1));
 
   if (!itemId) {
     return NextResponse.json({ error: "아이템 정보가 없습니다." }, { status: 400 });
+  }
+
+  if (!quantity || quantity < 1 || quantity > 99) {
+    return NextResponse.json({ error: "구매 수량은 1개부터 99개까지 가능합니다." }, { status: 400 });
   }
 
   const connection = await db.getConnection();
@@ -46,19 +51,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "아이템이 없습니다." }, { status: 404 });
     }
 
-    if ((user.dotori || 0) < item.price) {
+    const price = Number(item.price) || 0;
+    const totalPrice = price * quantity;
+
+    if (totalPrice <= 0) {
+      await connection.rollback();
+      return NextResponse.json({ error: "상품 가격이 올바르지 않습니다." }, { status: 400 });
+    }
+
+    if ((Number(user.dotori) || 0) < totalPrice) {
       await connection.rollback();
       return NextResponse.json({ error: "도토리가 부족합니다." }, { status: 400 });
     }
 
     await connection.query(
       "UPDATE users SET dotori = dotori - ? WHERE id = ?",
-      [item.price, user.id]
+      [totalPrice, user.id]
     );
 
     await connection.query(
       "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-      [user.id, -item.price, `${item.item_name} 구매`]
+      [user.id, -totalPrice, `${item.item_name} ${quantity}개 구매`]
     );
 
     const [inventoryRows]: any = await connection.query(
@@ -73,12 +86,12 @@ export async function POST(req: Request) {
         `
         UPDATE user_inventory
         SET 
-          item_count = item_count + 1,
+          item_count = item_count + ?,
           item_image = ?,
           item_audio = ?
         WHERE id = ?
         `,
-        [item.item_image || null, item.item_audio || null, inventory.id]
+        [quantity, item.item_image || null, item.item_audio || null, inventory.id]
       );
     } else {
       await connection.query(
@@ -86,15 +99,20 @@ export async function POST(req: Request) {
         INSERT INTO user_inventory
           (user_id, item_name, item_image, item_audio, item_count)
         VALUES
-          (?, ?, ?, ?, 1)
+          (?, ?, ?, ?, ?)
         `,
-        [user.id, item.item_name, item.item_image || null, item.item_audio || null]
+        [user.id, item.item_name, item.item_image || null, item.item_audio || null, quantity]
       );
     }
 
     await connection.commit();
 
-    return NextResponse.json({ ok: true, message: "구매 완료" });
+    return NextResponse.json({
+      ok: true,
+      message: "구매 완료",
+      quantity,
+      totalPrice,
+    });
   } catch (error) {
     await connection.rollback();
     console.error(error);
