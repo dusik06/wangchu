@@ -1,4 +1,5 @@
 import db from "@/lib/db";
+import UserNameWithTitle from "@/components/UserNameWithTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -67,14 +68,32 @@ export default async function FreeBoardPage({
       p.created_at,
       u.nickname,
       u.role,
+      u.profile_image,
+      u.image,
+      t.title_name,
+      t.title_color,
       COUNT(c.id) AS comment_count
     FROM community_posts p
     JOIN users u ON p.user_id = u.id
+    LEFT JOIN user_titles t ON u.current_title_id = t.id
     LEFT JOIN community_comments c ON p.id = c.post_id
     WHERE p.category = 'free'
     AND p.is_blind = 0
     AND (p.title LIKE ? OR p.content LIKE ?)
-    GROUP BY p.id
+    GROUP BY 
+      p.id,
+      p.title,
+      p.views,
+      p.likes,
+      p.is_notice,
+      p.is_best,
+      p.created_at,
+      u.nickname,
+      u.role,
+      u.profile_image,
+      u.image,
+      t.title_name,
+      t.title_color
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
     `,
@@ -85,18 +104,16 @@ export default async function FreeBoardPage({
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex justify-between mb-6">
-          <h1 className="text-3xl font-bold text-pink-400">
-            자유게시판
-          </h1>
+          <h1 className="text-3xl font-bold text-pink-400">자유게시판</h1>
 
           <div className="flex gap-2">
-            <a href="/" className="bg-slate-800 px-4 py-2 rounded-lg">
+            <a href="/" className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">
               메인
             </a>
 
             <a
               href="/board/free/write"
-              className="bg-pink-500 px-4 py-2 rounded-lg font-bold"
+              className="bg-pink-500 px-4 py-2 rounded-lg font-bold cursor-pointer"
             >
               글쓰기
             </a>
@@ -113,7 +130,7 @@ export default async function FreeBoardPage({
 
           <button
             type="submit"
-            className="bg-pink-500 px-5 rounded-xl font-bold"
+            className="bg-pink-500 px-5 rounded-xl font-bold cursor-pointer"
           >
             검색
           </button>
@@ -122,21 +139,21 @@ export default async function FreeBoardPage({
         <div className="flex gap-2 mb-4">
           <a
             href={`/board/free?sort=latest&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg"
+            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             최신순
           </a>
 
           <a
             href={`/board/free?sort=likes&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg"
+            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             추천순
           </a>
 
           <a
             href={`/board/free?sort=views&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg"
+            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             조회순
           </a>
@@ -148,7 +165,7 @@ export default async function FreeBoardPage({
               <tr>
                 <th className="p-4 w-20">번호</th>
                 <th className="p-4">제목</th>
-                <th className="p-4 w-40">작성자</th>
+                <th className="p-4 w-56">작성자</th>
                 <th className="p-4 w-24">조회</th>
                 <th className="p-4 w-24">추천</th>
                 <th className="p-4 w-32">작성일</th>
@@ -165,7 +182,7 @@ export default async function FreeBoardPage({
                   <td className="p-4">
                     <a
                       href={`/board/free/${post.id}`}
-                      className="hover:text-pink-400"
+                      className="hover:text-pink-400 cursor-pointer"
                     >
                       {post.is_best ? (
                         <span className="text-green-400 mr-2 font-bold">
@@ -184,12 +201,13 @@ export default async function FreeBoardPage({
                   </td>
 
                   <td className="p-4">
-                    {post.role === "admin" ? (
-                      <span className="bg-purple-600 px-2 py-1 rounded-md text-xs mr-2">
-                        관리자
-                      </span>
-                    ) : null}
-                    {post.nickname}
+                    <UserNameWithTitle
+                      nickname={post.nickname}
+                      profileImage={post.profile_image || post.image}
+                      titleName={post.title_name}
+                      titleColor={post.title_color}
+                      size="sm"
+                    />
                   </td>
 
                   <td className="p-4">{post.views}</td>
@@ -214,7 +232,7 @@ export default async function FreeBoardPage({
             <a
               key={page}
               href={`/board/free?page=${page}&keyword=${keyword}&sort=${sort}`}
-              className={`px-4 py-2 rounded-lg ${
+              className={`px-4 py-2 rounded-lg cursor-pointer ${
                 currentPage === page ? "bg-pink-500" : "bg-slate-800"
               }`}
             >
