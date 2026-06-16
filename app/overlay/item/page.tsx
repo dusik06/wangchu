@@ -77,14 +77,22 @@ export default function ItemOverlayPage() {
         const audio = audioRef.current;
 
         audio.pause();
+        audio.src = "";
         audio.currentTime = 0;
-        audio.src = nextItem.item_audio;
         audio.volume = 1;
+        audio.muted = false;
         audio.loop = false;
 
-        audio.play().catch((error) => {
-          console.error(error);
-        });
+        setTimeout(() => {
+          if (!audioRef.current) return;
+
+          audioRef.current.src = nextItem.item_audio || "";
+          audioRef.current.load();
+
+          audioRef.current.play().catch((error) => {
+            console.error("오디오 재생 실패:", error);
+          });
+        }, 300);
       } else {
         timerRef.current = setTimeout(() => {
           markDone(nextItem.id);
@@ -115,19 +123,20 @@ export default function ItemOverlayPage() {
         <div
           className="flex flex-col items-center justify-center px-14 py-10"
           style={{
-            fontFamily: "'Black Han Sans', sans-serif",
+            fontFamily:
+              "'Black Han Sans', 'Arial Black', 'Malgun Gothic', sans-serif",
           }}
         >
           {current.item_image && (
             <img
               src={current.item_image}
               alt={current.item_name}
-              className="w-[400px] max-h-[400px] object-contain mb-8 rounded-2xl"
+              className="w-[360px] max-h-[360px] object-contain mb-7 rounded-2xl"
             />
           )}
 
           <div
-            className="text-[82px] font-black text-center leading-[1.08]"
+            className="text-[64px] font-black text-center leading-[1.12]"
             style={{
               color: "#000000",
               fontWeight: 1000,
@@ -147,7 +156,7 @@ export default function ItemOverlayPage() {
           </div>
 
           <div
-            className="mt-8 text-[72px] font-black text-center max-w-[1300px] leading-[1.08]"
+            className="mt-7 text-[54px] font-black text-center max-w-[1200px] leading-[1.12]"
             style={{
               color: "#000000",
               fontWeight: 1000,
@@ -160,6 +169,7 @@ export default function ItemOverlayPage() {
 
       <audio
         ref={audioRef}
+        preload="auto"
         onEnded={() => {
           if (!currentIdRef.current) return;
           finish(currentIdRef.current);
