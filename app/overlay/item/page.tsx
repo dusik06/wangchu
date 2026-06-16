@@ -83,7 +83,7 @@ export default function ItemOverlayPage() {
         audio.loop = false;
 
         audio.play().catch((error) => {
-          console.error("오디오 재생 promise 실패. OBS에서는 실제로 재생될 수 있음:", error);
+          console.error(error);
         });
       } else {
         timerRef.current = setTimeout(() => {
@@ -112,7 +112,12 @@ export default function ItemOverlayPage() {
   return (
     <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
       {current && (
-        <div className="flex flex-col items-center justify-center px-14 py-10">
+        <div
+          className="flex flex-col items-center justify-center px-14 py-10"
+          style={{
+            fontFamily: "'Black Han Sans', sans-serif",
+          }}
+        >
           {current.item_image && (
             <img
               src={current.item_image}
@@ -124,20 +129,14 @@ export default function ItemOverlayPage() {
           <div
             className="text-[82px] font-black text-center leading-[1.08]"
             style={{
-              color: "white",
+              color: "#000000",
               fontWeight: 1000,
-              WebkitTextStroke: "4px black",
-              textShadow:
-                "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
             }}
           >
             <span
               style={{
                 color: "#39ff14",
                 fontWeight: 1000,
-                WebkitTextStroke: "4px black",
-                textShadow:
-                  "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
               }}
             >
               {current.nickname}
@@ -150,11 +149,8 @@ export default function ItemOverlayPage() {
           <div
             className="mt-8 text-[72px] font-black text-center max-w-[1300px] leading-[1.08]"
             style={{
-              color: "#ffffff",
+              color: "#000000",
               fontWeight: 1000,
-              WebkitTextStroke: "3px black",
-              textShadow:
-                "4px 4px 0 #000, -4px 4px 0 #000, 4px -4px 0 #000, -4px -4px 0 #000",
             }}
           >
             {current.message}
@@ -165,17 +161,7 @@ export default function ItemOverlayPage() {
       <audio
         ref={audioRef}
         onEnded={() => {
-          const audio = audioRef.current;
-
-          if (!audio || !currentIdRef.current) return;
-
-          const duration = Number(audio.duration) || 0;
-          const currentTime = Number(audio.currentTime) || 0;
-
-          if (duration > 0 && currentTime + 1 < duration) {
-            return;
-          }
-
+          if (!currentIdRef.current) return;
           finish(currentIdRef.current);
         }}
       />
