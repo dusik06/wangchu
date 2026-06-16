@@ -9,48 +9,85 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   const [isNotice, setIsNotice] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function uploadImage(file: File) {
+    if (uploading) return;
+
     setUploading(true);
 
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/community-upload", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/community-upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
-    alert(data.message);
+      const data = await res.json();
 
-    if (data.success) {
+      if (!res.ok || !data.success) {
+        alert(data.message || "업로드 실패");
+        return;
+      }
+
       setImageUrls((prev) => [...prev, data.imageUrl]);
+      alert("업로드 완료");
+    } catch (error) {
+      console.error(error);
+      alert("업로드 중 오류가 발생했습니다.");
+    } finally {
+      setUploading(false);
     }
+  }
 
-    setUploading(false);
+  function removeImage(url: string) {
+    setImageUrls((prev) => prev.filter((item) => item !== url));
   }
 
   async function submitPost() {
-    const res = await fetch("/api/community-posts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        content,
-        category,
-        isNotice: isAdmin ? isNotice : false,
-        imageUrls,
-      }),
-    });
+    if (submitting) return;
 
-    const data = await res.json();
-    alert(data.message);
+    if (!title.trim()) {
+      alert("제목을 입력해주세요.");
+      return;
+    }
 
-    if (data.success) {
-      window.location.href = "/board/free";
+    if (!content.trim()) {
+      alert("내용을 입력해주세요.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/community-posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          category,
+          isNotice: isAdmin ? isNotice : false,
+          imageUrls,
+        }),
+      });
+
+      const data = await res.json();
+
+      alert(data.message || "처리되었습니다.");
+
+      if (data.success) {
+        window.location.href = "/board/free";
+      }
+    } catch (error) {
+      console.error(error);
+      alert("글 등록 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -77,9 +114,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
             checked={isNotice}
             onChange={(e) => setIsNotice(e.target.checked)}
           />
-          <span className="text-sm text-yellow-400">
-            공지로 등록
-          </span>
+          <span className="text-sm text-yellow-400">공지로 등록</span>
         </div>
       )}
 
@@ -105,9 +140,11 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
         <input
           type="file"
           accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+          disabled={uploading}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) uploadImage(file);
+            e.target.value = "";
           }}
           className="w-full bg-slate-800 rounded-xl px-4 py-3"
         />
@@ -119,12 +156,21 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
         {imageUrls.length > 0 && (
           <div className="grid grid-cols-3 gap-3 mt-4">
             {imageUrls.map((url) => (
-              <img
-                key={url}
-                src={url}
-                alt="첨부 이미지"
-                className="w-full h-32 object-cover rounded-xl"
-              />
+              <div key={url} className="relative">
+                <img
+                  src={url}
+                  alt="첨부 이미지"
+                  className="w-full h-32 object-cover rounded-xl"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => removeImage(url)}
+                  className="absolute right-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-bold text-white"
+                >
+                  삭제
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -132,9 +178,10 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
 
       <button
         onClick={submitPost}
-        className="bg-pink-500 px-6 py-3 rounded-xl font-bold"
+        disabled={uploading || submitting}
+        className="bg-pink-500 px-6 py-3 rounded-xl font-bold disabled:opacity-50"
       >
-        글 등록하기
+        {submitting ? "등록 중..." : "글 등록하기"}
       </button>
     </div>
   );
