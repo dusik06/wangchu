@@ -1,10 +1,37 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 
+type YoutubeVideo = {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+};
+
 async function fetchJson(url: string) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
   return res.json();
+}
+
+function getThumbnail(item: any) {
+  return (
+    item?.snippet?.thumbnails?.maxres?.url ||
+    item?.snippet?.thumbnails?.high?.url ||
+    item?.snippet?.thumbnails?.medium?.url ||
+    item?.snippet?.thumbnails?.default?.url ||
+    ""
+  );
+}
+
+function parseDurationToSeconds(duration: string) {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 999999;
+
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  const seconds = Number(match[3] || 0);
+
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 function isLiveItem(item: any) {
@@ -33,27 +60,6 @@ async function saveAutoLiveStatus(status: "on" | "off") {
   );
 }
 
-async function getRecentVideos(apiKey: string, uploadsPlaylistId: string) {
-  const playlistData = await fetchJson(
-    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
-  );
-
-  return (
-    playlistData?.items
-      ?.map((item: any) => ({
-        videoId: item.snippet?.resourceId?.videoId,
-        title: item.snippet?.title,
-        thumbnail:
-          item.snippet?.thumbnails?.maxres?.url ||
-          item.snippet?.thumbnails?.high?.url ||
-          item.snippet?.thumbnails?.medium?.url ||
-          item.snippet?.thumbnails?.default?.url ||
-          "",
-      }))
-      .filter((video: any) => video.videoId) || []
-  );
-}
-
 async function getCurrentLiveVideo(apiKey: string, channelId: string) {
   const liveSearchData = await fetchJson(
     `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
@@ -74,17 +80,43 @@ async function getCurrentLiveVideo(apiKey: string, channelId: string) {
       return {
         videoId: liveItem.id.videoId,
         title: item.snippet?.title || "실시간 방송 중",
-        thumbnail:
-          item.snippet?.thumbnails?.maxres?.url ||
-          item.snippet?.thumbnails?.high?.url ||
-          item.snippet?.thumbnails?.medium?.url ||
-          item.snippet?.thumbnails?.default?.url ||
-          "",
+        thumbnail: getThumbnail(item),
       };
     }
   }
 
   return null;
+}
+
+async function getRecentShorts(apiKey: string, uploadsPlaylistId: string) {
+  const playlistData = await fetchJson(
+    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=30`
+  );
+
+  const playlistItems = playlistData?.items || [];
+  const ids = playlistItems
+    .map((item: any) => item.snippet?.resourceId?.videoId)
+    .filter(Boolean);
+
+  if (ids.length === 0) return [];
+
+  const detailData = await fetchJson(
+    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${ids.join(",")}&part=snippet,contentDetails`
+  );
+
+  const detailItems = detailData?.items || [];
+
+  return detailItems
+    .filter((item: any) => {
+      const seconds = parseDurationToSeconds(item.contentDetails?.duration || "");
+      return seconds <= 90;
+    })
+    .map((item: any) => ({
+      videoId: item.id,
+      title: item.snippet?.title || "왕츄 쇼츠",
+      thumbnail: getThumbnail(item),
+    }))
+    .slice(0, 10);
 }
 
 export async function GET() {
@@ -108,14 +140,14 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
-    const recentVideos = await getRecentVideos(apiKey, uploadsPlaylistId);
+    const shorts = await getRecentShorts(apiKey, uploadsPlaylistId);
 
     if (forceState.liveForce === "off") {
       return NextResponse.json({
         isLive: false,
-        title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
-        videos: recentVideos,
-        shorts: recentVideos,
+        title: shorts[0]?.title || "표시할 쇼츠가 없습니다.",
+        videos: shorts,
+        shorts,
         liveStatus: "off",
         liveForce: "off",
       });
@@ -132,32 +164,23 @@ export async function GET() {
         isLive: true,
         title: liveVideo.title,
         videos: [liveVideo],
-        shorts: recentVideos,
+        shorts,
         liveStatus: "on",
         liveForce: forceState.liveForce,
       });
     }
 
-    if (forceState.liveForce === "on") {
-      return NextResponse.json({
-        isLive: false,
-        title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
-        videos: recentVideos,
-        shorts: recentVideos,
-        liveStatus: "on",
-        liveForce: "on",
-      });
+    if (forceState.liveForce === "auto") {
+      await saveAutoLiveStatus("off");
     }
-
-    await saveAutoLiveStatus("off");
 
     return NextResponse.json({
       isLive: false,
-      title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
-      videos: recentVideos,
-      shorts: recentVideos,
-      liveStatus: "off",
-      liveForce: "auto",
+      title: shorts[0]?.title || "표시할 쇼츠가 없습니다.",
+      videos: shorts,
+      shorts,
+      liveStatus: forceState.liveForce === "on" ? "on" : "off",
+      liveForce: forceState.liveForce,
     });
   } catch {
     return NextResponse.json({
