@@ -32,7 +32,9 @@ export default function ItemOverlayPage() {
     try {
       await fetch("/api/overlay/item-done", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ id }),
       });
     } catch (error) {
@@ -46,6 +48,7 @@ export default function ItemOverlayPage() {
 
   function finish(id: number) {
     clearTimer();
+
     timerRef.current = setTimeout(() => {
       markDone(id);
     }, 3000);
@@ -55,7 +58,10 @@ export default function ItemOverlayPage() {
     if (isPlaying || currentIdRef.current) return;
 
     try {
-      const res = await fetch("/api/overlay/item-next", { cache: "no-store" });
+      const res = await fetch("/api/overlay/item-next", {
+        cache: "no-store",
+      });
+
       const data = await res.json();
 
       if (!data.item) return;
@@ -109,7 +115,7 @@ export default function ItemOverlayPage() {
   return (
     <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
       {current && (
-        <div className="flex flex-col items-center justify-center rounded-[32px] bg-black/55 px-14 py-10 backdrop-blur-sm border border-white/20">
+        <div className="flex flex-col items-center justify-center px-14 py-10">
           {current.item_image && (
             <img
               src={current.item_image}
@@ -129,7 +135,7 @@ export default function ItemOverlayPage() {
           >
             <span
               style={{
-                color: "#ff4fd8",
+                color: "#39ff14",
                 WebkitTextStroke: "4px black",
                 textShadow:
                   "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
@@ -145,7 +151,7 @@ export default function ItemOverlayPage() {
           <div
             className="mt-8 text-5xl font-black text-center max-w-[1200px] leading-tight"
             style={{
-              color: "#fff176",
+              color: "#ffffff",
               WebkitTextStroke: "3px black",
               textShadow:
                 "4px 4px 0 #000, -4px 4px 0 #000, 4px -4px 0 #000, -4px -4px 0 #000",
