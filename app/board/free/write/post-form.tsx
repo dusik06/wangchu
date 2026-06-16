@@ -33,7 +33,6 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
       }
 
       setImageUrls((prev) => [...prev, data.imageUrl]);
-      alert("업로드 완료");
     } catch (error) {
       console.error(error);
       alert("업로드 중 오류가 발생했습니다.");
