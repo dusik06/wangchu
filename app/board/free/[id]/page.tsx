@@ -19,6 +19,24 @@ function formatMonthDay(date: any) {
   return `${month}/${day}`;
 }
 
+function ProfileImage({ src }: { src?: string | null }) {
+  return (
+    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/10 bg-slate-700">
+      {src ? (
+        <img
+          src={src}
+          alt="프로필"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-lg">
+          🐿️
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function FreeBoardDetailPage({
   params,
 }: {
@@ -65,7 +83,9 @@ export default async function FreeBoardDetailPage({
       p.is_blind,
       p.created_at,
       u.nickname,
-      u.role
+      u.role,
+      u.profile_image,
+      u.image
     FROM community_posts p
     JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -100,7 +120,9 @@ export default async function FreeBoardDetailPage({
       c.parent_id,
       c.created_at,
       u.nickname,
-      u.role
+      u.role,
+      u.profile_image,
+      u.image
     FROM community_comments c
     JOIN users u ON c.user_id = u.id
     WHERE c.post_id = ?
@@ -145,14 +167,16 @@ export default async function FreeBoardDetailPage({
           </h2>
 
           <div className="mb-6 flex flex-wrap gap-x-4 gap-y-2 border-b border-white/10 pb-5 text-sm text-slate-400">
-            <span>
-              작성자:{" "}
+            <span className="flex items-center gap-2">
+              <ProfileImage src={post.profile_image || post.image} />
+
               {post.role === "admin" ? (
-                <span className="mr-1 rounded-md bg-purple-600 px-2 py-0.5 text-xs text-white">
+                <span className="rounded-md bg-purple-600 px-2 py-0.5 text-xs text-white">
                   관리자
                 </span>
               ) : null}
-              <span className="text-slate-200">{post.nickname}</span>
+
+              <span className="font-bold text-slate-200">{post.nickname}</span>
             </span>
 
             <span>조회수: {post.views}</span>
@@ -176,7 +200,7 @@ export default async function FreeBoardDetailPage({
                     className="w-full rounded-2xl border border-white/10"
                   />
 
-                  {(isOwner || isAdmin) ? (
+                  {isOwner || isAdmin ? (
                     <ImageDeleteButton imageId={image.id} />
                   ) : null}
                 </div>
@@ -188,7 +212,7 @@ export default async function FreeBoardDetailPage({
             <VoteButtons postId={postId} />
             <ReportButton postId={postId} />
 
-            {(isOwner || isAdmin) ? (
+            {isOwner || isAdmin ? (
               <a
                 href={`/board/free/${postId}/edit`}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold hover:bg-blue-500"
@@ -223,6 +247,30 @@ export default async function FreeBoardDetailPage({
               return (
                 <div key={comment.id}>
                   <div className="rounded-2xl bg-slate-800 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <ProfileImage src={comment.profile_image || comment.image} />
+
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {comment.role === "admin" ? (
+                              <span className="rounded-md bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
+                                관리자
+                              </span>
+                            ) : null}
+
+                            <span className="font-black text-white">
+                              {comment.nickname}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-400">
+                            {formatMonthDay(comment.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <p className="whitespace-pre-wrap text-slate-200">
                       {comment.content}
                     </p>
@@ -252,6 +300,28 @@ export default async function FreeBoardDetailPage({
                         key={reply.id}
                         className="ml-8 mt-3 rounded-2xl border-l-4 border-pink-500 bg-slate-800/70 p-4"
                       >
+                        <div className="mb-3 flex items-center gap-2">
+                          <ProfileImage src={reply.profile_image || reply.image} />
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {reply.role === "admin" ? (
+                                <span className="rounded-md bg-purple-600 px-2 py-0.5 text-xs font-bold text-white">
+                                  관리자
+                                </span>
+                              ) : null}
+
+                              <span className="font-black text-white">
+                                {reply.nickname}
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-slate-400">
+                              {formatMonthDay(reply.created_at)}
+                            </div>
+                          </div>
+                        </div>
+
                         <p className="whitespace-pre-wrap text-slate-200">
                           {reply.content}
                         </p>
