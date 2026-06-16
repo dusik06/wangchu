@@ -120,15 +120,16 @@ export default async function AdminPage() {
             📊 승패 예측 생성
           </a>
 
-          <a
-  className="cursor-pointer rounded-xl bg-orange-500 p-6 font-bold transition hover:scale-[1.02] hover:bg-orange-400"
-  href="/admin/prediction/settle"
->
-  💰 예측 결과 정산
-</a>
+          <a className="cursor-pointer rounded-xl bg-orange-500 p-6 font-bold transition hover:scale-[1.02] hover:bg-orange-400" href="/admin/prediction/settle">
+            💰 예측 결과 정산
+          </a>
 
           <a className="cursor-pointer rounded-xl bg-emerald-500 p-6 font-bold text-slate-950 transition hover:scale-[1.02] hover:bg-emerald-400" href="/admin/site-logo">
             🖼️ 사이트 로고 설정
+          </a>
+
+          <a className="cursor-pointer rounded-xl bg-cyan-500 p-6 font-bold text-slate-950 transition hover:scale-[1.02] hover:bg-cyan-400" href="/admin/shop">
+            🛒 아이템 생성
           </a>
 
           <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold transition hover:scale-[1.02] hover:bg-slate-700" href="/admin/coupons">
@@ -137,10 +138,6 @@ export default async function AdminPage() {
 
           <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold transition hover:scale-[1.02] hover:bg-slate-700" href="#">
             공지사항 관리
-          </a>
-
-          <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold transition hover:scale-[1.02] hover:bg-slate-700" href="#">
-            상품 관리
           </a>
 
           <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold transition hover:scale-[1.02] hover:bg-slate-700" href="#">
