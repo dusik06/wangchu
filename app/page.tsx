@@ -388,12 +388,10 @@ export default async function Home() {
                 </h2>
 
                 <p className="mt-3 text-sm text-zinc-300">
-                  {isLiveOn
-                    ? liveSettings.liveForce === "on"
-                      ? "관리자가 라이브 ON 상태로 설정했습니다."
-                      : "지금 유튜브에서 방송 중입니다!"
-                    : "현재 방송 종료, 최근 다시보기 영상입니다."}
-                </p>
+  {isLiveOn
+    ? "지금 유튜브에서 방송 중입니다!"
+    : "현재 방송 종료, 최근 다시보기 영상입니다."}
+</p>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3">

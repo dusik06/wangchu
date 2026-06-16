@@ -39,29 +39,7 @@ export async function GET() {
 
   const forceState = await getLiveForce();
 
-  if (forceState.liveForce === "on") {
-    return NextResponse.json({
-      isLive: true,
-      title: "관리자 강제 ON",
-      videos: [],
-      liveStatus: "on",
-      liveForce: "on",
-    });
-  }
-
-  if (forceState.liveForce === "off") {
-    return NextResponse.json({
-      isLive: false,
-      title: "관리자 강제 OFF",
-      videos: [],
-      liveStatus: "off",
-      liveForce: "off",
-    });
-  }
-
   if (!channelId || !apiKey) {
-    await saveAutoLiveStatus("off");
-
     return NextResponse.json({
       isLive: false,
       title: "유튜브 설정이 없습니다.",
@@ -75,6 +53,7 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
+    // 라이브 검색
     const liveSearchData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
     );
@@ -91,7 +70,9 @@ export async function GET() {
       const item = liveDetail?.items?.[0];
 
       if (item && isLiveItem(item)) {
-        await saveAutoLiveStatus("on");
+        if (forceState.liveForce === "auto") {
+          await saveAutoLiveStatus("on");
+        }
 
         return NextResponse.json({
           isLive: true,
@@ -102,14 +83,19 @@ export async function GET() {
               title: item.snippet?.title || "실시간 방송 중",
             },
           ],
-          liveStatus: "on",
-          liveForce: "auto",
+          liveStatus:
+            forceState.liveForce === "on" ? "on" : "on",
+          liveForce: forceState.liveForce,
         });
       }
     }
 
-    await saveAutoLiveStatus("off");
+    // 라이브 없으면 OFF
+    if (forceState.liveForce === "auto") {
+      await saveAutoLiveStatus("off");
+    }
 
+    // 최근 업로드 영상
     const playlistData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
     );
@@ -123,19 +109,19 @@ export async function GET() {
         .filter((video: any) => video.videoId) || [];
 
     return NextResponse.json({
-      isLive: false,
+      isLive: forceState.liveStatus === "on",
       title: videos[0]?.title || "표시할 영상이 없습니다.",
       videos,
-      liveStatus: "off",
-      liveForce: "auto",
+      liveStatus: forceState.liveStatus,
+      liveForce: forceState.liveForce,
     });
   } catch (error: any) {
     return NextResponse.json({
       isLive: forceState.liveStatus === "on",
-      title: error.message || "유튜브 정보를 불러오지 못했습니다.",
+      title: "유튜브 정보를 불러오지 못했습니다.",
       videos: [],
       liveStatus: forceState.liveStatus,
-      liveForce: "auto",
+      liveForce: forceState.liveForce,
     });
   }
 }
