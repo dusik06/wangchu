@@ -15,6 +15,26 @@ export default function ItemOverlayPage() {
   const [current, setCurrent] = useState<AlertItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  async function markDone(id: number) {
+    await fetch("/api/overlay/item-done", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    setCurrent(null);
+    setIsPlaying(false);
+  }
+
+  async function finishAfterDelay(id: number) {
+    setTimeout(() => {
+      markDone(id);
+    }, 3000);
+  }
 
   async function fetchNext() {
     if (isPlaying) return;
@@ -31,26 +51,24 @@ export default function ItemOverlayPage() {
       setCurrent(data.item);
       setIsPlaying(true);
 
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+      }
+
       if (data.item.item_audio && audioRef.current) {
         audioRef.current.src = data.item.item_audio;
         audioRef.current.volume = 1;
-        audioRef.current.play().catch(console.error);
-      }
 
-      setTimeout(async () => {
-        await fetch("/api/overlay/item-done", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: data.item.id,
-          }),
+        audioRef.current.play().catch(() => {
+          fallbackTimerRef.current = setTimeout(() => {
+            finishAfterDelay(data.item.id);
+          }, 10000);
         });
-
-        setCurrent(null);
-        setIsPlaying(false);
-      }, 10000);
+      } else {
+        fallbackTimerRef.current = setTimeout(() => {
+          finishAfterDelay(data.item.id);
+        }, 10000);
+      }
     } catch (error) {
       console.error(error);
     }
@@ -58,7 +76,14 @@ export default function ItemOverlayPage() {
 
   useEffect(() => {
     const timer = setInterval(fetchNext, 2000);
-    return () => clearInterval(timer);
+
+    return () => {
+      clearInterval(timer);
+
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+      }
+    };
   }, [isPlaying]);
 
   return (
@@ -79,9 +104,7 @@ export default function ItemOverlayPage() {
               WebkitTextStroke: "3px black",
             }}
           >
-            <span className="text-pink-400">
-              {current.nickname}
-            </span>
+            <span className="text-pink-400">{current.nickname}</span>
             님이 홈페이지에서 도토리를 사용했습니다!
           </div>
 
@@ -96,7 +119,14 @@ export default function ItemOverlayPage() {
         </div>
       )}
 
-      <audio ref={audioRef} />
+      <audio
+        ref={audioRef}
+        onEnded={() => {
+          if (current) {
+            finishAfterDelay(current.id);
+          }
+        }}
+      />
     </main>
   );
 }
