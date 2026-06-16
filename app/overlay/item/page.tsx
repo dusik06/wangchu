@@ -16,25 +16,23 @@ export default function ItemOverlayPage() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const currentIdRef = useRef<number | null>(null);
 
-  function clearFallbackTimer() {
-    if (fallbackTimerRef.current) {
-      clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
+  function clearTimer() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
   }
 
   async function markDone(id: number) {
-    clearFallbackTimer();
+    clearTimer();
 
     try {
       await fetch("/api/overlay/item-done", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
     } catch (error) {
@@ -46,10 +44,9 @@ export default function ItemOverlayPage() {
     setIsPlaying(false);
   }
 
-  function finishAfterAudioEnd(id: number) {
-    clearFallbackTimer();
-
-    fallbackTimerRef.current = setTimeout(() => {
+  function finish(id: number) {
+    clearTimer();
+    timerRef.current = setTimeout(() => {
       markDone(id);
     }, 3000);
   }
@@ -58,10 +55,7 @@ export default function ItemOverlayPage() {
     if (isPlaying || currentIdRef.current) return;
 
     try {
-      const res = await fetch("/api/overlay/item-next", {
-        cache: "no-store",
-      });
-
+      const res = await fetch("/api/overlay/item-next", { cache: "no-store" });
       const data = await res.json();
 
       if (!data.item) return;
@@ -71,7 +65,7 @@ export default function ItemOverlayPage() {
       setCurrent(nextItem);
       setIsPlaying(true);
       currentIdRef.current = nextItem.id;
-      clearFallbackTimer();
+      clearTimer();
 
       if (nextItem.item_audio && audioRef.current) {
         const audio = audioRef.current;
@@ -81,22 +75,15 @@ export default function ItemOverlayPage() {
         audio.src = nextItem.item_audio;
         audio.volume = 1;
 
-        try {
-          await audio.play();
-
-          // 노래가 정상 재생되면 화면은 절대 시간으로 먼저 끄지 않음.
-          // 오직 audio onEnded에서만 종료 처리.
-        } catch (error) {
+        await audio.play().catch((error) => {
           console.error("오디오 재생 실패:", error);
 
-          // 진짜로 오디오 재생이 실패했을 때만 기본 15초 표시 후 종료.
-          fallbackTimerRef.current = setTimeout(() => {
+          timerRef.current = setTimeout(() => {
             markDone(nextItem.id);
-          }, 15000);
-        }
+          }, 20000);
+        });
       } else {
-        // 노래 없는 아이템은 10초 표시.
-        fallbackTimerRef.current = setTimeout(() => {
+        timerRef.current = setTimeout(() => {
           markDone(nextItem.id);
         }, 10000);
       }
@@ -110,7 +97,7 @@ export default function ItemOverlayPage() {
 
     return () => {
       clearInterval(timer);
-      clearFallbackTimer();
+      clearTimer();
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -122,44 +109,46 @@ export default function ItemOverlayPage() {
   return (
     <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
       {current && (
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center rounded-[32px] bg-black/55 px-14 py-10 backdrop-blur-sm border border-white/20">
           {current.item_image && (
             <img
               src={current.item_image}
               alt={current.item_name}
-              className="w-[280px] object-contain mb-4"
+              className="w-[360px] max-h-[360px] object-contain mb-8 rounded-2xl"
             />
           )}
 
           <div
-            className="text-4xl font-black text-center"
+            className="text-6xl font-black text-center leading-tight"
             style={{
               color: "white",
-              WebkitTextStroke: "3px black",
+              WebkitTextStroke: "4px black",
               textShadow:
-                "3px 3px 0 #000, -3px 3px 0 #000, 3px -3px 0 #000, -3px -3px 0 #000",
+                "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
             }}
           >
             <span
               style={{
                 color: "#ff4fd8",
-                WebkitTextStroke: "3px black",
+                WebkitTextStroke: "4px black",
                 textShadow:
-                  "3px 3px 0 #000, -3px 3px 0 #000, 3px -3px 0 #000, -3px -3px 0 #000",
+                  "5px 5px 0 #000, -5px 5px 0 #000, 5px -5px 0 #000, -5px -5px 0 #000",
               }}
             >
               {current.nickname}
             </span>
-            님이 홈페이지에서 도토리를 사용했습니다!
+            님이
+            <br />
+            홈페이지에서 도토리를 사용했습니다!
           </div>
 
           <div
-            className="mt-4 text-3xl font-black text-center max-w-[900px]"
+            className="mt-8 text-5xl font-black text-center max-w-[1200px] leading-tight"
             style={{
-              color: "white",
-              WebkitTextStroke: "2px black",
+              color: "#fff176",
+              WebkitTextStroke: "3px black",
               textShadow:
-                "2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000",
+                "4px 4px 0 #000, -4px 4px 0 #000, 4px -4px 0 #000, -4px -4px 0 #000",
             }}
           >
             {current.message}
@@ -170,18 +159,18 @@ export default function ItemOverlayPage() {
       <audio
         ref={audioRef}
         onEnded={() => {
-          if (currentIdRef.current) {
-            finishAfterAudioEnd(currentIdRef.current);
+          const audio = audioRef.current;
+
+          if (!audio || !currentIdRef.current) return;
+
+          const duration = Number(audio.duration) || 0;
+          const currentTime = Number(audio.currentTime) || 0;
+
+          if (duration > 0 && currentTime + 1 < duration) {
+            return;
           }
-        }}
-        onError={() => {
-          if (currentIdRef.current) {
-            fallbackTimerRef.current = setTimeout(() => {
-              if (currentIdRef.current) {
-                markDone(currentIdRef.current);
-              }
-            }, 15000);
-          }
+
+          finish(currentIdRef.current);
         }}
       />
     </main>
