@@ -33,6 +33,60 @@ async function saveAutoLiveStatus(status: "on" | "off") {
   );
 }
 
+async function getRecentVideos(apiKey: string, uploadsPlaylistId: string) {
+  const playlistData = await fetchJson(
+    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
+  );
+
+  return (
+    playlistData?.items
+      ?.map((item: any) => ({
+        videoId: item.snippet?.resourceId?.videoId,
+        title: item.snippet?.title,
+        thumbnail:
+          item.snippet?.thumbnails?.maxres?.url ||
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url ||
+          "",
+      }))
+      .filter((video: any) => video.videoId) || []
+  );
+}
+
+async function getCurrentLiveVideo(apiKey: string, channelId: string) {
+  const liveSearchData = await fetchJson(
+    `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
+  );
+
+  const liveItems = liveSearchData?.items || [];
+
+  for (const liveItem of liveItems) {
+    if (!liveItem?.id?.videoId) continue;
+
+    const liveDetail = await fetchJson(
+      `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveItem.id.videoId}&part=snippet,liveStreamingDetails,status`
+    );
+
+    const item = liveDetail?.items?.[0];
+
+    if (item && isLiveItem(item)) {
+      return {
+        videoId: liveItem.id.videoId,
+        title: item.snippet?.title || "실시간 방송 중",
+        thumbnail:
+          item.snippet?.thumbnails?.maxres?.url ||
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url ||
+          "",
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function GET() {
   const channelId = process.env.YOUTUBE_CHANNEL_ID;
   const apiKey = process.env.YOUTUBE_API_KEY;
@@ -44,8 +98,9 @@ export async function GET() {
       isLive: false,
       title: "유튜브 설정이 없습니다.",
       videos: [],
+      shorts: [],
       liveStatus: "off",
-      liveForce: "auto",
+      liveForce: forceState.liveForce,
     });
   }
 
@@ -53,81 +108,63 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
-    const liveSearchData = await fetchJson(
-      `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
-    );
+    const recentVideos = await getRecentVideos(apiKey, uploadsPlaylistId);
 
-    const liveItems = liveSearchData?.items || [];
+    if (forceState.liveForce === "off") {
+      return NextResponse.json({
+        isLive: false,
+        title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
+        videos: recentVideos,
+        shorts: recentVideos,
+        liveStatus: "off",
+        liveForce: "off",
+      });
+    }
 
-    for (const liveItem of liveItems) {
-      if (!liveItem?.id?.videoId) continue;
+    const liveVideo = await getCurrentLiveVideo(apiKey, channelId);
 
-      const liveDetail = await fetchJson(
-        `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${liveItem.id.videoId}&part=snippet,liveStreamingDetails,status`
-      );
-
-      const item = liveDetail?.items?.[0];
-
-      if (item && isLiveItem(item)) {
-        if (forceState.liveForce === "auto") {
-          await saveAutoLiveStatus("on");
-        }
-
-        return NextResponse.json({
-          isLive: true,
-          title: item.snippet?.title || "실시간 방송 중",
-          videos: [
-            {
-              videoId: liveItem.id.videoId,
-              title: item.snippet?.title || "실시간 방송 중",
-              thumbnail:
-                item.snippet?.thumbnails?.maxres?.url ||
-                item.snippet?.thumbnails?.high?.url ||
-                item.snippet?.thumbnails?.medium?.url ||
-                item.snippet?.thumbnails?.default?.url ||
-                "",
-            },
-          ],
-          liveStatus: "on",
-          liveForce: forceState.liveForce,
-        });
+    if (liveVideo) {
+      if (forceState.liveForce === "auto") {
+        await saveAutoLiveStatus("on");
       }
+
+      return NextResponse.json({
+        isLive: true,
+        title: liveVideo.title,
+        videos: [liveVideo],
+        shorts: recentVideos,
+        liveStatus: "on",
+        liveForce: forceState.liveForce,
+      });
     }
 
-    if (forceState.liveForce === "auto") {
-      await saveAutoLiveStatus("off");
+    if (forceState.liveForce === "on") {
+      return NextResponse.json({
+        isLive: false,
+        title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
+        videos: recentVideos,
+        shorts: recentVideos,
+        liveStatus: "on",
+        liveForce: "on",
+      });
     }
 
-    const playlistData = await fetchJson(
-      `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
-    );
-
-    const videos =
-      playlistData?.items
-        ?.map((item: any) => ({
-          videoId: item.snippet?.resourceId?.videoId,
-          title: item.snippet?.title,
-          thumbnail:
-            item.snippet?.thumbnails?.maxres?.url ||
-            item.snippet?.thumbnails?.high?.url ||
-            item.snippet?.thumbnails?.medium?.url ||
-            item.snippet?.thumbnails?.default?.url ||
-            "",
-        }))
-        .filter((video: any) => video.videoId) || [];
+    await saveAutoLiveStatus("off");
 
     return NextResponse.json({
-      isLive: forceState.liveStatus === "on",
-      title: videos[0]?.title || "표시할 영상이 없습니다.",
-      videos,
-      liveStatus: forceState.liveStatus,
-      liveForce: forceState.liveForce,
+      isLive: false,
+      title: recentVideos[0]?.title || "표시할 영상이 없습니다.",
+      videos: recentVideos,
+      shorts: recentVideos,
+      liveStatus: "off",
+      liveForce: "auto",
     });
   } catch {
     return NextResponse.json({
-      isLive: forceState.liveStatus === "on",
+      isLive: false,
       title: "유튜브 정보를 불러오지 못했습니다.",
       videos: [],
+      shorts: [],
       liveStatus: forceState.liveStatus,
       liveForce: forceState.liveForce,
     });

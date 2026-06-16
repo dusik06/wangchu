@@ -205,9 +205,11 @@ export default async function Home() {
   ]);
 
   const isAdmin = currentUser?.role === "admin";
-  const isLiveOn = liveSettings.liveStatus === "on";
+  const isLiveOn = video?.liveStatus === "on";
   const videos = Array.isArray(video?.videos) ? video.videos : [];
-  const shorts = videos.slice(0, 10);
+  const shorts = Array.isArray(video?.shorts)
+  ? video.shorts.slice(0, 10)
+  : videos.slice(0, 10);
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
