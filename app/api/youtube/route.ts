@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import db from "@/lib/db";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { cache: "no-store" });
@@ -11,9 +12,24 @@ function isLiveItem(item: any) {
   const actualStartTime = item?.liveStreamingDetails?.actualStartTime;
   const actualEndTime = item?.liveStreamingDetails?.actualEndTime;
 
-  return (
-    liveBroadcastContent === "live" ||
-    (!!actualStartTime && !actualEndTime)
+  return liveBroadcastContent === "live" || (!!actualStartTime && !actualEndTime);
+}
+
+async function getLiveForce() {
+  const [rows]: any = await db.query(
+    "SELECT live_status, live_force FROM site_settings LIMIT 1"
+  );
+
+  return {
+    liveStatus: rows[0]?.live_status || "off",
+    liveForce: rows[0]?.live_force || "auto",
+  };
+}
+
+async function saveAutoLiveStatus(status: "on" | "off") {
+  await db.query(
+    "UPDATE site_settings SET live_status = ? WHERE live_force = 'auto' LIMIT 1",
+    [status]
   );
 }
 
@@ -21,11 +37,37 @@ export async function GET() {
   const channelId = process.env.YOUTUBE_CHANNEL_ID;
   const apiKey = process.env.YOUTUBE_API_KEY;
 
+  const forceState = await getLiveForce();
+
+  if (forceState.liveForce === "on") {
+    return NextResponse.json({
+      isLive: true,
+      title: "관리자 강제 ON",
+      videos: [],
+      liveStatus: "on",
+      liveForce: "on",
+    });
+  }
+
+  if (forceState.liveForce === "off") {
+    return NextResponse.json({
+      isLive: false,
+      title: "관리자 강제 OFF",
+      videos: [],
+      liveStatus: "off",
+      liveForce: "off",
+    });
+  }
+
   if (!channelId || !apiKey) {
+    await saveAutoLiveStatus("off");
+
     return NextResponse.json({
       isLive: false,
       title: "유튜브 설정이 없습니다.",
       videos: [],
+      liveStatus: "off",
+      liveForce: "auto",
     });
   }
 
@@ -33,7 +75,6 @@ export async function GET() {
     process.env.YOUTUBE_UPLOADS_PLAYLIST_ID || channelId.replace(/^UC/, "UU");
 
   try {
-    // 현재 라이브 자동 탐지
     const liveSearchData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&type=video&eventType=live&order=date&maxResults=5`
     );
@@ -50,6 +91,8 @@ export async function GET() {
       const item = liveDetail?.items?.[0];
 
       if (item && isLiveItem(item)) {
+        await saveAutoLiveStatus("on");
+
         return NextResponse.json({
           isLive: true,
           title: item.snippet?.title || "실시간 방송 중",
@@ -59,11 +102,14 @@ export async function GET() {
               title: item.snippet?.title || "실시간 방송 중",
             },
           ],
+          liveStatus: "on",
+          liveForce: "auto",
         });
       }
     }
 
-    // 라이브 없으면 최근 업로드
+    await saveAutoLiveStatus("off");
+
     const playlistData = await fetchJson(
       `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=10`
     );
@@ -80,12 +126,16 @@ export async function GET() {
       isLive: false,
       title: videos[0]?.title || "표시할 영상이 없습니다.",
       videos,
+      liveStatus: "off",
+      liveForce: "auto",
     });
   } catch (error: any) {
     return NextResponse.json({
-      isLive: false,
+      isLive: forceState.liveStatus === "on",
       title: error.message || "유튜브 정보를 불러오지 못했습니다.",
       videos: [],
+      liveStatus: forceState.liveStatus,
+      liveForce: "auto",
     });
   }
 }
