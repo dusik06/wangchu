@@ -3,29 +3,22 @@ import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-async function checkLiveStatus(req: Request) {
-  for (let i = 0; i < 3; i++) {
-    try {
-      const url = new URL("/api/youtube", req.url);
-      const res = await fetch(url.toString(), { cache: "no-store" });
-      const data = await res.json();
+async function checkLiveStatus() {
+  const [rows]: any = await db.query(
+    "SELECT live_status FROM site_settings LIMIT 1"
+  );
 
-      if (data?.isLive === true) {
-        return true;
-      }
-    } catch {}
-
-    await new Promise((resolve) => setTimeout(resolve, 700));
-  }
-
-  return false;
+  return rows[0]?.live_status === "on";
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    return NextResponse.json(
+      { error: "로그인이 필요합니다." },
+      { status: 401 }
+    );
   }
 
   const body = await req.json();
@@ -33,18 +26,27 @@ export async function POST(req: Request) {
   const message = String(body.message || "").trim();
 
   if (!inventoryId) {
-    return NextResponse.json({ error: "아이템 정보가 없습니다." }, { status: 400 });
+    return NextResponse.json(
+      { error: "아이템 정보가 없습니다." },
+      { status: 400 }
+    );
   }
 
   if (!message) {
-    return NextResponse.json({ error: "메세지를 적어주세요." }, { status: 400 });
+    return NextResponse.json(
+      { error: "메세지를 적어주세요." },
+      { status: 400 }
+    );
   }
 
   if (message.length > 80) {
-    return NextResponse.json({ error: "메세지는 최대 80자까지 가능합니다." }, { status: 400 });
+    return NextResponse.json(
+      { error: "메세지는 최대 80자까지 가능합니다." },
+      { status: 400 }
+    );
   }
 
-  const isLive = await checkLiveStatus(req);
+  const isLive = await checkLiveStatus();
 
   if (!isLive) {
     return NextResponse.json(
@@ -67,7 +69,11 @@ export async function POST(req: Request) {
 
     if (!user) {
       await connection.rollback();
-      return NextResponse.json({ error: "유저 정보를 찾을 수 없습니다." }, { status: 404 });
+
+      return NextResponse.json(
+        { error: "유저 정보를 찾을 수 없습니다." },
+        { status: 404 }
+      );
     }
 
     const [items]: any = await connection.query(
@@ -86,18 +92,35 @@ export async function POST(req: Request) {
 
     if (!item) {
       await connection.rollback();
-      return NextResponse.json({ error: "사용 가능한 아이템이 없습니다." }, { status: 400 });
+
+      return NextResponse.json(
+        { error: "사용 가능한 아이템이 없습니다." },
+        { status: 400 }
+      );
     }
 
     await connection.query(
-      "UPDATE user_inventory SET item_count = item_count - 1 WHERE id = ? AND item_count > 0",
+      `
+      UPDATE user_inventory
+      SET item_count = item_count - 1
+      WHERE id = ?
+        AND item_count > 0
+      `,
       [item.id]
     );
 
     await connection.query(
       `
       INSERT INTO item_use_alerts
-        (user_id, nickname, item_name, item_image, item_audio, message, status)
+        (
+          user_id,
+          nickname,
+          item_name,
+          item_image,
+          item_audio,
+          message,
+          status
+        )
       VALUES
         (?, ?, ?, ?, ?, ?, 'pending')
       `,
@@ -113,11 +136,17 @@ export async function POST(req: Request) {
 
     await connection.commit();
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+    });
   } catch (error) {
     await connection.rollback();
     console.error(error);
-    return NextResponse.json({ error: "아이템 사용 중 오류가 발생했습니다." }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "아이템 사용 중 오류가 발생했습니다." },
+      { status: 500 }
+    );
   } finally {
     connection.release();
   }

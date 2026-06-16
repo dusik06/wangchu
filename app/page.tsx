@@ -29,6 +29,8 @@ async function getYoutubeVideo() {
       isLive: false,
       title: "유튜브 영상을 불러오는 중 문제가 발생했습니다.",
       videos: [],
+      liveStatus: "off",
+      liveForce: "auto",
     };
   }
 }
@@ -57,6 +59,24 @@ async function getSiteLogo() {
     return rows[0]?.site_logo || null;
   } catch {
     return null;
+  }
+}
+
+async function getLiveSettings() {
+  try {
+    const [rows]: any = await db.query(
+      "SELECT live_status, live_force FROM site_settings LIMIT 1"
+    );
+
+    return {
+      liveStatus: rows[0]?.live_status || "off",
+      liveForce: rows[0]?.live_force || "auto",
+    };
+  } catch {
+    return {
+      liveStatus: "off",
+      liveForce: "auto",
+    };
   }
 }
 
@@ -115,12 +135,14 @@ export default async function Home() {
   const currentUser = await getCurrentUser(session?.user?.email);
 
   const video = await getYoutubeVideo();
+  const liveSettings = await getLiveSettings();
   const siteLogo = await getSiteLogo();
   const noticePosts = await getNoticePosts();
   const recentPosts = await getRecentPosts();
   const bestPosts = await getBestPosts();
 
   const isAdmin = currentUser?.role === "admin";
+  const isLiveOn = liveSettings.liveStatus === "on";
 
   return (
     <main className="min-h-screen bg-[#0b0718] text-white">
@@ -147,17 +169,66 @@ export default async function Home() {
               공지사항
             </a>
 
-            <a className="cursor-pointer hover:text-pink-400" href="/board/free">
-              게시판
-            </a>
+            <div className="group relative">
+              <button className="cursor-pointer hover:text-pink-400">
+                게시판 ▾
+              </button>
 
-            <a className="cursor-pointer hover:text-pink-400" href="#">
-              상점
-            </a>
+              <div className="invisible absolute left-0 top-8 z-50 w-52 rounded-2xl border border-white/10 bg-[#151027] p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                <a
+                  href="/board/free"
+                  className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-pink-500 hover:text-white"
+                >
+                  💬 자유게시판
+                </a>
+
+                {currentUser && (
+                  <a
+                    href="/board/my"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-purple-500 hover:text-white"
+                  >
+                    📝 내 활동
+                  </a>
+                )}
+              </div>
+            </div>
 
             <div className="group relative">
               <button className="cursor-pointer hover:text-pink-400">
-                게임
+                상점 ▾
+              </button>
+
+              <div className="invisible absolute left-0 top-8 z-50 w-56 rounded-2xl border border-white/10 bg-[#151027] p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                <a
+                  href="/shop"
+                  className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-yellow-500 hover:text-black"
+                >
+                  🛒 전체 상점
+                </a>
+
+                {currentUser && (
+                  <a
+                    href="/mypage/inventory"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-blue-500 hover:text-white"
+                  >
+                    🎁 내 아이템
+                  </a>
+                )}
+
+                {isAdmin && (
+                  <a
+                    href="/admin/shop"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-yellow-300 transition hover:bg-yellow-500 hover:text-black"
+                  >
+                    ⚙ 아이템 생성
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="group relative">
+              <button className="cursor-pointer hover:text-pink-400">
+                게임 ▾
               </button>
 
               <div className="invisible absolute left-0 top-8 z-50 w-52 rounded-2xl border border-white/10 bg-[#151027] p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
@@ -174,23 +245,104 @@ export default async function Home() {
                 >
                   📊 승패 예측
                 </a>
+
+                <a
+                  href="#ranking"
+                  className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-indigo-500 hover:text-white"
+                >
+                  🏆 랭킹
+                </a>
               </div>
             </div>
 
-            <a className="cursor-pointer hover:text-pink-400" href="#">
-              랭킹
-            </a>
-
             {currentUser && (
-              <a className="cursor-pointer hover:text-pink-400" href="/mypage">
-                마이페이지
-              </a>
+              <div className="group relative">
+                <button className="cursor-pointer hover:text-pink-400">
+                  마이페이지 ▾
+                </button>
+
+                <div className="invisible absolute left-0 top-8 z-50 w-56 rounded-2xl border border-white/10 bg-[#151027] p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                  <a
+                    href="/mypage"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-pink-500 hover:text-white"
+                  >
+                    👤 마이페이지
+                  </a>
+
+                  <a
+                    href="/mypage/inventory"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-blue-500 hover:text-white"
+                  >
+                    🎁 내 아이템
+                  </a>
+
+                  <a
+                    href="/mypage/titles"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-yellow-500 hover:text-black"
+                  >
+                    🏷️ 칭호 변경
+                  </a>
+
+                  <a
+                    href="/mypage/posts"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-purple-500 hover:text-white"
+                  >
+                    📝 내가 쓴 글
+                  </a>
+
+                  <a
+                    href="/mypage/comments"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-purple-500 hover:text-white"
+                  >
+                    💬 내가 쓴 댓글
+                  </a>
+                </div>
+              </div>
             )}
 
             {isAdmin && (
-              <a className="cursor-pointer text-yellow-300 hover:text-yellow-200" href="/admin">
-                관리자
-              </a>
+              <div className="group relative">
+                <button className="cursor-pointer text-yellow-300 hover:text-yellow-200">
+                  관리자 ▾
+                </button>
+
+                <div className="invisible absolute right-0 top-8 z-50 w-60 rounded-2xl border border-yellow-300/20 bg-[#151027] p-2 opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                  <a
+                    href="/admin"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-yellow-300 transition hover:bg-yellow-500 hover:text-black"
+                  >
+                    ⚙ 관리자 대시보드
+                  </a>
+
+                  <a
+                    href="/admin/live-status"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-red-500 hover:text-white"
+                  >
+                    🔴 라이브 상태 관리
+                  </a>
+
+                  <a
+                    href="/admin/shop"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-cyan-500 hover:text-black"
+                  >
+                    🛒 아이템 생성
+                  </a>
+
+                  <a
+                    href="/admin/dotori"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-pink-500 hover:text-white"
+                  >
+                    🌰 도토리 지급
+                  </a>
+
+                  <a
+                    href="/admin/board"
+                    className="block cursor-pointer rounded-xl px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-purple-500 hover:text-white"
+                  >
+                    🧹 게시판 관리
+                  </a>
+                </div>
+              </div>
             )}
           </nav>
 
@@ -208,12 +360,12 @@ export default async function Home() {
             <div className="relative">
               <div
                 className={`mb-5 inline-flex rounded-full px-4 py-2 text-sm font-black ${
-                  video.isLive
+                  isLiveOn
                     ? "bg-red-500 text-white"
                     : "bg-zinc-700 text-zinc-200"
                 }`}
               >
-                {video.isLive ? "🔴 라이브 ON" : "⚫ 라이브 OFF"}
+                {isLiveOn ? "🔴 라이브 ON" : "⚫ 라이브 OFF"}
               </div>
 
               <p className="mb-2 text-sm font-bold text-pink-300">
@@ -227,7 +379,7 @@ export default async function Home() {
               </h1>
 
               <p className="mt-4 max-w-xl text-zinc-300">
-                왕츄관련 정보, 게시판, 게임까지 한 곳에서 즐기는 왕츄 커뮤니티입니다.
+                왕츄관련 정보, 게시판, 상점, 게임까지 한 곳에서 즐기는 왕츄 커뮤니티입니다.
               </p>
 
               <div className="mt-8 rounded-3xl bg-white/10 p-5">
@@ -236,18 +388,20 @@ export default async function Home() {
                 </h2>
 
                 <p className="mt-3 text-sm text-zinc-300">
-                  {video.isLive
-                    ? "지금 유튜브에서 방송 중입니다!"
+                  {isLiveOn
+                    ? liveSettings.liveForce === "on"
+                      ? "관리자가 라이브 ON 상태로 설정했습니다."
+                      : "지금 유튜브에서 방송 중입니다!"
                     : "현재 방송 종료, 최근 다시보기 영상입니다."}
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 <a
                   href="/game"
                   className="cursor-pointer rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 p-5 text-center font-black shadow-lg transition hover:scale-[1.02]"
                 >
-                  🎲 게임 하러가기
+                  🎲 게임
                 </a>
 
                 <a
@@ -255,6 +409,13 @@ export default async function Home() {
                   className="cursor-pointer rounded-2xl bg-white/10 p-5 text-center font-black transition hover:scale-[1.02] hover:bg-white/15"
                 >
                   📊 승패 예측
+                </a>
+
+                <a
+                  href="/shop"
+                  className="cursor-pointer rounded-2xl bg-yellow-500 p-5 text-center font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400"
+                >
+                  🛒 상점
                 </a>
               </div>
             </div>
@@ -272,6 +433,20 @@ export default async function Home() {
                     className="block cursor-pointer rounded-2xl bg-pink-500 px-4 py-3 text-center text-sm font-black transition hover:scale-[1.02] hover:bg-pink-400"
                   >
                     👤 마이페이지
+                  </a>
+
+                  <a
+                    href="/mypage/inventory"
+                    className="block cursor-pointer rounded-2xl bg-blue-500 px-4 py-3 text-center text-sm font-black transition hover:scale-[1.02] hover:bg-blue-400"
+                  >
+                    🎁 내 아이템
+                  </a>
+
+                  <a
+                    href="/shop"
+                    className="block cursor-pointer rounded-2xl bg-yellow-500 px-4 py-3 text-center text-sm font-black text-black transition hover:scale-[1.02] hover:bg-yellow-400"
+                  >
+                    🛒 상점
                   </a>
 
                   {isAdmin && (
@@ -312,7 +487,7 @@ export default async function Home() {
           </aside>
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section id="ranking" className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/10 bg-[#151027] p-5 shadow-xl">
               <div className="mb-4 flex items-center justify-between">
