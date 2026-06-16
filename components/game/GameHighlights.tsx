@@ -17,33 +17,53 @@ export default function GameHighlights() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          setLogs(data.logs);
+          setLogs(data.logs || []);
         }
       });
   }, []);
 
+  const best = logs[0];
+
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#151027] p-6 text-white">
-      <h2 className="mb-4 text-2xl font-black text-pink-300">
-        🔥 게임 현황
-      </h2>
-
-      <div className="space-y-3">
-        {logs.length === 0 && (
-          <p className="text-zinc-400">아직 4.5배 성공 기록이 없어요.</p>
-        )}
-
-        {logs.map((log) => (
-          <div
-            key={log.id}
-            className="rounded-2xl border border-pink-400/20 bg-white/10 p-4 font-semibold text-zinc-100"
-          >
-            🎉 {log.nickname}님{" "}
-            {Number(log.bet_amount).toLocaleString()}개 배팅 →{" "}
-            {Number(log.payout_amount).toLocaleString()} 도토리 획득!
-          </div>
-        ))}
+    <div className="rounded-3xl border border-[#3b321f] bg-[#0d1018] p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-black text-[#f7d36b]">게임 하이라이트</h2>
+        <a href="/game" className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]">
+          전체 보기 〉
+        </a>
       </div>
+
+      {!best ? (
+        <p className="rounded-2xl border border-[#2c2f3a] bg-[#151925] p-5 text-sm text-zinc-400">
+          아직 4.5배 성공 기록이 없어요.
+        </p>
+      ) : (
+        <div className="rounded-2xl border border-[#6f5520] bg-gradient-to-br from-[#1b1720] to-[#10131b] p-5">
+          <p className="text-sm font-bold text-zinc-400">오늘의 4.5배 성공</p>
+
+          <div className="mt-3 flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[#f7d36b]/50 bg-[#2a2112] text-3xl">
+              🏅
+            </div>
+
+            <div>
+              <p className="text-xl font-black text-white">
+                {best.nickname}
+              </p>
+              <p className="mt-1 text-sm text-zinc-300">
+                {Number(best.bet_amount).toLocaleString()}개 배팅 성공
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-black/25 p-4 text-center">
+            <p className="text-sm text-zinc-400">획득 도토리</p>
+            <p className="text-2xl font-black text-[#f7d36b]">
+              🌰 {Number(best.payout_amount).toLocaleString()}개
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
