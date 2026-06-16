@@ -1,37 +1,51 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import db from "@/lib/db";
 import Link from "next/link";
+import ProfileImageForm from "./profile-image-form";
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    return <div className="p-6 text-white">로그인이 필요합니다.</div>;
+  }
+
+  const [users]: any = await db.query(
+    `
+    SELECT *
+    FROM users
+    WHERE email = ?
+    LIMIT 1
+    `,
+    [session.user.email]
+  );
+
+  const user = users[0];
+
+  if (!user) {
+    return <div className="p-6 text-white">유저 정보를 찾을 수 없습니다.</div>;
+  }
+
   return (
     <main className="min-h-screen bg-[#09090f] text-white px-4 py-8">
-      <div className="max-w-xl mx-auto bg-[#151522] border border-white/10 rounded-2xl p-6">
-        <h1 className="text-2xl font-bold mb-4">프로필 사진 변경</h1>
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-3xl font-black">프로필 사진 변경</h1>
 
-        <p className="text-zinc-400 mb-4">
-          JPG, PNG, WEBP, GIF 파일을 업로드할 수 있습니다. 최대 5MB까지 가능합니다.
-        </p>
+          <Link
+            href="/mypage"
+            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold hover:bg-white/20"
+          >
+            마이페이지로
+          </Link>
+        </div>
 
-        <form
-          action="/api/mypage/profile-image"
-          method="POST"
-          encType="multipart/form-data"
-          className="space-y-4"
-        >
-          <input
-            type="file"
-            name="profileImage"
-            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
-            className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/10"
-            required
+        <section className="rounded-2xl border border-white/10 bg-[#151522] p-6">
+          <ProfileImageForm
+            currentImage={user.profile_image || user.image || ""}
           />
-
-          <button className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-500 font-bold">
-            업로드
-          </button>
-        </form>
-
-        <Link href="/mypage" className="block text-center mt-4 text-zinc-400">
-          마이페이지로 돌아가기
-        </Link>
+        </section>
       </div>
     </main>
   );
