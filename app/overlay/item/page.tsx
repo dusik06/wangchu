@@ -14,30 +14,48 @@ type AlertItem = {
 export default function ItemOverlayPage() {
   const [current, setCurrent] = useState<AlertItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentIdRef = useRef<number | null>(null);
+
+  function clearFallbackTimer() {
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  }
 
   async function markDone(id: number) {
-    await fetch("/api/overlay/item-done", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id }),
-    });
+    clearFallbackTimer();
 
+    try {
+      await fetch("/api/overlay/item-done", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+    } catch (error) {
+      console.error(error);
+    }
+
+    currentIdRef.current = null;
     setCurrent(null);
     setIsPlaying(false);
   }
 
-  function finishAfterDelay(id: number) {
-    setTimeout(() => {
+  function finishAfterAudioEnd(id: number) {
+    clearFallbackTimer();
+
+    fallbackTimerRef.current = setTimeout(() => {
       markDone(id);
     }, 3000);
   }
 
   async function fetchNext() {
-    if (isPlaying) return;
+    if (isPlaying || currentIdRef.current) return;
 
     try {
       const res = await fetch("/api/overlay/item-next", {
@@ -48,25 +66,38 @@ export default function ItemOverlayPage() {
 
       if (!data.item) return;
 
-      setCurrent(data.item);
+      const nextItem: AlertItem = data.item;
+
+      setCurrent(nextItem);
       setIsPlaying(true);
+      currentIdRef.current = nextItem.id;
+      clearFallbackTimer();
 
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-      }
+      if (nextItem.item_audio && audioRef.current) {
+        const audio = audioRef.current;
 
-      if (data.item.item_audio && audioRef.current) {
-        audioRef.current.src = data.item.item_audio;
-        audioRef.current.volume = 1;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = nextItem.item_audio;
+        audio.volume = 1;
 
-        audioRef.current.play().catch(() => {
+        try {
+          await audio.play();
+
+          // 노래가 정상 재생되면 화면은 절대 시간으로 먼저 끄지 않음.
+          // 오직 audio onEnded에서만 종료 처리.
+        } catch (error) {
+          console.error("오디오 재생 실패:", error);
+
+          // 진짜로 오디오 재생이 실패했을 때만 기본 15초 표시 후 종료.
           fallbackTimerRef.current = setTimeout(() => {
-            finishAfterDelay(data.item.id);
-          }, 10000);
-        });
+            markDone(nextItem.id);
+          }, 15000);
+        }
       } else {
+        // 노래 없는 아이템은 10초 표시.
         fallbackTimerRef.current = setTimeout(() => {
-          finishAfterDelay(data.item.id);
+          markDone(nextItem.id);
         }, 10000);
       }
     } catch (error) {
@@ -79,8 +110,11 @@ export default function ItemOverlayPage() {
 
     return () => {
       clearInterval(timer);
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
+      clearFallbackTimer();
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
       }
     };
   }, [isPlaying]);
@@ -136,8 +170,17 @@ export default function ItemOverlayPage() {
       <audio
         ref={audioRef}
         onEnded={() => {
-          if (current) {
-            finishAfterDelay(current.id);
+          if (currentIdRef.current) {
+            finishAfterAudioEnd(currentIdRef.current);
+          }
+        }}
+        onError={() => {
+          if (currentIdRef.current) {
+            fallbackTimerRef.current = setTimeout(() => {
+              if (currentIdRef.current) {
+                markDone(currentIdRef.current);
+              }
+            }, 15000);
           }
         }}
       />
