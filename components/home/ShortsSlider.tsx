@@ -19,66 +19,51 @@ export default function ShortsSlider({ videos }: { videos: ShortVideo[] }) {
   }
 
   function next() {
-    setStart((value) => Math.min(Math.max(shorts.length - 3, 0), value + 1));
-  }
+    if (start + 3 >= shorts.length) {
+      setStart(0);
+      return;
+    }
 
-  if (shorts.length === 0) {
-    return (
-      <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-5 text-sm text-zinc-400">
-        최근 쇼츠를 불러오는 중입니다.
-      </div>
-    );
+    setStart((value) => value + 1);
   }
 
   return (
-    <div className="rounded-3xl border border-[#3b321f] bg-[#0d1018] p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-black text-[#f7d36b]">최근 쇼츠</h3>
+    <div className="rounded-[28px] border border-[#3b321f] bg-[#0d1018] p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-xl font-black text-[#f7d36b]">최근 쇼츠</h3>
 
         <div className="flex gap-2">
           <button
-            type="button"
             onClick={prev}
-            disabled={start === 0}
-            className="h-8 w-8 rounded-full border border-[#4b3d24] bg-[#151925] text-[#f7d36b] disabled:opacity-30"
+            className="h-9 w-9 rounded-full border border-[#4b3d24] text-[#f7d36b]"
           >
             ‹
           </button>
 
           <button
-            type="button"
             onClick={next}
-            disabled={start + 3 >= shorts.length}
-            className="h-8 w-8 rounded-full border border-[#4b3d24] bg-[#151925] text-[#f7d36b] disabled:opacity-30"
+            className="h-9 w-9 rounded-full border border-[#4b3d24] text-[#f7d36b]"
           >
             ›
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-4">
         {visible.map((item) => (
           <a
             key={item.videoId}
             href={`https://www.youtube.com/watch?v=${item.videoId}`}
             target="_blank"
-            className="group overflow-hidden rounded-2xl border border-[#2c2f3a] bg-[#151925]"
+            className="overflow-hidden rounded-2xl border border-[#2c2f3a] bg-[#151925]"
           >
-            <div className="aspect-[9/16] bg-black">
-              {item.thumbnail ? (
-                <img
-                  src={item.thumbnail}
-                  alt={item.title}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-3xl">
-                  ▶
-                </div>
-              )}
-            </div>
+            <img
+              src={item.thumbnail}
+              alt={item.title}
+              className="aspect-[9/16] w-full object-cover"
+            />
 
-            <p className="line-clamp-2 min-h-[42px] px-3 py-2 text-xs font-bold text-zinc-200">
+            <p className="line-clamp-2 px-3 py-3 text-sm font-bold text-zinc-200">
               {item.title}
             </p>
           </a>

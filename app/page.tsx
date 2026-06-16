@@ -167,6 +167,7 @@ async function getDotoriRanking() {
     const [rows]: any = await db.query(`
       SELECT id, nickname, dotori
       FROM users
+      WHERE role != 'admin'
       ORDER BY dotori DESC
       LIMIT 5
     `);
@@ -347,28 +348,10 @@ export default async function Home() {
               </span>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-[250px_1fr]">
-              <div className="mx-auto w-full max-w-[250px] overflow-hidden rounded-3xl border border-[#3b321f] bg-black">
+            <div className="space-y-5">
+            <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-3xl border border-[#3b321f] bg-black">
                 <VideoPlayer videos={videos} />
               </div>
-
-              <div className="flex flex-col gap-4">
-                <div className="rounded-3xl border border-[#3b321f] bg-gradient-to-br from-[#211a0f] to-[#0d1018] p-6">
-                  <p className="text-sm font-bold text-[#f7d36b]">박왕츄 공식 방송</p>
-                  <h1 className="mt-3 line-clamp-3 text-3xl font-black leading-tight">
-                    {video.title}
-                  </h1>
-                  <p className="mt-4 text-sm text-zinc-300">
-                    {isLiveOn ? "지금 유튜브에서 방송 중입니다." : "현재 라이브는 OFF 상태입니다."}
-                  </p>
-                  <a
-                    href={YOUTUBE_LIVE_URL}
-                    target="_blank"
-                    className="mt-5 inline-flex rounded-2xl bg-[#f7d36b] px-5 py-3 text-sm font-black text-black hover:bg-[#ffe28a]"
-                  >
-                    ▶ 방송 보러가기
-                  </a>
-                </div>
 
                 <ShortsSlider videos={shorts} />
               </div>

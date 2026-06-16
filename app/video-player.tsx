@@ -1,83 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+type Video = {
+  videoId: string;
+};
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: any;
-  }
-}
-
-export default function VideoPlayer({
-  videos,
-}: {
-  videos: { videoId: string; title: string }[];
-}) {
-  const playerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    if (!videos.length) return;
-
-    function createPlayer() {
-      if (!containerRef.current) return;
-
-      playerRef.current = new window.YT.Player(containerRef.current, {
-        videoId: videos[currentIndex].videoId,
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          playsinline: 1,
-        },
-        events: {
-          onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.ENDED) {
-              setCurrentIndex((prev) =>
-                prev + 1 >= videos.length ? 0 : prev + 1
-              );
-            }
-          },
-        },
-      });
-    }
-
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
-
-      window.onYouTubeIframeAPIReady = createPlayer;
-    } else {
-      createPlayer();
-    }
-
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (playerRef.current && videos[currentIndex]) {
-      playerRef.current.loadVideoById(videos[currentIndex].videoId);
-    }
-  }, [currentIndex, videos]);
-
-  if (!videos.length) {
+export default function VideoPlayer({ videos }: { videos: Video[] }) {
+  if (!videos || videos.length === 0) {
     return (
-      <div className="bg-black rounded-2xl overflow-hidden aspect-[9/16] flex items-center justify-center">
+      <div className="flex h-full min-h-[540px] items-center justify-center rounded-[28px] bg-black text-zinc-400">
         영상 없음
       </div>
     );
   }
 
   return (
-    <div className="bg-black rounded-2xl overflow-hidden aspect-[9/16]">
-      <div ref={containerRef} className="w-full h-full" />
+    <div className="overflow-hidden rounded-[28px] bg-black">
+      <iframe
+        key={videos[0].videoId}
+        className="h-[540px] w-full scale-[1.15] object-cover"
+        src={`https://www.youtube.com/embed/${videos[0].videoId}?autoplay=1&mute=1&loop=1&playlist=${videos[0].videoId}`}
+        title="왕츄 영상"
+        allow="autoplay; encrypted-media"
+        allowFullScreen
+      />
     </div>
   );
 }
