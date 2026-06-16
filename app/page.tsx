@@ -205,7 +205,7 @@ export default async function Home() {
   ]);
 
   const isAdmin = currentUser?.role === "admin";
-  const isLiveOn = video?.liveStatus === "on";
+  const isLiveOn = video?.isLive === true;
   const videos = Array.isArray(video?.videos) ? video.videos : [];
   const shorts = Array.isArray(video?.shorts)
   ? video.shorts.slice(0, 10)
