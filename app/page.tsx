@@ -300,38 +300,13 @@ export default async function Home() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {currentUser && (
-              <div className="hidden rounded-2xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:block">
-                <p className="text-xs font-bold text-zinc-500">보유 도토리</p>
-                <MyDotori />
-              </div>
-            )}
+          {currentUser && (
+  <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-3 py-2 text-sm font-black lg:flex">
+    <span className="text-[#f7d36b]">🌰</span>
+    <MyDotori />
+  </div>
+)}
 
-            {currentUser && (
-              <a
-                href="/mypage"
-                className="hidden items-center gap-3 rounded-2xl border border-[#3b321f] bg-[#0d1018] px-3 py-2 lg:flex"
-              >
-                {session?.user?.image ? (
-                  <img
-                    src={session.user.image}
-                    alt="프로필"
-                    className="h-10 w-10 rounded-full border border-[#f7d36b]/50 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2b2415] font-black text-[#f7d36b]">
-                    왕
-                  </div>
-                )}
-
-                <div>
-                  <p className="text-sm font-black text-white">
-                    {currentUser.nickname || "왕츄팬"}
-                  </p>
-                  <p className="text-xs text-[#f7d36b]">칭호 없음</p>
-                </div>
-              </a>
-            )}
 
             <LoginButton />
           </div>
@@ -438,13 +413,7 @@ export default async function Home() {
           <aside id="ranking" className="space-y-5">
             <GameRanking dotoriRanking={dotoriRanking} />
 
-            <div className="rounded-[26px] border border-[#3b321f] bg-gradient-to-br from-[#211a0f] to-[#0d1018] p-5">
-              <p className="text-lg font-black text-[#f7d36b]">🎲 주사위 게임</p>
-              <p className="mt-2 text-sm text-zinc-300">홀짝 맞히고 도토리 획득!</p>
-              <a href="/game" className="mt-4 inline-flex rounded-2xl bg-[#f7d36b] px-5 py-3 text-sm font-black text-black hover:bg-[#ffe28a]">
-                게임 바로가기
-              </a>
-            </div>
+            
           </aside>
         </section>
 
