@@ -258,7 +258,9 @@ export default async function Home() {
               <div className="invisible absolute left-0 top-8 w-56 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
                 <a href="/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">주사위 홀짝</a>
                 <a href="/prediction" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">승패 예측</a>
-                <span className="block rounded-xl px-4 py-3 text-zinc-500">사다리게임 준비중</span>
+                <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">
+  사다리게임
+</a>
                 <span className="block rounded-xl px-4 py-3 text-zinc-500">뽑기 준비중</span>
                 <span className="block rounded-xl px-4 py-3 text-zinc-500">핀볼 준비중</span>
               </div>
@@ -388,11 +390,11 @@ export default async function Home() {
                   <p className="mt-3 font-black">승패 예측</p>
                   <p className="text-xs text-zinc-500">예측하기</p>
                 </a>
-                <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-75">
-                  <div className="text-4xl">🪜</div>
-                  <p className="mt-3 font-black">사다리게임</p>
-                  <p className="text-xs text-zinc-500">COMING SOON</p>
-                </div>
+                <a href="/game/ladder" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
+  <div className="text-4xl">🪜</div>
+  <p className="mt-3 font-black">사다리게임</p>
+  <p className="text-xs text-zinc-500">게임하기</p>
+</a>
                 <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-75">
                   <div className="text-4xl">🎁</div>
                   <p className="mt-3 font-black">뽑기</p>
