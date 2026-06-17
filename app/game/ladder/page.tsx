@@ -123,6 +123,7 @@ export default function LadderPage() {
                   배팅 후 즉시 도토리가 정산되고, 애니메이션 종료 후 결과가 공개됩니다.
                 </p>
               </div>
+
               <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] px-5 py-3 text-right">
                 <p className="text-xs text-zinc-500">선택</p>
                 <p className="text-xl font-black">{betType ? getBetLabel(betType) : "-"}</p>
@@ -131,23 +132,18 @@ export default function LadderPage() {
 
             <div className="rounded-[28px] border border-[#3b321f] bg-[#0d1018] p-5">
               <div className="relative mx-auto h-[360px] max-w-[760px] overflow-hidden rounded-[26px] border border-[#3b321f] bg-black/35 p-6">
-                <div className="absolute left-[18%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
-                <div className="absolute left-[50%] top-8 h-[300px] w-2 -translate-x-1/2 rounded-full bg-[#3b321f]" />
-                <div className="absolute right-[18%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
+                <div className="absolute left-[30%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
+                <div className="absolute right-[30%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
 
-                {[70, 120, 170, 220, 270].map((top, index) => (
+                {[70, 135, 200, 265].map((top, index) => (
                   <div
                     key={top}
-                    className={`absolute h-2 rounded-full transition-all duration-300 ${
+                    className={`absolute left-[30%] h-2 w-[40%] rounded-full transition-all duration-300 ${
                       activeStep > index
                         ? "bg-[#f7d36b] shadow-[0_0_18px_rgba(247,211,107,0.8)]"
                         : "bg-[#2b2415]"
                     }`}
-                    style={{
-                      top,
-                      left: index % 2 === 0 ? "18%" : "50%",
-                      width: "32%",
-                    }}
+                    style={{ top }}
                   />
                 ))}
 
@@ -155,22 +151,22 @@ export default function LadderPage() {
                   className="absolute z-20 h-9 w-9 rounded-full border-4 border-[#f7d36b] bg-[#7c3aed] shadow-[0_0_24px_rgba(247,211,107,0.8)] transition-all duration-300"
                   style={{
                     left:
-                      activeStep === 0 ? "16%" :
-                      activeStep === 1 ? "34%" :
-                      activeStep === 2 ? "48%" :
-                      activeStep === 3 ? "64%" :
-                      activeStep === 4 ? "48%" :
-                      activeStep === 5 ? "34%" :
-                      activeStep === 6 ? "48%" :
-                      activeStep === 7 ? "64%" : "78%",
+                      activeStep === 0 ? "28%" :
+                      activeStep === 1 ? "48%" :
+                      activeStep === 2 ? "68%" :
+                      activeStep === 3 ? "48%" :
+                      activeStep === 4 ? "28%" :
+                      activeStep === 5 ? "48%" :
+                      activeStep === 6 ? "68%" :
+                      activeStep === 7 ? "68%" : "68%",
                     top:
                       activeStep === 0 ? "30px" :
                       activeStep === 1 ? "70px" :
-                      activeStep === 2 ? "120px" :
-                      activeStep === 3 ? "170px" :
-                      activeStep === 4 ? "220px" :
-                      activeStep === 5 ? "270px" :
-                      activeStep === 6 ? "305px" :
+                      activeStep === 2 ? "135px" :
+                      activeStep === 3 ? "200px" :
+                      activeStep === 4 ? "265px" :
+                      activeStep === 5 ? "305px" :
+                      activeStep === 6 ? "320px" :
                       activeStep === 7 ? "320px" : "320px",
                     opacity: loading ? 1 : 0,
                   }}
