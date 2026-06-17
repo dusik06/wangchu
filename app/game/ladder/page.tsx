@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type LogType = {
   id: number;
@@ -10,6 +10,14 @@ type LogType = {
   result_text: string;
   is_win: number;
   payout_amount: number;
+};
+
+type ResultType = {
+  side: "left" | "right";
+  line: 3 | 4;
+  oddEven: "odd" | "even";
+  code: string;
+  text: string;
 };
 
 const BET_OPTIONS = [
@@ -29,14 +37,37 @@ function getBetLabel(value: string) {
   return BET_OPTIONS.find((item) => item.value === value)?.label || value;
 }
 
+function buildSteps(result: ResultType | null) {
+  if (!result) return [];
+
+  const bars = result.line === 3 ? [95, 165, 235] : [75, 135, 195, 255];
+  let side = result.side;
+  const steps: { x: string; y: number }[] = [];
+
+  steps.push({ x: side === "left" ? "30%" : "70%", y: 35 });
+
+  bars.forEach((barY) => {
+    steps.push({ x: side === "left" ? "30%" : "70%", y: barY });
+    side = side === "left" ? "right" : "left";
+    steps.push({ x: side === "left" ? "30%" : "70%", y: barY });
+  });
+
+  steps.push({ x: side === "left" ? "30%" : "70%", y: 310 });
+
+  return steps;
+}
+
 export default function LadderPage() {
   const [betType, setBetType] = useState("");
   const [betAmount, setBetAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("?");
+  const [revealed, setRevealed] = useState(false);
+  const [result, setResult] = useState<ResultType | null>(null);
   const [message, setMessage] = useState("");
   const [logs, setLogs] = useState<LogType[]>([]);
   const [activeStep, setActiveStep] = useState(0);
+
+  const steps = useMemo(() => buildSteps(result), [result]);
 
   async function loadLogs() {
     const res = await fetch("/api/game/ladder/logs", { cache: "no-store" });
@@ -62,7 +93,8 @@ export default function LadderPage() {
     }
 
     setLoading(true);
-    setResult("?");
+    setRevealed(false);
+    setResult(null);
     setMessage("배팅 처리중...");
     setActiveStep(0);
 
@@ -81,18 +113,21 @@ export default function LadderPage() {
       return;
     }
 
+    setResult(data.result);
     setMessage("사다리 진행중...");
 
     let step = 0;
+    const maxStep = buildSteps(data.result).length - 1;
+
     const timer = setInterval(() => {
       step += 1;
       setActiveStep(step);
 
-      if (step >= 8) {
+      if (step >= maxStep) {
         clearInterval(timer);
 
         setTimeout(() => {
-          setResult(data.result.text);
+          setRevealed(true);
           setMessage(
             data.isWin
               ? `적중! ${Number(data.payout).toLocaleString()} 도토리 지급`
@@ -100,10 +135,13 @@ export default function LadderPage() {
           );
           loadLogs();
           setLoading(false);
-        }, 500);
+        }, 450);
       }
     }, 260);
   }
+
+  const visibleBars =
+    result?.line === 3 ? [95, 165, 235] : result?.line === 4 ? [75, 135, 195, 255] : [];
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
@@ -131,15 +169,15 @@ export default function LadderPage() {
             </div>
 
             <div className="rounded-[28px] border border-[#3b321f] bg-[#0d1018] p-5">
-              <div className="relative mx-auto h-[360px] max-w-[760px] overflow-hidden rounded-[26px] border border-[#3b321f] bg-black/35 p-6">
+              <div className="relative mx-auto h-[360px] max-w-[760px] overflow-hidden rounded-[26px] border border-[#3b321f] bg-black/35">
                 <div className="absolute left-[30%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
-                <div className="absolute right-[30%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
+                <div className="absolute left-[70%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
 
-                {[70, 135, 200, 265].map((top, index) => (
+                {visibleBars.map((top, index) => (
                   <div
                     key={top}
                     className={`absolute left-[30%] h-2 w-[40%] rounded-full transition-all duration-300 ${
-                      activeStep > index
+                      activeStep > index * 2
                         ? "bg-[#f7d36b] shadow-[0_0_18px_rgba(247,211,107,0.8)]"
                         : "bg-[#2b2415]"
                     }`}
@@ -147,40 +185,43 @@ export default function LadderPage() {
                   />
                 ))}
 
-                <div
-                  className="absolute z-20 h-9 w-9 rounded-full border-4 border-[#f7d36b] bg-[#7c3aed] shadow-[0_0_24px_rgba(247,211,107,0.8)] transition-all duration-300"
-                  style={{
-                    left:
-                      activeStep === 0 ? "28%" :
-                      activeStep === 1 ? "48%" :
-                      activeStep === 2 ? "68%" :
-                      activeStep === 3 ? "48%" :
-                      activeStep === 4 ? "28%" :
-                      activeStep === 5 ? "48%" :
-                      activeStep === 6 ? "68%" :
-                      activeStep === 7 ? "68%" : "68%",
-                    top:
-                      activeStep === 0 ? "30px" :
-                      activeStep === 1 ? "70px" :
-                      activeStep === 2 ? "135px" :
-                      activeStep === 3 ? "200px" :
-                      activeStep === 4 ? "265px" :
-                      activeStep === 5 ? "305px" :
-                      activeStep === 6 ? "320px" :
-                      activeStep === 7 ? "320px" : "320px",
-                    opacity: loading ? 1 : 0,
-                  }}
-                />
+                {loading && steps.length > 0 && (
+                  <div
+                    className="absolute z-20 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-[#f7d36b] bg-[#7c3aed] shadow-[0_0_24px_rgba(247,211,107,0.8)] transition-all duration-300"
+                    style={{
+                      left: steps[Math.min(activeStep, steps.length - 1)]?.x,
+                      top: `${steps[Math.min(activeStep, steps.length - 1)]?.y}px`,
+                    }}
+                  />
+                )}
 
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-36 w-36 items-center justify-center rounded-full border border-[#f7d36b]/50 bg-[#05070d]/90 text-5xl font-black text-[#f7d36b]">
-                    {loading ? "..." : result}
+                {!loading && !revealed && (
+                  <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 backdrop-blur-sm">
+                    <div className="flex h-32 w-32 items-center justify-center rounded-full border border-[#f7d36b]/60 bg-[#05070d] text-6xl font-black text-[#f7d36b]">
+                      ?
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {loading && !revealed && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                    <div className="rounded-full border border-[#f7d36b]/30 bg-[#05070d]/75 px-6 py-3 text-lg font-black text-[#f7d36b]">
+                      진행중
+                    </div>
+                  </div>
+                )}
+
+                {revealed && result && (
+                  <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
+                    <div className="rounded-3xl border border-[#f7d36b]/60 bg-[#05070d]/95 px-8 py-5 text-4xl font-black text-[#f7d36b] shadow-2xl">
+                      {result.text}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <p className="mt-5 text-center text-lg font-black text-[#f7d36b]">
-                {message || "결과는 시작 전까지 ? 로 가려집니다."}
+                {message || "시작 전에는 줄 개수와 결과가 ? 로 가려집니다."}
               </p>
             </div>
 

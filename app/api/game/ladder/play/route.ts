@@ -21,14 +21,15 @@ function makeResult() {
   const line = Math.random() >= 0.5 ? 3 : 4;
   const oddEven = line === 3 ? "odd" : "even";
 
+  const sideText = side === "left" ? "좌" : "우";
+  const oddEvenText = oddEven === "odd" ? "홀" : "짝";
+
   return {
     side,
     line,
     oddEven,
     code: `${side}${line}`,
-    text: `${side === "left" ? "좌" : "우"}${line} / ${
-      oddEven === "odd" ? "홀" : "짝"
-    }`,
+    text: `${sideText}${line}${oddEvenText}`,
   };
 }
 
@@ -39,10 +40,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
-      return NextResponse.json({
-        success: false,
-        message: "로그인이 필요합니다.",
-      });
+      return NextResponse.json({ success: false, message: "로그인이 필요합니다." });
     }
 
     const body = await req.json();
@@ -50,17 +48,11 @@ export async function POST(req: Request) {
     const betAmount = Number(body.betAmount || 0);
 
     if (!MULTIPLIERS[betType]) {
-      return NextResponse.json({
-        success: false,
-        message: "배팅 항목이 올바르지 않습니다.",
-      });
+      return NextResponse.json({ success: false, message: "배팅 항목이 올바르지 않습니다." });
     }
 
     if (!betAmount || betAmount <= 0) {
-      return NextResponse.json({
-        success: false,
-        message: "배팅 도토리를 입력하세요.",
-      });
+      return NextResponse.json({ success: false, message: "배팅 도토리를 입력하세요." });
     }
 
     connection = await db.getConnection();
@@ -73,20 +65,14 @@ export async function POST(req: Request) {
 
     if (!users.length) {
       await connection.rollback();
-      return NextResponse.json({
-        success: false,
-        message: "유저 정보를 찾을 수 없습니다.",
-      });
+      return NextResponse.json({ success: false, message: "유저 정보를 찾을 수 없습니다." });
     }
 
     const user = users[0];
 
     if (Number(user.dotori) < betAmount) {
       await connection.rollback();
-      return NextResponse.json({
-        success: false,
-        message: "도토리가 부족합니다.",
-      });
+      return NextResponse.json({ success: false, message: "도토리가 부족합니다." });
     }
 
     const result = makeResult();
@@ -109,18 +95,9 @@ export async function POST(req: Request) {
       `
       INSERT INTO ladder_game_logs
       (
-        user_id,
-        user_email,
-        nickname,
-        bet_type,
-        bet_amount,
-        result_side,
-        result_line,
-        result_code,
-        result_text,
-        multiplier,
-        is_win,
-        payout_amount
+        user_id, user_email, nickname, bet_type, bet_amount,
+        result_side, result_line, result_code, result_text,
+        multiplier, is_win, payout_amount
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
@@ -150,19 +127,13 @@ export async function POST(req: Request) {
       multiplier,
     });
   } catch (error: any) {
-    if (connection) {
-      await connection.rollback();
-    }
-
-    console.error("ladder play error:", error);
+    if (connection) await connection.rollback();
 
     return NextResponse.json({
       success: false,
       message: error?.message || "사다리게임 처리 중 오류가 발생했습니다.",
     });
   } finally {
-    if (connection) {
-      connection.release();
-    }
+    if (connection) connection.release();
   }
 }
