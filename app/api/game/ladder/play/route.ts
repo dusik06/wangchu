@@ -16,9 +16,9 @@ const MULTIPLIERS: Record<string, number> = {
   right3: 3.9,
 };
 
-function randomResult() {
-  const side = Math.random() > 0.5 ? "left" : "right";
-  const line = Math.random() > 0.5 ? 3 : 4;
+function makeResult() {
+  const side = Math.random() >= 0.5 ? "left" : "right";
+  const line = Math.random() >= 0.5 ? 3 : 4;
   const oddEven = line === 3 ? "odd" : "even";
 
   return {
@@ -33,6 +33,8 @@ function randomResult() {
 }
 
 export async function POST(req: Request) {
+  let connection: any;
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
     const betType = String(body.betType || "");
     const betAmount = Number(body.betAmount || 0);
 
-    if (!betType || !MULTIPLIERS[betType]) {
+    if (!MULTIPLIERS[betType]) {
       return NextResponse.json({
         success: false,
         message: "배팅 항목이 올바르지 않습니다.",
@@ -61,12 +63,16 @@ export async function POST(req: Request) {
       });
     }
 
-    const [users]: any = await db.query(
-      "SELECT id, email, nickname, dotori FROM users WHERE email = ? LIMIT 1",
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const [users]: any = await connection.query(
+      "SELECT id, email, nickname, dotori FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
       [session.user.email]
     );
 
     if (!users.length) {
+      await connection.rollback();
       return NextResponse.json({
         success: false,
         message: "유저 정보를 찾을 수 없습니다.",
@@ -76,13 +82,14 @@ export async function POST(req: Request) {
     const user = users[0];
 
     if (Number(user.dotori) < betAmount) {
+      await connection.rollback();
       return NextResponse.json({
         success: false,
         message: "도토리가 부족합니다.",
       });
     }
 
-    const result = randomResult();
+    const result = makeResult();
 
     const isWin =
       betType === result.side ||
@@ -93,13 +100,12 @@ export async function POST(req: Request) {
     const multiplier = MULTIPLIERS[betType];
     const payoutAmount = isWin ? Math.floor(betAmount * multiplier) : 0;
 
-    await db.query("UPDATE users SET dotori = dotori - ? + ? WHERE id = ?", [
-      betAmount,
-      payoutAmount,
-      user.id,
-    ]);
+    await connection.query(
+      "UPDATE users SET dotori = dotori - ? + ? WHERE id = ?",
+      [betAmount, payoutAmount, user.id]
+    );
 
-    await db.query(
+    await connection.query(
       `
       INSERT INTO ladder_game_logs
       (
@@ -125,7 +131,7 @@ export async function POST(req: Request) {
         betType,
         betAmount,
         result.side,
-        String(result.line),
+        result.line,
         result.code,
         result.text,
         multiplier,
@@ -134,18 +140,29 @@ export async function POST(req: Request) {
       ]
     );
 
+    await connection.commit();
+
     return NextResponse.json({
       success: true,
       result,
       isWin,
       payout: payoutAmount,
+      multiplier,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (connection) {
+      await connection.rollback();
+    }
+
     console.error("ladder play error:", error);
 
     return NextResponse.json({
       success: false,
-      message: "사다리게임 처리 중 오류가 발생했습니다.",
+      message: error?.message || "사다리게임 처리 중 오류가 발생했습니다.",
     });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
