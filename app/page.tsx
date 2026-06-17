@@ -40,7 +40,7 @@ async function getCurrentUser(email?: string | null) {
 
   try {
     const [rows]: any = await db.query(
-      "SELECT id, email, nickname, role FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, email, nickname, role, dotori FROM users WHERE email = ? LIMIT 1",
       [email]
     );
 
@@ -301,9 +301,11 @@ export default async function Home() {
 
           <div className="flex items-center gap-3">
           {currentUser && (
-  <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-3 py-2 text-sm font-black lg:flex">
-    <span className="text-[#f7d36b]">🌰</span>
-    <MyDotori />
+  <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:flex">
+    <span className="text-lg">🌰</span>
+    <span className="whitespace-nowrap text-sm font-black text-white">
+      {currentUser.dotori?.toLocaleString() || 0}개
+    </span>
   </div>
 )}
 
