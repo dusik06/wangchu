@@ -356,7 +356,6 @@ export default async function Home() {
                 <ShortsSlider videos={shorts} />
               </div>
             </div>
-          </div>
 
           <div className="space-y-5">
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
