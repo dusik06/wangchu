@@ -78,11 +78,14 @@ export default function LadderPage() {
 
   async function loadMyDotori() {
     try {
-      const res = await fetch("/api/user/me", { cache: "no-store" });
+      const res = await fetch("/api/game/dice/balance", {
+        cache: "no-store",
+      });
+  
       const data = await res.json();
-
-      if (data?.user?.dotori !== undefined) {
-        setMyDotori(Number(data.user.dotori));
+  
+      if (data.success) {
+        setMyDotori(Number(data.dotori));
       }
     } catch {}
   }
