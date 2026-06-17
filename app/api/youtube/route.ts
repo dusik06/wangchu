@@ -125,7 +125,7 @@ async function getRecentShorts(apiKey: string, uploadsPlaylistId: string) {
       title: item.snippet?.title || "왕츄 쇼츠",
       thumbnail: getThumbnail(item),
     }))
-    .slice(0, 20);
+    .slice(0, 50);
 }
 
 export async function GET() {
