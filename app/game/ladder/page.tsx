@@ -66,6 +66,7 @@ export default function LadderPage() {
   const [message, setMessage] = useState("");
   const [logs, setLogs] = useState<LogType[]>([]);
   const [activeStep, setActiveStep] = useState(0);
+  const [myDotori, setMyDotori] = useState(0);
 
   const steps = useMemo(() => buildSteps(result), [result]);
 
@@ -75,8 +76,20 @@ export default function LadderPage() {
     if (data.success) setLogs(data.logs);
   }
 
+  async function loadMyDotori() {
+    try {
+      const res = await fetch("/api/user/me", { cache: "no-store" });
+      const data = await res.json();
+
+      if (data?.user?.dotori !== undefined) {
+        setMyDotori(Number(data.user.dotori));
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     loadLogs();
+    loadMyDotori();
   }, []);
 
   async function playGame() {
@@ -116,8 +129,8 @@ export default function LadderPage() {
     setResult(data.result);
     setMessage("사다리 진행중...");
 
-    let step = 0;
     const maxStep = buildSteps(data.result).length - 1;
+    let step = 0;
 
     const timer = setInterval(() => {
       step += 1;
@@ -134,6 +147,7 @@ export default function LadderPage() {
               : "미적중! 도토리 지급 없음"
           );
           loadLogs();
+          loadMyDotori();
           setLoading(false);
         }, 450);
       }
@@ -141,7 +155,11 @@ export default function LadderPage() {
   }
 
   const visibleBars =
-    result?.line === 3 ? [95, 165, 235] : result?.line === 4 ? [75, 135, 195, 255] : [];
+    result?.line === 3
+      ? [95, 165, 235]
+      : result?.line === 4
+      ? [75, 135, 195, 255]
+      : [];
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
@@ -157,7 +175,15 @@ export default function LadderPage() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-black text-[#f7d36b]">사다리게임</h1>
-                <p className="mt-2 text-sm text-zinc-400">
+
+                <div className="mt-3 inline-flex items-center gap-2 rounded-2xl border border-[#3b321f] bg-[#11131b] px-4 py-2">
+                  <span className="text-lg">🌰</span>
+                  <span className="font-black text-[#f7d36b]">
+                    현재 보유: {myDotori.toLocaleString()} 도토리
+                  </span>
+                </div>
+
+                <p className="mt-3 text-sm text-zinc-400">
                   배팅 후 즉시 도토리가 정산되고, 애니메이션 종료 후 결과가 공개됩니다.
                 </p>
               </div>
@@ -204,7 +230,7 @@ export default function LadderPage() {
                 )}
 
                 {loading && !revealed && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                     <div className="rounded-full border border-[#f7d36b]/30 bg-[#05070d]/75 px-6 py-3 text-lg font-black text-[#f7d36b]">
                       진행중
                     </div>
@@ -266,7 +292,10 @@ export default function LadderPage() {
           <aside className="rounded-[30px] border border-[#3b321f] bg-[#090c14]/95 p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-black text-[#f7d36b]">이전 기록</h2>
-              <button onClick={loadLogs} className="rounded-xl bg-[#151925] px-3 py-2 text-xs font-black">
+              <button
+                onClick={loadLogs}
+                className="rounded-xl bg-[#151925] px-3 py-2 text-xs font-black"
+              >
                 새로고침
               </button>
             </div>
@@ -287,8 +316,12 @@ export default function LadderPage() {
                     </div>
                     <p className="text-sm text-zinc-400">배팅: {getBetLabel(log.bet_type)}</p>
                     <p className="text-sm text-zinc-400">결과: {log.result_text}</p>
-                    <p className="text-sm text-zinc-400">금액: {Number(log.bet_amount).toLocaleString()}</p>
-                    <p className="text-sm text-zinc-400">지급: {Number(log.payout_amount).toLocaleString()}</p>
+                    <p className="text-sm text-zinc-400">
+                      금액: {Number(log.bet_amount).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-zinc-400">
+                      지급: {Number(log.payout_amount).toLocaleString()}
+                    </p>
                   </div>
                 ))
               )}
