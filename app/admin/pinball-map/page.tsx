@@ -118,6 +118,19 @@ export default function AdminPinballMapPage() {
     fetchMaps();
   }
 
+  function moveAllObjects(deltaY: number) {
+    setObjects((prev) =>
+      prev.map((obj) => {
+        const nextY = Math.max(0, Math.min(WORLD_HEIGHT, obj.y + deltaY));
+
+        return {
+          ...obj,
+          y: nextY,
+        } as MapObject;
+      })
+    );
+  }
+
   function addObject(x: number, y: number) {
     if (mode === "wall") {
       setObjects((prev) => [
@@ -278,6 +291,47 @@ export default function AdminPinballMapPage() {
             </button>
           </div>
 
+          <div className="mb-5 rounded-2xl bg-zinc-900 p-4">
+            <h2 className="mb-3 text-lg font-black text-yellow-400">
+              윗공간 조정
+            </h2>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => moveAllObjects(100)}
+                className="rounded-xl bg-cyan-500 px-3 py-3 font-black text-black"
+              >
+                +100 아래로
+              </button>
+
+              <button
+                onClick={() => moveAllObjects(-100)}
+                className="rounded-xl bg-zinc-800 px-3 py-3 font-black"
+              >
+                -100 위로
+              </button>
+
+              <button
+                onClick={() => moveAllObjects(300)}
+                className="rounded-xl bg-cyan-500 px-3 py-3 font-black text-black"
+              >
+                +300 아래로
+              </button>
+
+              <button
+                onClick={() => moveAllObjects(-300)}
+                className="rounded-xl bg-zinc-800 px-3 py-3 font-black"
+              >
+                -300 위로
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs leading-5 text-zinc-400">
+              맵 전체를 아래로 밀면 위쪽에 공 시작용 빈공간이 생깁니다.
+              저장하면 이 배치 그대로 적용됩니다.
+            </p>
+          </div>
+
           <div className="grid gap-3">
             <button
               onClick={saveMap}
@@ -318,7 +372,9 @@ export default function AdminPinballMapPage() {
 
           <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black text-cyan-400">기존 맵 불러오기</h2>
+              <h2 className="text-lg font-black text-cyan-400">
+                기존 맵 불러오기
+              </h2>
               <button
                 onClick={fetchMaps}
                 className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-black"
