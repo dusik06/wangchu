@@ -32,6 +32,31 @@ type LogType = {
   payout_amount: number;
 };
 
+type MapObject =
+  | {
+      type: "wall";
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      angle: number;
+    }
+  | {
+      type: "pin";
+      x: number;
+      y: number;
+      r: number;
+    }
+  | {
+      type: "bumper";
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      angle: number;
+      spinSpeed: number;
+    };
+
 type RotatingBumper = Matter.Body & {
   spinSpeed?: number;
 };
@@ -39,6 +64,39 @@ type RotatingBumper = Matter.Body & {
 const WORLD_WIDTH = 560;
 const WORLD_HEIGHT = 1900;
 const VIEW_HEIGHT = 1000;
+
+const DEFAULT_MAP: MapObject[] = [
+  { type: "pin", x: 130, y: 260, r: 6 },
+  { type: "pin", x: 260, y: 260, r: 6 },
+  { type: "pin", x: 390, y: 260, r: 6 },
+  { type: "pin", x: 190, y: 430, r: 6 },
+  { type: "pin", x: 330, y: 430, r: 6 },
+  { type: "pin", x: 130, y: 600, r: 6 },
+  { type: "pin", x: 260, y: 600, r: 6 },
+  { type: "pin", x: 390, y: 600, r: 6 },
+  { type: "pin", x: 190, y: 770, r: 6 },
+  { type: "pin", x: 330, y: 770, r: 6 },
+  { type: "pin", x: 130, y: 940, r: 6 },
+  { type: "pin", x: 260, y: 940, r: 6 },
+  { type: "pin", x: 390, y: 940, r: 6 },
+
+  { type: "wall", x: 92, y: 280, w: 120, h: 12, angle: 0.52 },
+  { type: "wall", x: 468, y: 335, w: 120, h: 12, angle: -0.52 },
+  { type: "wall", x: 205, y: 485, w: 105, h: 12, angle: 0.58 },
+  { type: "wall", x: 390, y: 610, w: 100, h: 12, angle: -0.54 },
+  { type: "wall", x: 92, y: 765, w: 120, h: 12, angle: -0.5 },
+  { type: "wall", x: 468, y: 870, w: 120, h: 12, angle: 0.5 },
+
+  { type: "bumper", x: 280, y: 175, w: 250, h: 16, angle: -0.08, spinSpeed: 0.032 },
+  { type: "bumper", x: 330, y: 565, w: 210, h: 16, angle: 0.22, spinSpeed: -0.03 },
+  { type: "bumper", x: 180, y: 980, w: 190, h: 16, angle: -0.22, spinSpeed: 0.032 },
+
+  { type: "wall", x: 125, y: 1610, w: 500, h: 18, angle: 1.02 },
+  { type: "wall", x: 435, y: 1610, w: 500, h: 18, angle: -1.02 },
+  { type: "wall", x: 252, y: 1805, w: 165, h: 18, angle: 1.57 },
+  { type: "wall", x: 308, y: 1805, w: 165, h: 18, angle: 1.57 },
+  { type: "bumper", x: 432, y: 1760, w: 300, h: 18, angle: -1.23, spinSpeed: 0.04 },
+];
 
 export default function PinballPage() {
   const [ballCount, setBallCount] = useState<3 | 5>(3);
@@ -50,6 +108,7 @@ export default function PinballPage() {
   const [showFireworks, setShowFireworks] = useState(false);
   const [logs, setLogs] = useState<LogType[]>([]);
   const [cameraY, setCameraY] = useState(0);
+  const [mapName, setMapName] = useState("기본맵");
 
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<Matter.Engine | null>(null);
@@ -61,6 +120,7 @@ export default function PinballPage() {
   const expectedWinnerRef = useRef("");
   const rafRef = useRef<number | null>(null);
   const stuckRef = useRef<Record<string, { x: number; y: number; count: number }>>({});
+  const mapDataRef = useRef<MapObject[]>(DEFAULT_MAP);
 
   const colors = ballCount === 3 ? COLORS_3 : COLORS_5;
 
@@ -74,8 +134,29 @@ export default function PinballPage() {
     }
   }
 
+  async function fetchMap() {
+    try {
+      const res = await fetch("/api/game/pinball/map", { cache: "no-store" });
+      const data = await res.json();
+
+      if (data.success && data.map && Array.isArray(data.map.mapData)) {
+        mapDataRef.current = data.map.mapData;
+        setMapName(data.map.mapName || "저장맵");
+      } else {
+        mapDataRef.current = DEFAULT_MAP;
+        setMapName("기본맵");
+      }
+    } catch (error) {
+      console.error(error);
+      mapDataRef.current = DEFAULT_MAP;
+      setMapName("기본맵");
+    }
+  }
+
   useEffect(() => {
     fetchLogs();
+    fetchMap();
+
     return () => cleanupMatter();
   }, []);
 
@@ -117,6 +198,8 @@ export default function PinballPage() {
       alert("배팅 금액 입력");
       return;
     }
+
+    await fetchMap();
 
     setLoading(true);
     setMessage("핀볼 진행중...");
@@ -256,63 +339,25 @@ export default function PinballPage() {
     ]);
 
     const walls: Matter.Body[] = [];
-
-    addWall(walls, 145, 105, 165, 14, 0.92);
-    addWall(walls, 415, 105, 165, 14, -0.92);
-
-    addWall(walls, 92, 280, 120, 12, 0.52);
-    addWall(walls, 468, 335, 120, 12, -0.52);
-    addWall(walls, 205, 485, 105, 12, 0.58);
-    addWall(walls, 390, 610, 100, 12, -0.54);
-
-    addWall(walls, 92, 765, 120, 12, -0.5);
-    addWall(walls, 468, 870, 120, 12, 0.5);
-    addWall(walls, 225, 1025, 105, 12, -0.56);
-    addWall(walls, 385, 1160, 105, 12, 0.55);
-
-    addWall(walls, 92, 1325, 120, 12, 0.5);
-    addWall(walls, 468, 1410, 120, 12, -0.5);
-
-    // 마지막 Y자 깔대기: 출구 벽과 겹치지 않게 끝을 위에서 자연스럽게 모으고,
-    // || 출구 벽은 아래에서 시작해서 빨간 공처럼 모서리에 끼지 않게 함.
-    addWall(walls, 125, 1610, 500, 18, 1.02);
-    addWall(walls, 435, 1610, 500, 18, -1.02);
-
-    // 출구 통로 벽: 위로 튀어나오지 않게 더 아래에서 시작
-    addWall(walls, 252, 1805, 165, 18, 0);
-    addWall(walls, 308, 1805, 165, 18, 0);
-
-    Matter.Composite.add(engine.world, walls);
-
     const pins: Matter.Body[] = [];
-    const pinRows: [number, number[]][] = [
-      [260, [130, 260, 390]],
-      [430, [190, 330]],
-      [600, [130, 260, 390]],
-      [770, [190, 330]],
-      [940, [130, 260, 390]],
-      [1110, [190, 330]],
-      [1280, [130, 260, 390]],
-      [1450, [190, 280, 370]],
-      [1605, [220, 280, 340]],
-      [1715, [240, 320]],
-    ];
-
-    pinRows.forEach(([y, xs]) => {
-      xs.forEach((x) => addPin(pins, x, y));
-    });
-
-    Matter.Composite.add(engine.world, pins);
-
     const bumpers: RotatingBumper[] = [];
 
-    addBumper(bumpers, 280, 175, 250, 16, -0.08, 0.032);
-    addBumper(bumpers, 330, 565, 210, 16, 0.22, -0.03);
-    addBumper(bumpers, 180, 980, 190, 16, -0.22, 0.032);
-    addBumper(bumpers, 360, 1335, 220, 16, 0.15, -0.03);
+    mapDataRef.current.forEach((obj) => {
+      if (obj.type === "wall") {
+        addWall(walls, obj.x, obj.y, obj.w, obj.h, obj.angle);
+      }
 
-    // 마지막 긴 노란 회전막대: 출구 오른쪽 밀착, 무조건 시계방향
-    addBumper(bumpers, 432, 1760, 300, 18, -1.23, 0.04);
+      if (obj.type === "pin") {
+        addPin(pins, obj.x, obj.y, obj.r);
+      }
+
+      if (obj.type === "bumper") {
+        addBumper(bumpers, obj.x, obj.y, obj.w, obj.h, obj.angle, obj.spinSpeed);
+      }
+    });
+
+    Matter.Composite.add(engine.world, walls);
+    Matter.Composite.add(engine.world, pins);
 
     bumpersRef.current = bumpers;
     Matter.Composite.add(engine.world, bumpers);
@@ -513,9 +558,13 @@ export default function PinballPage() {
 
       <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[300px_1fr_360px]">
         <section className="rounded-3xl bg-zinc-950 p-6">
-          <h1 className="mb-6 text-3xl font-black text-yellow-400">
+          <h1 className="mb-3 text-3xl font-black text-yellow-400">
             핀볼 WIN 색 맞추기
           </h1>
+
+          <p className="mb-6 rounded-xl bg-zinc-900 px-4 py-3 text-sm text-zinc-400">
+            현재 맵: <b className="text-cyan-400">{mapName}</b>
+          </p>
 
           <div className="mb-5 grid grid-cols-2 gap-3">
             {[3, 5].map((count) => (
