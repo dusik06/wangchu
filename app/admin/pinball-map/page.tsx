@@ -39,6 +39,7 @@ export default function AdminPinballMapPage() {
   const [mode, setMode] = useState<"wall" | "pin" | "bumper">("wall");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mapName, setMapName] = useState("핀볼 고정맵");
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   function snap(value: number) {
     return Math.round(value / GRID) * GRID;
@@ -46,41 +47,24 @@ export default function AdminPinballMapPage() {
 
   function addObject(x: number, y: number) {
     if (mode === "wall") {
-      const obj: Wall = {
-        type: "wall",
-        x,
-        y,
-        w: 150,
-        h: 14,
-        angle: 0,
-      };
-      setObjects((prev) => [...prev, obj]);
+      setObjects((prev) => [
+        ...prev,
+        { type: "wall", x, y, w: 150, h: 14, angle: 0 },
+      ]);
       setSelectedIndex(objects.length);
       return;
     }
 
     if (mode === "pin") {
-      const obj: Pin = {
-        type: "pin",
-        x,
-        y,
-        r: 7,
-      };
-      setObjects((prev) => [...prev, obj]);
+      setObjects((prev) => [...prev, { type: "pin", x, y, r: 7 }]);
       setSelectedIndex(objects.length);
       return;
     }
 
-    const obj: Bumper = {
-      type: "bumper",
-      x,
-      y,
-      w: 220,
-      h: 18,
-      angle: 0,
-      spinSpeed: 0.03,
-    };
-    setObjects((prev) => [...prev, obj]);
+    setObjects((prev) => [
+      ...prev,
+      { type: "bumper", x, y, w: 220, h: 18, angle: 0, spinSpeed: 0.03 },
+    ]);
     setSelectedIndex(objects.length);
   }
 
@@ -88,26 +72,21 @@ export default function AdminPinballMapPage() {
     if (selectedIndex === null) return;
 
     setObjects((prev) =>
-      prev.map((obj, index) => {
-        if (index !== selectedIndex) return obj;
-        return {
-          ...obj,
-          [key]: value,
-        } as MapObject;
-      })
+      prev.map((obj, index) =>
+        index === selectedIndex ? ({ ...obj, [key]: value } as MapObject) : obj
+      )
+    );
+  }
+
+  function moveObject(index: number, x: number, y: number) {
+    setObjects((prev) =>
+      prev.map((obj, i) => (i === index ? ({ ...obj, x, y } as MapObject) : obj))
     );
   }
 
   function deleteSelected() {
     if (selectedIndex === null) return;
-
     setObjects((prev) => prev.filter((_, index) => index !== selectedIndex));
-    setSelectedIndex(null);
-  }
-
-  function clearAll() {
-    if (!confirm("전체 맵을 비울까요?")) return;
-    setObjects([]);
     setSelectedIndex(null);
   }
 
@@ -119,23 +98,17 @@ export default function AdminPinballMapPage() {
 
     const res = await fetch("/api/admin/pinball-map/save", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        mapName,
-        mapData: objects,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mapName, mapData: objects }),
     });
 
     const data = await res.json();
 
-    if (!data.success) {
+    if (data.success) {
+      alert("저장 완료. 이제 이 맵이 고정맵입니다.");
+    } else {
       alert(data.message || "저장 실패");
-      return;
     }
-
-    alert("저장 완료. 이제 이 맵이 핀볼 고정맵으로 적용됩니다.");
   }
 
   const selected = selectedIndex !== null ? objects[selectedIndex] : null;
@@ -155,14 +128,14 @@ export default function AdminPinballMapPage() {
             placeholder="맵 이름"
           />
 
-          <div className="mb-5 grid grid-cols-1 gap-3">
+          <div className="mb-5 grid gap-3">
             <button
               onClick={() => setMode("wall")}
               className={`rounded-xl px-4 py-3 font-black ${
                 mode === "wall" ? "bg-cyan-400 text-black" : "bg-zinc-800"
               }`}
             >
-              벽 추가
+              고정벽 추가
             </button>
 
             <button
@@ -180,11 +153,11 @@ export default function AdminPinballMapPage() {
                 mode === "bumper" ? "bg-yellow-400 text-black" : "bg-zinc-800"
               }`}
             >
-              노란 회전막대 추가
+              노란 회전벽 추가
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid gap-3">
             <button
               onClick={saveMap}
               className="rounded-xl bg-emerald-500 px-4 py-3 font-black text-black"
@@ -200,7 +173,12 @@ export default function AdminPinballMapPage() {
             </button>
 
             <button
-              onClick={clearAll}
+              onClick={() => {
+                if (confirm("전체 초기화할까요?")) {
+                  setObjects([]);
+                  setSelectedIndex(null);
+                }
+              }}
               className="rounded-xl bg-zinc-800 px-4 py-3 font-black"
             >
               전체 초기화
@@ -208,9 +186,13 @@ export default function AdminPinballMapPage() {
           </div>
 
           <p className="mt-5 text-sm leading-6 text-zinc-400">
-            맵판을 클릭하면 현재 선택된 종류가 추가됩니다.
+            맵판 클릭: 추가
             <br />
-            추가된 물체를 클릭하면 오른쪽에서 위치/길이/각도/회전속도를 수정할 수 있습니다.
+            물체 드래그: 이동
+            <br />
+            오른쪽 설정: 회전/길이/속도 조절
+            <br />
+            노란 회전벽 속도는 양수 = 시계방향, 음수 = 반시계방향
           </p>
         </section>
 
@@ -226,10 +208,24 @@ export default function AdminPinballMapPage() {
                 "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
               backgroundSize: "20px 20px",
             }}
-            onClick={(e) => {
+            onMouseMove={(e) => {
+              if (draggingIndex === null) return;
+
               const rect = e.currentTarget.getBoundingClientRect();
               const x = snap(e.clientX - rect.left);
               const y = snap(e.clientY - rect.top);
+
+              moveObject(draggingIndex, x, y);
+            }}
+            onMouseUp={() => setDraggingIndex(null)}
+            onMouseLeave={() => setDraggingIndex(null)}
+            onClick={(e) => {
+              if (draggingIndex !== null) return;
+
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = snap(e.clientX - rect.left);
+              const y = snap(e.clientY - rect.top);
+
               addObject(x, y);
             }}
           >
@@ -245,10 +241,12 @@ export default function AdminPinballMapPage() {
                   <button
                     key={index}
                     type="button"
-                    onClick={(e) => {
+                    onMouseDown={(e) => {
                       e.stopPropagation();
                       setSelectedIndex(index);
+                      setDraggingIndex(index);
                     }}
+                    onClick={(e) => e.stopPropagation()}
                     className={`absolute rounded-full bg-white ${selectedClass}`}
                     style={{
                       left: obj.x,
@@ -256,6 +254,7 @@ export default function AdminPinballMapPage() {
                       width: obj.r * 2,
                       height: obj.r * 2,
                       transform: "translate(-50%, -50%)",
+                      cursor: "move",
                     }}
                   />
                 );
@@ -266,10 +265,12 @@ export default function AdminPinballMapPage() {
                   <button
                     key={index}
                     type="button"
-                    onClick={(e) => {
+                    onMouseDown={(e) => {
                       e.stopPropagation();
                       setSelectedIndex(index);
+                      setDraggingIndex(index);
                     }}
+                    onClick={(e) => e.stopPropagation()}
                     className={`absolute bg-yellow-400 ${selectedClass}`}
                     style={{
                       left: obj.x,
@@ -279,6 +280,7 @@ export default function AdminPinballMapPage() {
                       transform: `translate(-50%, -50%) rotate(${obj.angle}rad)`,
                       transformOrigin: "center",
                       borderRadius: 999,
+                      cursor: "move",
                     }}
                   />
                 );
@@ -288,10 +290,12 @@ export default function AdminPinballMapPage() {
                 <button
                   key={index}
                   type="button"
-                  onClick={(e) => {
+                  onMouseDown={(e) => {
                     e.stopPropagation();
                     setSelectedIndex(index);
+                    setDraggingIndex(index);
                   }}
+                  onClick={(e) => e.stopPropagation()}
                   className={`absolute bg-cyan-100 ${selectedClass}`}
                   style={{
                     left: obj.x,
@@ -301,6 +305,7 @@ export default function AdminPinballMapPage() {
                     transform: `translate(-50%, -50%) rotate(${obj.angle}rad)`,
                     transformOrigin: "center",
                     borderRadius: 999,
+                    cursor: "move",
                   }}
                 />
               );
@@ -342,7 +347,7 @@ export default function AdminPinballMapPage() {
               {selected.type !== "pin" && (
                 <>
                   <label className="block text-sm text-zinc-400">
-                    길이 W
+                    길이
                     <input
                       type="number"
                       value={selected.w}
@@ -352,7 +357,7 @@ export default function AdminPinballMapPage() {
                   </label>
 
                   <label className="block text-sm text-zinc-400">
-                    두께 H
+                    두께
                     <input
                       type="number"
                       value={selected.h}
@@ -362,7 +367,7 @@ export default function AdminPinballMapPage() {
                   </label>
 
                   <label className="block text-sm text-zinc-400">
-                    각도 rad
+                    회전 각도(rad)
                     <input
                       type="number"
                       step="0.01"
@@ -373,12 +378,27 @@ export default function AdminPinballMapPage() {
                       className="mt-1 w-full rounded-xl bg-zinc-900 px-3 py-2 text-white outline-none"
                     />
                   </label>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateSelected("angle", selected.angle - 0.1)}
+                      className="rounded-xl bg-zinc-800 py-2 font-black"
+                    >
+                      왼쪽 회전
+                    </button>
+                    <button
+                      onClick={() => updateSelected("angle", selected.angle + 0.1)}
+                      className="rounded-xl bg-zinc-800 py-2 font-black"
+                    >
+                      오른쪽 회전
+                    </button>
+                  </div>
                 </>
               )}
 
               {selected.type === "pin" && (
                 <label className="block text-sm text-zinc-400">
-                  핀 크기 R
+                  핀 크기
                   <input
                     type="number"
                     value={selected.r}
@@ -389,18 +409,42 @@ export default function AdminPinballMapPage() {
               )}
 
               {selected.type === "bumper" && (
-                <label className="block text-sm text-zinc-400">
-                  회전 속도
-                  <input
-                    type="number"
-                    step="0.005"
-                    value={selected.spinSpeed}
-                    onChange={(e) =>
-                      updateSelected("spinSpeed", Number(e.target.value))
-                    }
-                    className="mt-1 w-full rounded-xl bg-zinc-900 px-3 py-2 text-white outline-none"
-                  />
-                </label>
+                <>
+                  <label className="block text-sm text-zinc-400">
+                    회전 속도
+                    <input
+                      type="number"
+                      step="0.005"
+                      value={selected.spinSpeed}
+                      onChange={(e) =>
+                        updateSelected("spinSpeed", Number(e.target.value))
+                      }
+                      className="mt-1 w-full rounded-xl bg-zinc-900 px-3 py-2 text-white outline-none"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() =>
+                        updateSelected("spinSpeed", Math.abs(selected.spinSpeed || 0.03))
+                      }
+                      className="rounded-xl bg-yellow-400 py-2 font-black text-black"
+                    >
+                      시계방향
+                    </button>
+                    <button
+                      onClick={() =>
+                        updateSelected(
+                          "spinSpeed",
+                          -Math.abs(selected.spinSpeed || 0.03)
+                        )
+                      }
+                      className="rounded-xl bg-yellow-400 py-2 font-black text-black"
+                    >
+                      반시계방향
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           )}
