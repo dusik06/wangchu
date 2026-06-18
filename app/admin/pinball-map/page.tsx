@@ -94,6 +94,30 @@ export default function AdminPinballMapPage() {
     }
   }
 
+  async function deleteMap(map: SavedMap) {
+    if (!confirm(`"${map.map_name}" 맵을 삭제할까요?`)) return;
+
+    const res = await fetch("/api/game/pinball/maps/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mapId: map.id,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.message || "삭제 실패");
+      return;
+    }
+
+    alert("맵 삭제 완료");
+    fetchMaps();
+  }
+
   function addObject(x: number, y: number) {
     if (mode === "wall") {
       setObjects((prev) => [
@@ -308,16 +332,24 @@ export default function AdminPinballMapPage() {
                 <p className="text-sm text-zinc-500">저장된 맵이 없습니다.</p>
               ) : (
                 savedMaps.map((map) => (
-                  <button
-                    key={map.id}
-                    onClick={() => loadMap(map)}
-                    className="rounded-xl bg-black/60 p-3 text-left hover:bg-zinc-800"
-                  >
-                    <div className="font-black text-white">{map.map_name}</div>
-                    <div className="mt-1 text-xs text-zinc-500">
-                      #{map.id} · {map.created_by}
-                    </div>
-                  </button>
+                  <div key={map.id} className="rounded-xl bg-black/60 p-3">
+                    <button
+                      onClick={() => loadMap(map)}
+                      className="w-full text-left hover:opacity-80"
+                    >
+                      <div className="font-black text-white">{map.map_name}</div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        #{map.id} · {map.created_by}
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => deleteMap(map)}
+                      className="mt-3 w-full rounded-lg bg-red-600 px-3 py-2 text-xs font-black text-white"
+                    >
+                      이 맵 삭제
+                    </button>
+                  </div>
                 ))
               )}
             </div>
