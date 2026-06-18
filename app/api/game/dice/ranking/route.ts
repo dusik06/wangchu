@@ -8,11 +8,39 @@ export async function GET() {
       SELECT
         u.id AS user_id,
         u.nickname,
-        SUM(d.bet_amount) AS total_bet
-      FROM dice_game_logs d
-      JOIN users u ON d.user_id = u.id
+        (
+          IFNULL(d.total_dice, 0) +
+          IFNULL(l.total_ladder, 0) +
+          IFNULL(p.total_pinball, 0) +
+          IFNULL(pr.total_prediction, 0)
+        ) AS total_bet
+      FROM users u
+
+      LEFT JOIN (
+        SELECT user_id, SUM(bet_amount) AS total_dice
+        FROM dice_game_logs
+        GROUP BY user_id
+      ) d ON d.user_id = u.id
+
+      LEFT JOIN (
+        SELECT user_id, SUM(bet_amount) AS total_ladder
+        FROM ladder_game_logs
+        GROUP BY user_id
+      ) l ON l.user_id = u.id
+
+      LEFT JOIN (
+        SELECT user_id, SUM(bet_amount) AS total_pinball
+        FROM pinball_game_logs
+        GROUP BY user_id
+      ) p ON p.user_id = u.id
+
+      LEFT JOIN (
+        SELECT user_id, SUM(bet_amount) AS total_prediction
+        FROM prediction_bets
+        GROUP BY user_id
+      ) pr ON pr.user_id = u.id
+
       WHERE u.role != 'admin'
-      GROUP BY u.id, u.nickname
       ORDER BY total_bet DESC
       LIMIT 10
       `
@@ -26,7 +54,10 @@ export async function GET() {
     console.error(error);
 
     return NextResponse.json(
-      { success: false, message: "랭킹을 불러오지 못했습니다." },
+      {
+        success: false,
+        message: "랭킹을 불러오지 못했습니다.",
+      },
       { status: 500 }
     );
   }

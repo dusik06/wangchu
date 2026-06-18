@@ -104,9 +104,20 @@ export async function POST(req: Request) {
       UPDATE user_inventory
       SET item_count = item_count - 1
       WHERE id = ?
+        AND user_id = ?
         AND item_count > 0
       `,
-      [item.id]
+      [item.id, user.id]
+    );
+
+    await connection.query(
+      `
+      DELETE FROM user_inventory
+      WHERE id = ?
+        AND user_id = ?
+        AND item_count <= 0
+      `,
+      [item.id, user.id]
     );
 
     await connection.query(

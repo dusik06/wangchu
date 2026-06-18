@@ -22,7 +22,13 @@ export default async function InventoryPage() {
   }
 
   const [items]: any = await db.query(
-    "SELECT * FROM user_inventory WHERE user_id = ? ORDER BY id DESC",
+    `
+    SELECT *
+    FROM user_inventory
+    WHERE user_id = ?
+    AND item_count > 0
+    ORDER BY id DESC
+    `,
     [user.id]
   );
 
@@ -55,7 +61,9 @@ export default async function InventoryPage() {
                 </div>
 
                 <h2 className="text-xl font-bold">{item.item_name}</h2>
-                <p className="text-zinc-400 mt-2">수량 {item.item_count}개</p>
+                <p className="text-zinc-400 mt-2">
+                  수량 {item.item_count}개
+                </p>
 
                 <InventoryUseButton
                   inventoryId={item.id}

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { redirect } from "next/navigation";
 import ShopItemCreateForm from "./shop-item-create-form";
+import DeleteButton from "./delete-button";
 
 export default async function AdminShopPage() {
   const session = await getServerSession();
@@ -59,7 +60,9 @@ export default async function AdminShopPage() {
                           : "bg-slate-600 text-white"
                       }`}
                     >
-                      {item.item_type === "signature" ? "시그아이템" : "일반아이템"}
+                      {item.item_type === "signature"
+                        ? "시그아이템"
+                        : "일반아이템"}
                     </span>
 
                     <span className="text-sm font-bold text-yellow-300">
@@ -86,6 +89,11 @@ export default async function AdminShopPage() {
                   ) : (
                     <p className="mt-2 text-xs text-slate-400">노래 없음</p>
                   )}
+
+                  <DeleteButton
+                    itemId={item.id}
+                    itemName={item.item_name}
+                  />
                 </div>
               ))}
             </div>

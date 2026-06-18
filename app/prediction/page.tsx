@@ -18,12 +18,23 @@ type PredictionGame = {
   my_payout_amount: number | null;
 };
 
+type HistoryLog = {
+  nickname: string;
+  choice: "WIN" | "LOSE";
+  bet_amount: number;
+  status: "WIN" | "LOSE";
+  payout_amount: number;
+};
+
 export default function PredictionPage() {
   const [games, setGames] = useState<PredictionGame[]>([]);
   const [betAmount, setBetAmount] = useState("");
   const [selectedChoice, setSelectedChoice] = useState<"WIN" | "LOSE" | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [openedGameId, setOpenedGameId] = useState<number | null>(null);
+  const [historyLogs, setHistoryLogs] = useState<Record<number, HistoryLog[]>>({});
 
   const loadGames = async () => {
     const res = await fetch("/api/prediction/list");
@@ -37,6 +48,25 @@ export default function PredictionPage() {
   useEffect(() => {
     loadGames();
   }, []);
+
+  const loadHistory = async (gameId: number) => {
+    if (openedGameId === gameId) {
+      setOpenedGameId(null);
+      return;
+    }
+
+    const res = await fetch(`/api/prediction/history/${gameId}`);
+    const data = await res.json();
+
+    if (data.success) {
+      setHistoryLogs((prev) => ({
+        ...prev,
+        [gameId]: data.logs,
+      }));
+
+      setOpenedGameId(gameId);
+    }
+  };
 
   const submitBet = async () => {
     if (!selectedGameId || !selectedChoice || !betAmount) {
@@ -76,7 +106,6 @@ export default function PredictionPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
       <div className="mx-auto max-w-6xl">
 
-        {/* 진행중 */}
         <section className="mb-8 rounded-3xl bg-slate-900 p-6">
           <h1 className="text-3xl font-black">📊 진행중인 예측</h1>
         </section>
@@ -92,7 +121,7 @@ export default function PredictionPage() {
                     setSelectedGameId(game.id);
                     setSelectedChoice("WIN");
                   }}
-                  className="cursor-pointer rounded-2xl bg-emerald-500 px-5 py-5 font-black"
+                  className="rounded-2xl bg-emerald-500 px-5 py-5 font-black"
                 >
                   {game.win_label} ({game.win_odds}배)
                 </button>
@@ -102,7 +131,7 @@ export default function PredictionPage() {
                     setSelectedGameId(game.id);
                     setSelectedChoice("LOSE");
                   }}
-                  className="cursor-pointer rounded-2xl bg-red-500 px-5 py-5 font-black"
+                  className="rounded-2xl bg-red-500 px-5 py-5 font-black"
                 >
                   {game.lose_label} ({game.lose_odds}배)
                 </button>
@@ -120,7 +149,7 @@ export default function PredictionPage() {
                 <button
                   onClick={submitBet}
                   disabled={loading}
-                  className="cursor-pointer rounded-2xl bg-purple-500 px-5 py-4 font-black"
+                  className="rounded-2xl bg-purple-500 px-5 py-4 font-black"
                 >
                   배팅하기
                 </button>
@@ -129,14 +158,17 @@ export default function PredictionPage() {
           ))}
         </div>
 
-        {/* 기록 */}
         <section className="mb-8 rounded-3xl bg-slate-900 p-6">
           <h1 className="text-3xl font-black">📜 지난 예측 결과</h1>
         </section>
 
         <div className="space-y-5">
           {historyGames.map((game) => (
-            <section key={game.id} className="rounded-3xl bg-slate-900 p-6">
+            <section
+              key={game.id}
+              onClick={() => loadHistory(game.id)}
+              className="cursor-pointer rounded-3xl bg-slate-900 p-6"
+            >
               <h2 className="text-xl font-black mb-4">{game.title}</h2>
 
               <div className="rounded-2xl bg-slate-800 p-4">
@@ -147,35 +179,30 @@ export default function PredictionPage() {
                     ? game.win_label
                     : game.lose_label}
                 </p>
-
-                {game.my_choice && (
-                  <>
-                    <p className="mt-4 text-sm text-slate-400">내 선택</p>
-
-                    <p className="font-bold">
-                      {game.my_choice === "WIN"
-                        ? game.win_label
-                        : game.lose_label}
-                    </p>
-
-                    <p className="mt-2 text-sm text-slate-400">
-                      배팅: {Number(game.my_bet_amount).toLocaleString()}개
-                    </p>
-
-                    <p
-                      className={`mt-3 text-xl font-black ${
-                        game.my_bet_status === "WIN"
-                          ? "text-emerald-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {game.my_bet_status === "WIN"
-                        ? `🎉 ${Number(game.my_payout_amount).toLocaleString()}개 획득`
-                        : "❌ 실패"}
-                    </p>
-                  </>
-                )}
               </div>
+
+              {openedGameId === game.id && (
+                <div className="mt-4 rounded-2xl bg-slate-800 p-4 space-y-3">
+                  <h3 className="font-black text-lg">참여 내역</h3>
+
+                  {historyLogs[game.id]?.map((log, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl bg-slate-700 p-3"
+                    >
+                      <p className="font-bold">{log.nickname}</p>
+                      <p>선택: {log.choice}</p>
+                      <p>배팅: {Number(log.bet_amount).toLocaleString()}개</p>
+                      <p>
+                        정산:
+                        {log.status === "WIN"
+                          ? ` +${Number(log.payout_amount).toLocaleString()}`
+                          : " 실패"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           ))}
         </div>
