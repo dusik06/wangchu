@@ -7,17 +7,17 @@ const COLORS_3 = ["red", "blue", "yellow"];
 const COLORS_5 = ["red", "blue", "yellow", "green", "purple"];
 
 const COLOR_LABELS: Record<string, string> = {
-  red: "수박",
-  blue: "블루베리",
-  yellow: "귤",
-  green: "키위",
-  purple: "포도",
+  red: "빨강",
+  blue: "파랑",
+  yellow: "노랑",
+  green: "초록",
+  purple: "보라",
 };
 
 const COLOR_HEX: Record<string, string> = {
   red: "#ef4444",
   blue: "#3b82f6",
-  yellow: "#f97316",
+  yellow: "#facc15",
   green: "#22c55e",
   purple: "#a855f7",
 };
@@ -37,8 +37,7 @@ type RotatingBumper = Matter.Body & {
 };
 
 const WORLD_WIDTH = 560;
-const WORLD_HEIGHT = 860;
-const VIEW_HEIGHT = 860;
+const WORLD_HEIGHT = 1120;
 
 export default function PinballPage() {
   const [ballCount, setBallCount] = useState<3 | 5>(3);
@@ -148,17 +147,16 @@ export default function PinballPage() {
     y: number,
     w: number,
     h: number,
-    angle: number,
-    color = "#ecfeff"
+    angle: number
   ) {
     bodies.push(
       Matter.Bodies.rectangle(x, y, w, h, {
         isStatic: true,
         angle,
-        restitution: 0.18,
+        restitution: 0.26,
         friction: 0,
         render: {
-          fillStyle: color,
+          fillStyle: "#ecfeff",
           strokeStyle: "#22d3ee",
           lineWidth: 3,
         },
@@ -166,11 +164,51 @@ export default function PinballPage() {
     );
   }
 
+  function addPin(bodies: Matter.Body[], x: number, y: number, r = 8) {
+    bodies.push(
+      Matter.Bodies.circle(x, y, r, {
+        isStatic: true,
+        restitution: 0.72,
+        friction: 0,
+        render: {
+          fillStyle: "#f4f4f5",
+          strokeStyle: "#ffffff",
+          lineWidth: 2,
+        },
+      })
+    );
+  }
+
+  function addBumper(
+    bodies: RotatingBumper[],
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    angle: number,
+    spinSpeed: number
+  ) {
+    const bumper = Matter.Bodies.rectangle(x, y, w, h, {
+      isStatic: true,
+      angle,
+      restitution: 0.95,
+      friction: 0,
+      render: {
+        fillStyle: "#facc15",
+        strokeStyle: "#fde047",
+        lineWidth: 4,
+      },
+    }) as RotatingBumper;
+
+    bumper.spinSpeed = spinSpeed;
+    bodies.push(bumper);
+  }
+
   function startMatter(finishOrder: string[], finalColor: string) {
     if (!sceneRef.current) return;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 0.74;
+    engine.gravity.y = 0.72;
     engineRef.current = engine;
 
     const render = Matter.Render.create({
@@ -192,12 +230,6 @@ export default function PinballPage() {
       lineWidth: 3,
     };
 
-    const bumperStyle = {
-      fillStyle: "#22d3ee",
-      strokeStyle: "#67e8f9",
-      lineWidth: 4,
-    };
-
     Matter.Composite.add(engine.world, [
       Matter.Bodies.rectangle(-18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
         isStatic: true,
@@ -217,72 +249,73 @@ export default function PinballPage() {
       }),
     ]);
 
-    const fixedWalls: Matter.Body[] = [];
+    const walls: Matter.Body[] = [];
 
-    addWall(fixedWalls, 125, 210, 360, 16, 0.78);
-    addWall(fixedWalls, 435, 210, 360, 16, -0.78);
+    addWall(walls, 145, 88, 165, 15, 0.92);
+    addWall(walls, 415, 88, 165, 15, -0.92);
 
-    addWall(fixedWalls, 120, 430, 310, 16, -0.28, "#22d3ee");
-    addWall(fixedWalls, 440, 555, 300, 16, 0.28, "#22d3ee");
+    addWall(walls, 95, 210, 120, 13, 0.52);
+    addWall(walls, 465, 215, 120, 13, -0.52);
+    addWall(walls, 210, 300, 105, 13, 0.58);
+    addWall(walls, 390, 332, 100, 13, -0.54);
 
-    addWall(fixedWalls, 145, 665, 300, 16, 0.62);
-    addWall(fixedWalls, 415, 665, 300, 16, -0.62);
+    addWall(walls, 95, 405, 120, 13, -0.5);
+    addWall(walls, 465, 435, 120, 13, 0.5);
+    addWall(walls, 230, 510, 105, 13, -0.56);
+    addWall(walls, 380, 535, 105, 13, 0.55);
 
-    Matter.Composite.add(engine.world, fixedWalls);
+    addWall(walls, 95, 615, 120, 13, 0.5);
+    addWall(walls, 465, 650, 120, 13, -0.5);
+    addWall(walls, 220, 715, 95, 13, 0.55);
+    addWall(walls, 385, 748, 95, 13, -0.55);
 
-    const rotatingBar = Matter.Bodies.rectangle(280, 485, 330, 22, {
-      isStatic: true,
-      angle: 0.1,
-      restitution: 0.95,
-      friction: 0,
-      render: bumperStyle,
-    }) as RotatingBumper;
+    addWall(walls, 95, 815, 120, 13, -0.48);
+    addWall(walls, 465, 825, 120, 13, 0.48);
 
-    rotatingBar.spinSpeed = 0.055;
+    addWall(walls, 138, 950, 255, 17, 0.95);
+    addWall(walls, 422, 950, 255, 17, -0.95);
 
-    const finalRotatingBar = Matter.Bodies.rectangle(280, 705, 220, 18, {
-      isStatic: true,
-      angle: -0.12,
-      restitution: 0.95,
-      friction: 0,
-      render: bumperStyle,
-    }) as RotatingBumper;
+    addWall(walls, 245, 1050, 140, 18, 1.57);
+    addWall(walls, 315, 1050, 140, 18, 1.57);
 
-    finalRotatingBar.spinSpeed = -0.065;
+    Matter.Composite.add(engine.world, walls);
 
-    bumpersRef.current = [rotatingBar, finalRotatingBar];
-    Matter.Composite.add(engine.world, bumpersRef.current);
+    const pins: Matter.Body[] = [];
+    const pinRows = [
+      [220, [105, 165, 225, 285, 345, 405, 465]],
+      [275, [135, 195, 255, 315, 375, 435]],
+      [350, [105, 165, 225, 285, 345, 405, 465]],
+      [425, [135, 195, 255, 315, 375, 435]],
+      [500, [105, 165, 225, 285, 345, 405, 465]],
+      [575, [135, 195, 255, 315, 375, 435]],
+      [650, [105, 165, 225, 285, 345, 405, 465]],
+      [725, [135, 195, 255, 315, 375, 435]],
+      [800, [105, 165, 225, 285, 345, 405, 465]],
+      [875, [135, 195, 255, 315, 375, 435]],
+      [940, [180, 240, 320, 380]],
+      [995, [220, 280, 340]],
+    ];
 
-    Matter.Composite.add(engine.world, [
-      Matter.Bodies.rectangle(238, 790, 135, 22, {
-        isStatic: true,
-        angle: 1.05,
-        restitution: 0.15,
-        friction: 0,
-        render: wallStyle,
-      }),
-      Matter.Bodies.rectangle(322, 790, 135, 22, {
-        isStatic: true,
-        angle: -1.05,
-        restitution: 0.15,
-        friction: 0,
-        render: wallStyle,
-      }),
-      Matter.Bodies.rectangle(245, 850, 80, 120, {
-        isStatic: true,
-        restitution: 0.12,
-        friction: 0,
-        render: wallStyle,
-      }),
-      Matter.Bodies.rectangle(315, 850, 80, 120, {
-        isStatic: true,
-        restitution: 0.12,
-        friction: 0,
-        render: wallStyle,
-      }),
-    ]);
+    pinRows.forEach(([y, xs]) => {
+      (xs as number[]).forEach((x) => addPin(pins, x, y as number));
+    });
 
-    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 18, 54, 70, {
+    Matter.Composite.add(engine.world, pins);
+
+    const bumpers: RotatingBumper[] = [];
+
+    addBumper(bumpers, 280, 145, 260, 18, -0.08, 0.052);
+    addBumper(bumpers, 330, 335, 210, 18, 0.22, -0.048);
+    addBumper(bumpers, 180, 525, 190, 18, -0.22, 0.05);
+    addBumper(bumpers, 360, 695, 210, 18, 0.15, -0.05);
+    addBumper(bumpers, 185, 835, 190, 18, 0.18, 0.052);
+
+    addBumper(bumpers, 420, 1010, 270, 20, -1.05, 0.065);
+
+    bumpersRef.current = bumpers;
+    Matter.Composite.add(engine.world, bumpers);
+
+    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 24, 62, 70, {
       isStatic: true,
       isSensor: true,
       label: "exit",
@@ -293,14 +326,14 @@ export default function PinballPage() {
 
     const balls = finishOrder.map((color: string, index: number) => {
       const isFinal = color === finalColor;
-      const gap = ballCount === 3 ? 80 : 58;
+      const gap = ballCount === 3 ? 75 : 55;
       const startX = WORLD_WIDTH / 2 - ((finishOrder.length - 1) * gap) / 2 + index * gap;
 
-      const ball = Matter.Bodies.circle(startX, 64, 24, {
+      const ball = Matter.Bodies.circle(startX, 55, 21, {
         label: `ball:${color}`,
-        restitution: 0.48,
+        restitution: 0.52,
         friction: 0.004,
-        frictionAir: isFinal ? 0.012 : 0.004 + index * 0.001,
+        frictionAir: isFinal ? 0.011 : 0.004 + index * 0.001,
         density: isFinal ? 0.001 : 0.00135,
         render: {
           fillStyle: COLOR_HEX[color],
@@ -342,7 +375,7 @@ export default function PinballPage() {
         if (prev) {
           const moved = Math.abs(ball.position.x - prev.x) + Math.abs(ball.position.y - prev.y);
 
-          if (moved < 1.4 && speed < 0.6 && ball.position.y < WORLD_HEIGHT - 70) {
+          if (moved < 1.35 && speed < 0.58 && ball.position.y < WORLD_HEIGHT - 60) {
             stuckRef.current[key] = {
               x: ball.position.x,
               y: ball.position.y,
@@ -363,10 +396,10 @@ export default function PinballPage() {
           };
         }
 
-        if (stuckRef.current[key].count > 14) {
+        if (stuckRef.current[key].count > 13) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.035,
-            y: 0.04,
+            x: (Math.random() - 0.5) * 0.034,
+            y: 0.038,
           });
 
           Matter.Body.setVelocity(ball, {
@@ -377,9 +410,9 @@ export default function PinballPage() {
           stuckRef.current[key].count = 0;
         }
 
-        if (speed < 0.32 && ball.position.y < WORLD_HEIGHT - 70) {
+        if (speed < 0.32 && ball.position.y < WORLD_HEIGHT - 60) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.008,
+            x: (Math.random() - 0.5) * 0.007,
             y: 0.01,
           });
         }
@@ -401,8 +434,8 @@ export default function PinballPage() {
 
         if (isFinalBall && remainingBeforeFinal) {
           Matter.Body.setPosition(ball, {
-            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 75 : -75),
-            y: WORLD_HEIGHT - 195,
+            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 78 : -78),
+            y: WORLD_HEIGHT - 185,
           });
 
           Matter.Body.setVelocity(ball, {
@@ -463,7 +496,7 @@ export default function PinballPage() {
       <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[300px_1fr_360px]">
         <section className="rounded-3xl bg-zinc-950 p-6">
           <h1 className="mb-6 text-3xl font-black text-yellow-400">
-            핀볼 WIN 과일 맞추기
+            핀볼 WIN 색 맞추기
           </h1>
 
           <div className="mb-5 grid grid-cols-2 gap-3">
@@ -529,7 +562,7 @@ export default function PinballPage() {
         </section>
 
         <section className="rounded-3xl bg-zinc-950 p-5">
-          <div className="relative h-[860px] overflow-hidden rounded-3xl border border-cyan-400/40 bg-black shadow-[0_0_35px_rgba(34,211,238,0.25)]">
+          <div className="relative h-[1120px] overflow-hidden rounded-3xl border border-cyan-400/40 bg-black shadow-[0_0_35px_rgba(34,211,238,0.25)]">
             <div
               className="absolute left-1/2 top-0"
               style={{
