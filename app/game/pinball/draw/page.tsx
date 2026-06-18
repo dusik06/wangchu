@@ -40,9 +40,11 @@ type NameBall = Matter.Body & {
 
 const WORLD_WIDTH = 560;
 const BASE_WORLD_HEIGHT = 1900;
-const START_ZONE_HEIGHT = 420;
+const START_ZONE_HEIGHT = 520;
 const WORLD_HEIGHT = BASE_WORLD_HEIGHT + START_ZONE_HEIGHT;
 const VIEW_HEIGHT = 1000;
+
+const BALL_RADIUS = 15;
 
 const BALL_COLORS = [
   "#ef4444",
@@ -273,7 +275,7 @@ export default function PinballDrawPage() {
       }),
       Matter.Bodies.rectangle(WORLD_WIDTH / 2, -20, WORLD_WIDTH, 40, {
         isStatic: true,
-        render: wallStyle,
+        render: { fillStyle: "transparent" },
       }),
     ]);
 
@@ -329,16 +331,16 @@ export default function PinballDrawPage() {
       const col = orderIndex % perRow;
       const row = Math.floor(orderIndex / perRow);
 
-      const gapX = 42;
+      const gapX = 38;
       const gapY = 42;
 
-      const rightEdgeX = WORLD_WIDTH - 50;
+      const rightEdgeX = WORLD_WIDTH - 48;
       const startX = rightEdgeX - col * gapX;
-      const startY = 22 + row * gapY;
+      const startY = BALL_RADIUS + 8 + row * gapY;
 
       const color = BALL_COLORS[item.index % BALL_COLORS.length];
 
-      const ball = Matter.Bodies.circle(startX, startY, 15, {
+      const ball = Matter.Bodies.circle(startX, startY, BALL_RADIUS, {
         label: `ball:${item.nickname}`,
         restitution: 0.64,
         friction: 0.001,
