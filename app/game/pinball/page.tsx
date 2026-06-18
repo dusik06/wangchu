@@ -36,6 +36,8 @@ type LogType = {
   selected_color: string;
   loser_color: string;
   bet_amount: number;
+  is_win: number;
+  payout_amount: number;
 };
 
 export default function PinballPage() {
@@ -51,26 +53,6 @@ export default function PinballPage() {
   const [logs, setLogs] = useState<LogType[]>([]);
 
   const colors = ballCount === 3 ? COLORS_3 : COLORS_5;
-
-  async function fetchLogs() {
-    try {
-      const res = await fetch("/api/game/pinball/logs", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setLogs(data.logs || []);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  useEffect(() => {
-    fetchLogs();
-  }, []);
 
   const pins = useMemo(() => {
     const arr: { top: number; left: number; size: number }[] = [];
@@ -97,6 +79,26 @@ export default function PinballPage() {
       { top: 520, left: 180, rotate: -28 },
       { top: 610, left: 420, rotate: 18 },
     ];
+  }, []);
+
+  async function fetchLogs() {
+    try {
+      const res = await fetch("/api/game/pinball/logs", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setLogs(data.logs || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  useEffect(() => {
+    fetchLogs();
   }, []);
 
   function clamp(value: number, min: number, max: number) {
@@ -156,6 +158,7 @@ export default function PinballPage() {
     data.finishOrder.forEach((color: string, finishIndex: number) => {
       let step = 0;
       let horizontalDirection = finishIndex % 2 === 0 ? 1 : -1;
+
       const totalSteps = 35 + finishIndex * 7;
       const baseSpeed = 21 - Math.min(finishIndex, 3);
       const targetLeft = 120 + finishIndex * 115;
@@ -250,22 +253,40 @@ export default function PinballPage() {
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
-        <div>
-          <h1 className="mb-6 text-4xl font-black text-yellow-400">
+      {showFireworks && (
+        <div className="pointer-events-none fixed inset-0 z-[999] flex items-center justify-center">
+          <div className="absolute h-[420px] w-[420px] animate-ping rounded-full bg-yellow-400/30" />
+          <div className="absolute h-[280px] w-[280px] animate-ping rounded-full bg-white/20" />
+          <div
+            className="z-10 text-7xl font-black drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]"
+            style={{
+              color: COLOR_HEX[winnerColor] || "#fff",
+            }}
+          >
+            {COLOR_LABELS[winnerColor]} WIN!
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[300px_1fr_360px]">
+        <section className="rounded-3xl bg-zinc-950 p-6">
+          <h1 className="mb-6 text-3xl font-black text-yellow-400">
             핀볼 꼴등 맞추기
           </h1>
 
-          <div className="mb-6 flex gap-4">
+          <div className="mb-5 grid grid-cols-2 gap-3">
             {[3, 5].map((count) => (
               <button
                 key={count}
                 onClick={() => {
                   setBallCount(count as 3 | 5);
                   setSelectedColor("");
+                  setFinishOrder([]);
+                  setMessage("");
+                  setBalls([]);
                 }}
                 disabled={loading}
-                className={`rounded-2xl px-5 py-3 font-black ${
+                className={`rounded-2xl px-4 py-4 font-black ${
                   ballCount === count
                     ? "bg-yellow-400 text-black"
                     : "bg-zinc-800 text-white"
@@ -276,12 +297,13 @@ export default function PinballPage() {
             ))}
           </div>
 
-          <div className="mb-8 grid grid-cols-5 gap-4">
+          <div className="mb-5 grid grid-cols-1 gap-3">
             {colors.map((color) => (
               <button
                 key={color}
                 onClick={() => setSelectedColor(color)}
-                className={`h-20 rounded-2xl border-4 font-black text-black ${
+                disabled={loading}
+                className={`h-16 rounded-2xl border-4 font-black text-black ${
                   selectedColor === color ? "border-white" : "border-transparent"
                 }`}
                 style={{ backgroundColor: COLOR_HEX[color] }}
@@ -296,56 +318,154 @@ export default function PinballPage() {
             value={betAmount}
             onChange={(e) => setBetAmount(e.target.value)}
             placeholder="배팅 도토리 입력"
-            className="mb-6 w-full rounded-2xl bg-zinc-900 px-5 py-4"
+            disabled={loading}
+            className="mb-4 w-full rounded-2xl bg-zinc-900 px-5 py-4 outline-none"
           />
 
           <button
             onClick={playGame}
             disabled={loading}
-            className="w-full rounded-2xl bg-purple-600 py-4 text-xl font-black"
+            className="w-full rounded-2xl bg-purple-600 py-4 text-xl font-black disabled:opacity-50"
           >
             {loading ? "진행중..." : "배팅하기"}
           </button>
 
           {message && (
-            <div className="mt-8 text-center text-3xl font-black text-yellow-400">
+            <div className="mt-6 text-center text-2xl font-black text-yellow-400">
               {message}
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="rounded-3xl bg-zinc-950 p-6">
-          <h2 className="mb-6 text-2xl font-black text-cyan-400">
-            이전 기록
-          </h2>
+        <section className="rounded-3xl bg-zinc-950 p-5">
+          <div className="relative h-[860px] overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-950 via-zinc-900 to-black">
+            <div className="absolute left-6 top-0 h-full w-4 rounded-full bg-zinc-800" />
+            <div className="absolute right-6 top-0 h-full w-4 rounded-full bg-zinc-800" />
 
-          <div className="flex max-h-[900px] flex-col gap-3 overflow-y-auto">
-            {logs.map((log) => (
-              <div key={log.id} className="rounded-2xl bg-zinc-900 p-4">
-                <div className="text-sm text-zinc-400">
-                  {log.ball_count}공 모드
-                </div>
+            {pins.map((pin, index) => (
+              <div
+                key={index}
+                className="absolute rounded-full bg-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+                style={{
+                  top: `${pin.top}px`,
+                  left: `${pin.left}px`,
+                  width: `${pin.size}px`,
+                  height: `${pin.size}px`,
+                }}
+              />
+            ))}
 
-                <div className="font-black text-white">
-                  선택: {COLOR_LABELS[log.selected_color]}
-                </div>
+            {bumpers.map((bumper, index) => (
+              <div
+                key={index}
+                className="absolute h-4 w-40 rounded-full bg-yellow-500 shadow-[0_0_18px_rgba(250,204,21,0.45)]"
+                style={{
+                  top: `${bumper.top}px`,
+                  left: `${bumper.left}px`,
+                  transform: `rotate(${bumper.rotate}deg)`,
+                }}
+              />
+            ))}
 
+            <div className="absolute bottom-0 left-0 right-0 grid h-20 grid-cols-5 border-t border-zinc-700 bg-black/70">
+              {COLORS_5.map((color) => (
                 <div
-                  className="font-black"
-                  style={{
-                    color: COLOR_HEX[log.loser_color],
-                  }}
+                  key={color}
+                  className="flex items-center justify-center border-r border-zinc-800 text-sm font-black last:border-r-0"
+                  style={{ color: COLOR_HEX[color] }}
                 >
-                  꼴등: {COLOR_LABELS[log.loser_color]}
+                  {COLOR_LABELS[color]}
                 </div>
+              ))}
+            </div>
 
-                <div className="text-yellow-400">
-                  배팅: {Number(log.bet_amount).toLocaleString()}
-                </div>
+            {balls.map((ball, index) => (
+              <div
+                key={`${ball.color}-${index}`}
+                className="absolute z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-xs font-black text-black shadow-[0_0_22px_rgba(255,255,255,0.35)] transition-all duration-150"
+                style={{
+                  top: `${ball.top}px`,
+                  left: `${ball.left}px`,
+                  backgroundColor: COLOR_HEX[ball.color],
+                  transform: `rotate(${ball.rotate}deg) scale(${ball.scale})`,
+                }}
+              >
+                ●
               </div>
             ))}
           </div>
-        </div>
+
+          <div className="mt-5 rounded-3xl bg-black/60 p-5">
+            <h2 className="mb-4 text-xl font-black text-yellow-400">
+              도착 순서
+            </h2>
+
+            <div className="grid gap-3 md:grid-cols-5">
+              {finishOrder.map((color, index) => (
+                <div
+                  key={`${color}-${index}`}
+                  className="flex h-16 items-center justify-center rounded-2xl text-lg font-black text-black"
+                  style={{ backgroundColor: COLOR_HEX[color] }}
+                >
+                  {index + 1}등 {COLOR_LABELS[color]}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <aside className="rounded-3xl bg-zinc-950 p-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-black text-cyan-400">이전 기록</h2>
+            <button
+              onClick={fetchLogs}
+              className="rounded-xl bg-zinc-800 px-3 py-2 text-xs font-black"
+            >
+              새로고침
+            </button>
+          </div>
+
+          <div className="flex max-h-[960px] flex-col gap-3 overflow-y-auto">
+            {logs.length === 0 ? (
+              <p className="rounded-2xl bg-zinc-900 p-4 text-sm text-zinc-400">
+                아직 기록이 없습니다.
+              </p>
+            ) : (
+              logs.map((log) => (
+                <div key={log.id} className="rounded-2xl bg-zinc-900 p-4">
+                  <div className="text-sm text-zinc-400">
+                    {log.ball_count}공 모드
+                  </div>
+
+                  <div className="font-black text-white">
+                    선택: {COLOR_LABELS[log.selected_color]}
+                  </div>
+
+                  <div
+                    className="font-black"
+                    style={{ color: COLOR_HEX[log.loser_color] }}
+                  >
+                    꼴등: {COLOR_LABELS[log.loser_color]}
+                  </div>
+
+                  <div className="text-yellow-400">
+                    배팅: {Number(log.bet_amount).toLocaleString()}
+                  </div>
+
+                  <div
+                    className={`mt-1 font-black ${
+                      log.is_win ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {log.is_win
+                      ? `적중 +${Number(log.payout_amount).toLocaleString()}`
+                      : "미적중"}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </div>
     </main>
   );
