@@ -99,6 +99,7 @@ export default function PinballDrawPage() {
   const exitOrderRef = useRef<string[]>([]);
   const rafRef = useRef<number | null>(null);
   const mapDataRef = useRef<MapObject[]>(DEFAULT_MAP);
+  const runningRef = useRef(false);
 
   function getNames() {
     return namesText
@@ -231,6 +232,8 @@ export default function PinballDrawPage() {
     if (!sceneRef.current) return;
 
     cleanupMatter();
+    runningRef.current = shouldRun;
+    setCameraY(0);
 
     const engine = Matter.Engine.create();
     engine.gravity.y = shouldRun ? 0.62 : 0;
@@ -331,7 +334,7 @@ export default function PinballDrawPage() {
 
       const rightEdgeX = WORLD_WIDTH - 50;
       const startX = rightEdgeX - col * gapX;
-      const startY = 70 + row * gapY;
+      const startY = 22 + row * gapY;
 
       const color = BALL_COLORS[item.index % BALL_COLORS.length];
 
@@ -436,6 +439,12 @@ export default function PinballDrawPage() {
     Matter.Runner.run(runner, engine);
 
     function updateCamera() {
+      if (!runningRef.current) {
+        setCameraY(0);
+        rafRef.current = requestAnimationFrame(updateCamera);
+        return;
+      }
+
       const activeBalls = ballsRef.current;
 
       if (activeBalls.length > 0) {
@@ -465,6 +474,9 @@ export default function PinballDrawPage() {
     setStartSeed(seed);
     setWinnerName("");
     setShowFireworks(false);
+    setRunning(false);
+    runningRef.current = false;
+    setCameraY(0);
     setMessage("시작 위치가 섞였습니다. 시작하기를 누르세요.");
     setupMatter(names, seed, false);
   }
@@ -482,8 +494,10 @@ export default function PinballDrawPage() {
     const seed = startSeed.length === names.length ? startSeed : names.map(() => Math.random());
 
     setRunning(true);
+    runningRef.current = true;
     setWinnerName("");
     setShowFireworks(false);
+    setCameraY(0);
     setMessage("추첨 진행중...");
     setupMatter(names, seed, true);
   }
@@ -492,8 +506,10 @@ export default function PinballDrawPage() {
     await fetchMap();
 
     setRunning(false);
+    runningRef.current = false;
     setWinnerName("");
     setShowFireworks(false);
+    setCameraY(0);
     setMessage("맵 미리보기 상태입니다.");
     setupMatter([], [], false);
   }
@@ -503,6 +519,7 @@ export default function PinballDrawPage() {
     setMessage(`${name} WIN!`);
     setShowFireworks(true);
     setRunning(false);
+    runningRef.current = false;
     setHistory((prev) => [name, ...prev].slice(0, 20));
 
     setTimeout(() => {
@@ -580,7 +597,7 @@ export default function PinballDrawPage() {
                 height: WORLD_HEIGHT,
                 transform: `translateX(-50%) translateY(-${cameraY}px)`,
                 transformOrigin: "top center",
-                transition: "transform 0.18s linear",
+                transition: running ? "transform 0.18s linear" : "none",
               }}
             >
               <div ref={sceneRef} />
