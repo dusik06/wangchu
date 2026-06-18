@@ -148,7 +148,7 @@ export default function PinballPage() {
     if (!sceneRef.current) return;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 0.85;
+    engine.gravity.y = 0.82;
     engineRef.current = engine;
 
     const render = Matter.Render.create({
@@ -170,11 +170,13 @@ export default function PinballPage() {
 
     const leftWall = Matter.Bodies.rectangle(-15, WORLD_HEIGHT / 2, 30, WORLD_HEIGHT, {
       isStatic: true,
+      restitution: 0.4,
       render: wallStyle,
     });
 
     const rightWall = Matter.Bodies.rectangle(WORLD_WIDTH + 15, WORLD_HEIGHT / 2, 30, WORLD_HEIGHT, {
       isStatic: true,
+      restitution: 0.4,
       render: wallStyle,
     });
 
@@ -186,18 +188,22 @@ export default function PinballPage() {
     Matter.Composite.add(engine.world, [leftWall, rightWall, topWall]);
 
     const pins: Matter.Body[] = [];
-    for (let row = 0; row < 15; row++) {
-      for (let col = 0; col < 6; col++) {
-        const x = 120 + col * 95 + (row % 2 ? 45 : 0);
-        const y = 260 + row * 175;
-        pins.push(
-          Matter.Bodies.circle(x, y, row % 3 === 0 ? 11 : 9, {
-            isStatic: true,
-            restitution: 1.08,
-            friction: 0,
-            render: pinStyle,
-          })
-        );
+
+    for (let row = 0; row < 22; row++) {
+      for (let col = 0; col < 7; col++) {
+        const x = 90 + col * 90 + (row % 2 ? 45 : 0);
+        const y = 230 + row * 125;
+
+        if (x > 65 && x < WORLD_WIDTH - 65) {
+          pins.push(
+            Matter.Bodies.circle(x, y, row % 3 === 0 ? 10 : 8, {
+              isStatic: true,
+              restitution: 0.72,
+              friction: 0,
+              render: pinStyle,
+            })
+          );
+        }
       }
     }
 
@@ -213,45 +219,94 @@ export default function PinballPage() {
       Matter.Bodies.rectangle(b.x, b.y, b.w, b.h, {
         isStatic: true,
         angle: b.angle,
-        restitution: 1.15,
+        restitution: 0.8,
         friction: 0,
         render: bumperStyle,
       })
     );
 
-    const funnelLeft = Matter.Bodies.rectangle(205, WORLD_HEIGHT - 220, 380, 18, {
-      isStatic: true,
-      angle: 0.55,
-      render: { fillStyle: "#52525b" },
-    });
+    const funnelLeft = Matter.Bodies.rectangle(
+      250,
+      WORLD_HEIGHT - 170,
+      300,
+      22,
+      {
+        isStatic: true,
+        angle: 0.95,
+        restitution: 0.45,
+        render: { fillStyle: "#52525b" },
+      }
+    );
 
-    const funnelRight = Matter.Bodies.rectangle(515, WORLD_HEIGHT - 220, 380, 18, {
-      isStatic: true,
-      angle: -0.55,
-      render: { fillStyle: "#52525b" },
-    });
+    const funnelRight = Matter.Bodies.rectangle(
+      470,
+      WORLD_HEIGHT - 170,
+      300,
+      22,
+      {
+        isStatic: true,
+        angle: -0.95,
+        restitution: 0.45,
+        render: { fillStyle: "#52525b" },
+      }
+    );
 
-    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 55, 170, 80, {
-      isStatic: true,
-      isSensor: true,
-      label: "exit",
-      render: {
-        fillStyle: "rgba(250,204,21,0.25)",
-      },
-    });
+    const bottomLeftWall = Matter.Bodies.rectangle(
+      120,
+      WORLD_HEIGHT - 35,
+      220,
+      30,
+      {
+        isStatic: true,
+        render: wallStyle,
+      }
+    );
 
-    Matter.Composite.add(engine.world, [...pins, ...bumpers, funnelLeft, funnelRight, exitSensor]);
+    const bottomRightWall = Matter.Bodies.rectangle(
+      600,
+      WORLD_HEIGHT - 35,
+      220,
+      30,
+      {
+        isStatic: true,
+        render: wallStyle,
+      }
+    );
+
+    const exitSensor = Matter.Bodies.rectangle(
+      WORLD_WIDTH / 2,
+      WORLD_HEIGHT - 30,
+      90,
+      70,
+      {
+        isStatic: true,
+        isSensor: true,
+        label: "exit",
+        render: {
+          fillStyle: "rgba(250,204,21,0.25)",
+        },
+      }
+    );
+
+    Matter.Composite.add(engine.world, [
+      ...pins,
+      ...bumpers,
+      funnelLeft,
+      funnelRight,
+      bottomLeftWall,
+      bottomRightWall,
+      exitSensor,
+    ]);
 
     const balls = finishOrder.map((color: string, index: number) => {
-      const orderIndex = finishOrder.indexOf(color);
       const isFinal = color === finalColor;
 
-      const ball = Matter.Bodies.circle(160 + index * 100, 70, 22, {
+      const ball = Matter.Bodies.circle(150 + index * 100, 70, 22, {
         label: `ball:${color}`,
-        restitution: 0.92,
-        friction: 0.01,
-        frictionAir: isFinal ? 0.010 : 0.004 + orderIndex * 0.001,
-        density: isFinal ? 0.0011 : 0.0014,
+        restitution: 0.48,
+        friction: 0.02,
+        frictionAir: isFinal ? 0.014 : 0.006 + index * 0.001,
+        density: isFinal ? 0.001 : 0.0014,
         render: {
           fillStyle: COLOR_HEX[color],
           strokeStyle: "#ffffff",
@@ -263,7 +318,7 @@ export default function PinballPage() {
       ball.exited = false;
 
       Matter.Body.setVelocity(ball, {
-        x: (Math.random() - 0.5) * 5,
+        x: (Math.random() - 0.5) * 4,
         y: 0,
       });
 
@@ -288,13 +343,13 @@ export default function PinballPage() {
 
         if (isFinalBall && remainingBeforeFinal) {
           Matter.Body.setPosition(ball, {
-            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 100 : -100),
+            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 120 : -120),
             y: WORLD_HEIGHT - 520,
           });
 
           Matter.Body.setVelocity(ball, {
-            x: Math.random() > 0.5 ? 7 : -7,
-            y: -12,
+            x: Math.random() > 0.5 ? 6 : -6,
+            y: -10,
           });
 
           return;
@@ -364,7 +419,7 @@ export default function PinballPage() {
       <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[300px_1fr_360px]">
         <section className="rounded-3xl bg-zinc-950 p-6">
           <h1 className="mb-6 text-3xl font-black text-yellow-400">
-            핀볼 꼴등 맞추기
+            핀볼 WIN 색 맞추기
           </h1>
 
           <div className="mb-5 grid grid-cols-2 gap-3">
@@ -443,8 +498,8 @@ export default function PinballPage() {
               }}
             >
               <div ref={sceneRef} />
-              <div className="pointer-events-none absolute bottom-[15px] left-1/2 z-20 -translate-x-1/2 rounded-full border border-yellow-400 bg-yellow-400/20 px-8 py-3 text-xl font-black text-yellow-300">
-                WIN GATE
+              <div className="pointer-events-none absolute bottom-[12px] left-1/2 z-20 -translate-x-1/2 rounded-full border border-yellow-400 bg-yellow-400/20 px-8 py-3 text-xl font-black text-yellow-300">
+                WIN HOLE
               </div>
             </div>
           </div>
