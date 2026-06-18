@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Wall = {
   type: "wall";
@@ -30,40 +30,112 @@ type Bumper = {
 
 type MapObject = Wall | Pin | Bumper;
 
+type SavedMap = {
+  id: number;
+  map_name: string;
+  map_data: string;
+  created_by: string;
+  created_at: string;
+};
+
 const WORLD_WIDTH = 560;
 const WORLD_HEIGHT = 1900;
 const GRID = 10;
 
 export default function AdminPinballMapPage() {
   const [objects, setObjects] = useState<MapObject[]>([]);
+  const [savedMaps, setSavedMaps] = useState<SavedMap[]>([]);
   const [mode, setMode] = useState<"wall" | "pin" | "bumper">("wall");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mapName, setMapName] = useState("핀볼 고정맵");
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
+  useEffect(() => {
+    fetchMaps();
+  }, []);
+
   function snap(value: number) {
     return Math.round(value / GRID) * GRID;
+  }
+
+  async function fetchMaps() {
+    try {
+      const res = await fetch("/api/game/pinball/maps", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSavedMaps(data.maps || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function loadMap(map: SavedMap) {
+    try {
+      const parsed = JSON.parse(map.map_data);
+
+      if (!Array.isArray(parsed)) {
+        alert("맵 데이터가 올바르지 않습니다.");
+        return;
+      }
+
+      setObjects(parsed);
+      setMapName(`${map.map_name} 수정본`);
+      setSelectedIndex(null);
+
+      alert("기존 맵을 불러왔습니다. 수정 후 저장하면 새 맵으로 저장됩니다.");
+    } catch (error) {
+      console.error(error);
+      alert("맵 불러오기 실패");
+    }
   }
 
   function addObject(x: number, y: number) {
     if (mode === "wall") {
       setObjects((prev) => [
         ...prev,
-        { type: "wall", x, y, w: 150, h: 14, angle: 0 },
+        {
+          type: "wall",
+          x,
+          y,
+          w: 150,
+          h: 14,
+          angle: 0,
+        },
       ]);
       setSelectedIndex(objects.length);
       return;
     }
 
     if (mode === "pin") {
-      setObjects((prev) => [...prev, { type: "pin", x, y, r: 7 }]);
+      setObjects((prev) => [
+        ...prev,
+        {
+          type: "pin",
+          x,
+          y,
+          r: 7,
+        },
+      ]);
       setSelectedIndex(objects.length);
       return;
     }
 
     setObjects((prev) => [
       ...prev,
-      { type: "bumper", x, y, w: 220, h: 18, angle: 0, spinSpeed: 0.03 },
+      {
+        type: "bumper",
+        x,
+        y,
+        w: 220,
+        h: 18,
+        angle: 0,
+        spinSpeed: 0.03,
+      },
     ]);
     setSelectedIndex(objects.length);
   }
@@ -72,25 +144,44 @@ export default function AdminPinballMapPage() {
     if (selectedIndex === null) return;
 
     setObjects((prev) =>
-      prev.map((obj, index) =>
-        index === selectedIndex ? ({ ...obj, [key]: value } as MapObject) : obj
-      )
+      prev.map((obj, index) => {
+        if (index !== selectedIndex) return obj;
+
+        return {
+          ...obj,
+          [key]: value,
+        } as MapObject;
+      })
     );
   }
 
   function moveObject(index: number, x: number, y: number) {
     setObjects((prev) =>
-      prev.map((obj, i) => (i === index ? ({ ...obj, x, y } as MapObject) : obj))
+      prev.map((obj, i) => {
+        if (i !== index) return obj;
+
+        return {
+          ...obj,
+          x,
+          y,
+        } as MapObject;
+      })
     );
   }
 
   function deleteSelected() {
     if (selectedIndex === null) return;
+
     setObjects((prev) => prev.filter((_, index) => index !== selectedIndex));
     setSelectedIndex(null);
   }
 
   async function saveMap() {
+    if (!mapName.trim()) {
+      alert("맵 이름을 입력하세요.");
+      return;
+    }
+
     if (objects.length === 0) {
       alert("배치된 오브젝트가 없습니다.");
       return;
@@ -98,14 +189,20 @@ export default function AdminPinballMapPage() {
 
     const res = await fetch("/api/admin/pinball-map/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mapName, mapData: objects }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mapName,
+        mapData: objects,
+      }),
     });
 
     const data = await res.json();
 
     if (data.success) {
-      alert("저장 완료. 이제 이 맵이 고정맵입니다.");
+      alert("저장 완료. 이제 이 맵이 최신 고정맵입니다.");
+      fetchMaps();
     } else {
       alert(data.message || "저장 실패");
     }
@@ -115,8 +212,8 @@ export default function AdminPinballMapPage() {
 
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white">
-      <div className="mx-auto grid max-w-[1400px] gap-6 xl:grid-cols-[300px_1fr_320px]">
-        <section className="rounded-3xl bg-zinc-950 p-5">
+      <div className="mx-auto grid max-w-[1500px] items-start gap-6 xl:grid-cols-[300px_1fr_340px]">
+        <section className="sticky top-6 max-h-[calc(100vh-48px)] overflow-y-auto rounded-3xl bg-zinc-950 p-5">
           <h1 className="mb-5 text-2xl font-black text-yellow-400">
             핀볼 맵 에디터
           </h1>
@@ -194,6 +291,37 @@ export default function AdminPinballMapPage() {
             <br />
             노란 회전벽 속도는 양수 = 시계방향, 음수 = 반시계방향
           </p>
+
+          <div className="mt-6 rounded-2xl bg-zinc-900 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-black text-cyan-400">기존 맵 불러오기</h2>
+              <button
+                onClick={fetchMaps}
+                className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-black"
+              >
+                새로고침
+              </button>
+            </div>
+
+            <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto">
+              {savedMaps.length === 0 ? (
+                <p className="text-sm text-zinc-500">저장된 맵이 없습니다.</p>
+              ) : (
+                savedMaps.map((map) => (
+                  <button
+                    key={map.id}
+                    onClick={() => loadMap(map)}
+                    className="rounded-xl bg-black/60 p-3 text-left hover:bg-zinc-800"
+                  >
+                    <div className="font-black text-white">{map.map_name}</div>
+                    <div className="mt-1 text-xs text-zinc-500">
+                      #{map.id} · {map.created_by}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="overflow-auto rounded-3xl bg-zinc-950 p-5">
@@ -313,7 +441,7 @@ export default function AdminPinballMapPage() {
           </div>
         </section>
 
-        <aside className="rounded-3xl bg-zinc-950 p-5">
+        <aside className="sticky top-6 max-h-[calc(100vh-48px)] overflow-y-auto rounded-3xl bg-zinc-950 p-5">
           <h2 className="mb-4 text-xl font-black text-cyan-400">선택 설정</h2>
 
           {!selected ? (
