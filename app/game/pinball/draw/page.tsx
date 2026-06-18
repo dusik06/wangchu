@@ -2,61 +2,26 @@
 
 import Matter from "matter-js";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type MapObject =
-  | {
-      type: "wall";
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-      angle: number;
-    }
-  | {
-      type: "pin";
-      x: number;
-      y: number;
-      r: number;
-    }
-  | {
-      type: "bumper";
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-      angle: number;
-      spinSpeed: number;
-    };
+  | { type: "wall"; x: number; y: number; w: number; h: number; angle: number }
+  | { type: "pin"; x: number; y: number; r: number }
+  | { type: "bumper"; x: number; y: number; w: number; h: number; angle: number; spinSpeed: number };
 
-type RotatingBumper = Matter.Body & {
-  spinSpeed?: number;
-};
-
-type NameBall = Matter.Body & {
-  nickname?: string;
-  color?: string;
-  exited?: boolean;
-};
+type RotatingBumper = Matter.Body & { spinSpeed?: number };
+type NameBall = Matter.Body & { nickname?: string; color?: string; exited?: boolean };
 
 const WORLD_WIDTH = 560;
 const BASE_WORLD_HEIGHT = 1900;
 const START_ZONE_HEIGHT = 520;
 const WORLD_HEIGHT = BASE_WORLD_HEIGHT + START_ZONE_HEIGHT;
 const VIEW_HEIGHT = 1000;
-
 const BALL_RADIUS = 15;
 
 const BALL_COLORS = [
-  "#ef4444",
-  "#3b82f6",
-  "#facc15",
-  "#22c55e",
-  "#a855f7",
-  "#f97316",
-  "#ec4899",
-  "#14b8a6",
-  "#eab308",
-  "#8b5cf6",
+  "#ef4444", "#3b82f6", "#facc15", "#22c55e", "#a855f7",
+  "#f97316", "#ec4899", "#14b8a6", "#eab308", "#8b5cf6",
 ];
 
 const DEFAULT_NAMES = "두식\n민주\n왕츄\n워종\n아지\n새롭";
@@ -65,11 +30,6 @@ const DEFAULT_MAP: MapObject[] = [
   { type: "pin", x: 130, y: 260, r: 6 },
   { type: "pin", x: 260, y: 260, r: 6 },
   { type: "pin", x: 390, y: 260, r: 6 },
-  { type: "pin", x: 190, y: 430, r: 6 },
-  { type: "pin", x: 330, y: 430, r: 6 },
-  { type: "pin", x: 130, y: 600, r: 6 },
-  { type: "pin", x: 260, y: 600, r: 6 },
-  { type: "pin", x: 390, y: 600, r: 6 },
   { type: "wall", x: 92, y: 280, w: 120, h: 12, angle: 0.52 },
   { type: "wall", x: 468, y: 335, w: 120, h: 12, angle: -0.52 },
   { type: "bumper", x: 280, y: 175, w: 250, h: 16, angle: -0.08, spinSpeed: 0.045 },
@@ -82,6 +42,9 @@ const DEFAULT_MAP: MapObject[] = [
 ];
 
 export default function PinballDrawPage() {
+  const searchParams = useSearchParams();
+  const mapId = searchParams.get("mapId") || "";
+
   const [namesText, setNamesText] = useState(DEFAULT_NAMES);
   const [message, setMessage] = useState("참여 닉네임을 입력하고 섞기를 눌러주세요.");
   const [winnerName, setWinnerName] = useState("");
@@ -104,15 +67,13 @@ export default function PinballDrawPage() {
   const runningRef = useRef(false);
 
   function getNames() {
-    return namesText
-      .split(/[\n,]/)
-      .map((name) => name.trim())
-      .filter(Boolean);
+    return namesText.split(/[\n,]/).map((name) => name.trim()).filter(Boolean);
   }
 
   async function fetchMap() {
     try {
-      const res = await fetch("/api/game/pinball/map", { cache: "no-store" });
+      const url = mapId ? `/api/game/pinball/map?mapId=${mapId}` : "/api/game/pinball/map";
+      const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
 
       if (data.success && data.map && Array.isArray(data.map.mapData)) {
@@ -138,7 +99,8 @@ export default function PinballDrawPage() {
     init();
 
     return () => cleanupMatter();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapId]);
 
   function cleanupMatter() {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -167,25 +129,14 @@ export default function PinballDrawPage() {
     setCameraY(0);
   }
 
-  function addWall(
-    bodies: Matter.Body[],
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    angle: number
-  ) {
+  function addWall(bodies: Matter.Body[], x: number, y: number, w: number, h: number, angle: number) {
     bodies.push(
       Matter.Bodies.rectangle(x, y + START_ZONE_HEIGHT, w, h, {
         isStatic: true,
         angle,
         restitution: 0.28,
         friction: 0,
-        render: {
-          fillStyle: "#ecfeff",
-          strokeStyle: "#22d3ee",
-          lineWidth: 3,
-        },
+        render: { fillStyle: "#ecfeff", strokeStyle: "#22d3ee", lineWidth: 3 },
       })
     );
   }
@@ -196,11 +147,7 @@ export default function PinballDrawPage() {
         isStatic: true,
         restitution: 0.8,
         friction: 0,
-        render: {
-          fillStyle: "#f4f4f5",
-          strokeStyle: "#ffffff",
-          lineWidth: 2,
-        },
+        render: { fillStyle: "#f4f4f5", strokeStyle: "#ffffff", lineWidth: 2 },
       })
     );
   }
@@ -219,11 +166,7 @@ export default function PinballDrawPage() {
       angle,
       restitution: 0.98,
       friction: 0,
-      render: {
-        fillStyle: "#facc15",
-        strokeStyle: "#fde047",
-        lineWidth: 4,
-      },
+      render: { fillStyle: "#facc15", strokeStyle: "#fde047", lineWidth: 4 },
     }) as RotatingBumper;
 
     bumper.spinSpeed = spinSpeed;
@@ -254,11 +197,7 @@ export default function PinballDrawPage() {
 
     renderRef.current = render;
 
-    const wallStyle = {
-      fillStyle: "#ecfeff",
-      strokeStyle: "#22d3ee",
-      lineWidth: 3,
-    };
+    const wallStyle = { fillStyle: "#ecfeff", strokeStyle: "#22d3ee", lineWidth: 3 };
 
     Matter.Composite.add(engine.world, [
       Matter.Bodies.rectangle(-18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
@@ -284,60 +223,38 @@ export default function PinballDrawPage() {
     const bumpers: RotatingBumper[] = [];
 
     mapDataRef.current.forEach((obj) => {
-      if (obj.type === "wall") {
-        addWall(walls, obj.x, obj.y, obj.w, obj.h, obj.angle);
-      }
-
-      if (obj.type === "pin") {
-        addPin(pins, obj.x, obj.y, obj.r);
-      }
-
-      if (obj.type === "bumper") {
-        addBumper(bumpers, obj.x, obj.y, obj.w, obj.h, obj.angle, obj.spinSpeed);
-      }
+      if (obj.type === "wall") addWall(walls, obj.x, obj.y, obj.w, obj.h, obj.angle);
+      if (obj.type === "pin") addPin(pins, obj.x, obj.y, obj.r);
+      if (obj.type === "bumper") addBumper(bumpers, obj.x, obj.y, obj.w, obj.h, obj.angle, obj.spinSpeed);
     });
 
     Matter.Composite.add(engine.world, walls);
     Matter.Composite.add(engine.world, pins);
-
     bumpersRef.current = bumpers;
     Matter.Composite.add(engine.world, bumpers);
 
-    const exitSensor = Matter.Bodies.rectangle(
-      WORLD_WIDTH / 2,
-      WORLD_HEIGHT - 24,
-      60,
-      80,
-      {
-        isStatic: true,
-        isSensor: true,
-        label: "exit",
-        render: { fillStyle: "rgba(34,211,238,0.08)" },
-      }
-    );
+    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 24, 60, 80, {
+      isStatic: true,
+      isSensor: true,
+      label: "exit",
+      render: { fillStyle: "rgba(34,211,238,0.08)" },
+    });
 
     Matter.Composite.add(engine.world, exitSensor);
 
     const sortedNames = [...names]
-      .map((nickname, index) => ({
-        nickname,
-        seed: seed[index] ?? Math.random(),
-        index,
-      }))
+      .map((nickname, index) => ({ nickname, seed: seed[index] ?? Math.random(), index }))
       .sort((a, b) => a.seed - b.seed);
 
     const balls = sortedNames.map((item, orderIndex) => {
       const perRow = 5;
       const col = orderIndex % perRow;
       const row = Math.floor(orderIndex / perRow);
-
       const gapX = 38;
       const gapY = 42;
-
       const rightEdgeX = WORLD_WIDTH - 48;
       const startX = rightEdgeX - col * gapX;
       const startY = BALL_RADIUS + 8 + row * gapY;
-
       const color = BALL_COLORS[item.index % BALL_COLORS.length];
 
       const ball = Matter.Bodies.circle(startX, startY, BALL_RADIUS, {
@@ -346,11 +263,7 @@ export default function PinballDrawPage() {
         friction: 0.001,
         frictionAir: 0.002,
         density: 0.0012,
-        render: {
-          fillStyle: color,
-          strokeStyle: "#ffffff",
-          lineWidth: 2,
-        },
+        render: { fillStyle: color, strokeStyle: "#ffffff", lineWidth: 2 },
       }) as NameBall;
 
       ball.nickname = item.nickname;
@@ -397,9 +310,7 @@ export default function PinballDrawPage() {
       ballsRef.current.forEach((ball) => {
         if (!ball.nickname || ball.exited) return;
 
-        const speed = Math.sqrt(
-          ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y
-        );
+        const speed = Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
 
         if (speed < 0.3 && ball.position.y < WORLD_HEIGHT - 70) {
           Matter.Body.applyForce(ball, ball.position, {
@@ -416,9 +327,7 @@ export default function PinballDrawPage() {
       event.pairs.forEach((pair) => {
         const bodies = [pair.bodyA, pair.bodyB];
         const exit = bodies.find((body) => body.label === "exit");
-        const ball = bodies.find((body: any) => body.label?.startsWith("ball:")) as
-          | NameBall
-          | undefined;
+        const ball = bodies.find((body: any) => body.label?.startsWith("ball:")) as NameBall | undefined;
 
         if (!exit || !ball || !ball.nickname || ball.exited) return;
 
@@ -524,9 +433,7 @@ export default function PinballDrawPage() {
     runningRef.current = false;
     setHistory((prev) => [name, ...prev].slice(0, 20));
 
-    setTimeout(() => {
-      setShowFireworks(false);
-    }, 2400);
+    setTimeout(() => setShowFireworks(false), 2400);
   }
 
   return (
@@ -543,9 +450,7 @@ export default function PinballDrawPage() {
 
       <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[320px_1fr_340px]">
         <section className="rounded-3xl bg-zinc-950 p-6">
-          <h1 className="mb-3 text-3xl font-black text-yellow-400">
-            핀볼 추첨
-          </h1>
+          <h1 className="mb-3 text-3xl font-black text-yellow-400">핀볼 추첨</h1>
 
           <p className="mb-5 rounded-xl bg-zinc-900 px-4 py-3 text-sm text-zinc-400">
             현재 맵: <b className="text-cyan-400">{mapName}</b>
@@ -612,9 +517,7 @@ export default function PinballDrawPage() {
 
           <div className="mb-6 rounded-2xl bg-zinc-900 p-4">
             <div className="text-sm text-zinc-400">참여 인원</div>
-            <div className="text-3xl font-black text-yellow-400">
-              {getNames().length}명
-            </div>
+            <div className="text-3xl font-black text-yellow-400">{getNames().length}명</div>
           </div>
 
           <div className="flex max-h-[760px] flex-col gap-3 overflow-y-auto">
