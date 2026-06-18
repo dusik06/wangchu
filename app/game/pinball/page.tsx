@@ -37,7 +37,7 @@ type RotatingBumper = Matter.Body & {
 };
 
 const WORLD_WIDTH = 560;
-const WORLD_HEIGHT = 1800;
+const WORLD_HEIGHT = 1900;
 const VIEW_HEIGHT = 1000;
 
 export default function PinballPage() {
@@ -170,11 +170,11 @@ export default function PinballPage() {
     );
   }
 
-  function addPin(bodies: Matter.Body[], x: number, y: number, r = 7) {
+  function addPin(bodies: Matter.Body[], x: number, y: number, r = 6) {
     bodies.push(
       Matter.Bodies.circle(x, y, r, {
         isStatic: true,
-        restitution: 0.78,
+        restitution: 0.8,
         friction: 0,
         render: {
           fillStyle: "#f4f4f5",
@@ -214,7 +214,7 @@ export default function PinballPage() {
     if (!sceneRef.current) return;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 0.74;
+    engine.gravity.y = 0.48;
     engineRef.current = engine;
 
     const render = Matter.Render.create({
@@ -260,39 +260,42 @@ export default function PinballPage() {
     addWall(walls, 145, 105, 165, 14, 0.92);
     addWall(walls, 415, 105, 165, 14, -0.92);
 
-    addWall(walls, 92, 260, 120, 12, 0.52);
-    addWall(walls, 468, 300, 120, 12, -0.52);
-    addWall(walls, 210, 430, 105, 12, 0.58);
-    addWall(walls, 390, 545, 100, 12, -0.54);
+    addWall(walls, 92, 280, 120, 12, 0.52);
+    addWall(walls, 468, 335, 120, 12, -0.52);
+    addWall(walls, 205, 485, 105, 12, 0.58);
+    addWall(walls, 390, 610, 100, 12, -0.54);
 
-    addWall(walls, 92, 665, 120, 12, -0.5);
-    addWall(walls, 468, 750, 120, 12, 0.5);
-    addWall(walls, 225, 895, 105, 12, -0.56);
-    addWall(walls, 385, 1010, 105, 12, 0.55);
+    addWall(walls, 92, 765, 120, 12, -0.5);
+    addWall(walls, 468, 870, 120, 12, 0.5);
+    addWall(walls, 225, 1025, 105, 12, -0.56);
+    addWall(walls, 385, 1160, 105, 12, 0.55);
 
-    addWall(walls, 92, 1165, 120, 12, 0.5);
-    addWall(walls, 468, 1260, 120, 12, -0.5);
+    addWall(walls, 92, 1325, 120, 12, 0.5);
+    addWall(walls, 468, 1410, 120, 12, -0.5);
 
-    addWall(walls, 128, 1510, 470, 18, 1.02);
-    addWall(walls, 432, 1510, 470, 18, -1.02);
+    // 마지막 Y자 깔대기: 출구 벽과 겹치지 않게 끝을 위에서 자연스럽게 모으고,
+    // || 출구 벽은 아래에서 시작해서 빨간 공처럼 모서리에 끼지 않게 함.
+    addWall(walls, 125, 1610, 500, 18, 1.02);
+    addWall(walls, 435, 1610, 500, 18, -1.02);
 
-    addWall(walls, 250, 1710, 235, 18, 1.57);
-    addWall(walls, 310, 1710, 235, 18, 1.57);
+    // 출구 통로 벽: 위로 튀어나오지 않게 더 아래에서 시작
+    addWall(walls, 252, 1805, 165, 18, 0);
+    addWall(walls, 308, 1805, 165, 18, 0);
 
     Matter.Composite.add(engine.world, walls);
 
     const pins: Matter.Body[] = [];
     const pinRows: [number, number[]][] = [
-      [240, [130, 230, 330, 430]],
-      [370, [180, 280, 380]],
-      [520, [130, 230, 330, 430]],
-      [670, [180, 280, 380]],
-      [820, [130, 230, 330, 430]],
-      [970, [180, 280, 380]],
-      [1120, [130, 230, 330, 430]],
-      [1270, [180, 280, 380]],
-      [1420, [160, 250, 340, 430]],
-      [1570, [205, 280, 355]],
+      [260, [130, 260, 390]],
+      [430, [190, 330]],
+      [600, [130, 260, 390]],
+      [770, [190, 330]],
+      [940, [130, 260, 390]],
+      [1110, [190, 330]],
+      [1280, [130, 260, 390]],
+      [1450, [190, 280, 370]],
+      [1605, [220, 280, 340]],
+      [1715, [240, 320]],
     ];
 
     pinRows.forEach(([y, xs]) => {
@@ -303,17 +306,18 @@ export default function PinballPage() {
 
     const bumpers: RotatingBumper[] = [];
 
-    addBumper(bumpers, 280, 170, 250, 16, -0.08, 0.052);
-    addBumper(bumpers, 330, 520, 210, 16, 0.22, -0.048);
-    addBumper(bumpers, 180, 875, 190, 16, -0.22, 0.05);
-    addBumper(bumpers, 360, 1210, 220, 16, 0.15, -0.05);
+    addBumper(bumpers, 280, 175, 250, 16, -0.08, 0.032);
+    addBumper(bumpers, 330, 565, 210, 16, 0.22, -0.03);
+    addBumper(bumpers, 180, 980, 190, 16, -0.22, 0.032);
+    addBumper(bumpers, 360, 1335, 220, 16, 0.15, -0.03);
 
-    addBumper(bumpers, 402, 1665, 320, 20, -1.12, 0.075);
+    // 마지막 긴 노란 회전막대: 출구 오른쪽 밀착, 무조건 시계방향
+    addBumper(bumpers, 432, 1760, 300, 18, -1.23, 0.04);
 
     bumpersRef.current = bumpers;
     Matter.Composite.add(engine.world, bumpers);
 
-    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 24, 62, 80, {
+    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 24, 60, 80, {
       isStatic: true,
       isSensor: true,
       label: "exit",
@@ -331,7 +335,7 @@ export default function PinballPage() {
         label: `ball:${color}`,
         restitution: 0.58,
         friction: 0.002,
-        frictionAir: isFinal ? 0.008 : 0.003 + index * 0.0005,
+        frictionAir: isFinal ? 0.007 : 0.003 + index * 0.0004,
         density: isFinal ? 0.001 : 0.00125,
         render: {
           fillStyle: COLOR_HEX[color],
@@ -344,7 +348,7 @@ export default function PinballPage() {
       ball.exited = false;
 
       Matter.Body.setVelocity(ball, {
-        x: (Math.random() - 0.5) * 4,
+        x: (Math.random() - 0.5) * 3,
         y: 0,
       });
 
@@ -373,7 +377,7 @@ export default function PinballPage() {
         if (prev) {
           const moved = Math.abs(ball.position.x - prev.x) + Math.abs(ball.position.y - prev.y);
 
-          if (moved < 1.15 && speed < 0.45 && ball.position.y < WORLD_HEIGHT - 70) {
+          if (moved < 1.05 && speed < 0.38 && ball.position.y < WORLD_HEIGHT - 70) {
             stuckRef.current[key] = {
               x: ball.position.x,
               y: ball.position.y,
@@ -394,24 +398,24 @@ export default function PinballPage() {
           };
         }
 
-        if (stuckRef.current[key].count > 12) {
+        if (stuckRef.current[key].count > 16) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.025,
-            y: 0.03,
+            x: (Math.random() - 0.5) * 0.018,
+            y: 0.026,
           });
 
           Matter.Body.setVelocity(ball, {
-            x: (Math.random() - 0.5) * 7,
-            y: Math.max(ball.velocity.y, 6),
+            x: (Math.random() - 0.5) * 5,
+            y: Math.max(ball.velocity.y, 4.5),
           });
 
           stuckRef.current[key].count = 0;
         }
 
-        if (speed < 0.28 && ball.position.y < WORLD_HEIGHT - 70) {
+        if (speed < 0.22 && ball.position.y < WORLD_HEIGHT - 70) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.005,
-            y: 0.008,
+            x: (Math.random() - 0.5) * 0.004,
+            y: 0.006,
           });
         }
       });
@@ -432,13 +436,13 @@ export default function PinballPage() {
 
         if (isFinalBall && remainingBeforeFinal) {
           Matter.Body.setPosition(ball, {
-            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 68 : -68),
-            y: WORLD_HEIGHT - 230,
+            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 70 : -70),
+            y: WORLD_HEIGHT - 260,
           });
 
           Matter.Body.setVelocity(ball, {
-            x: Math.random() > 0.5 ? 6 : -6,
-            y: -9,
+            x: Math.random() > 0.5 ? 5 : -5,
+            y: -7,
           });
 
           return;
@@ -467,10 +471,9 @@ export default function PinballPage() {
 
       if (activeBalls.length > 0) {
         const leaderY = Math.max(...activeBalls.map((ball) => ball.position.y));
-        const visibleWorldHeight = VIEW_HEIGHT;
-        const target = leaderY - visibleWorldHeight * 0.42;
+        const target = leaderY - VIEW_HEIGHT * 0.42;
+        const nextCamera = Math.max(0, Math.min(WORLD_HEIGHT - VIEW_HEIGHT, target));
 
-        const nextCamera = Math.max(0, Math.min(WORLD_HEIGHT - visibleWorldHeight, target));
         setCameraY(nextCamera);
       }
 
@@ -585,7 +588,7 @@ export default function PinballPage() {
                 height: WORLD_HEIGHT,
                 transform: `translateX(-50%) translateY(-${cameraY}px)`,
                 transformOrigin: "top center",
-                transition: "transform 0.1s linear",
+                transition: "transform 0.22s linear",
               }}
             >
               <div ref={sceneRef} />
