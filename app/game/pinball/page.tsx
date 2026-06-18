@@ -325,12 +325,22 @@ export default function PinballPage() {
       .sort((a, b) => a.seed - b.seed);
 
     const balls = sortedNames.map((item, orderIndex) => {
-      const count = sortedNames.length;
-      const gap = Math.min(74, Math.max(34, 420 / Math.max(count - 1, 1)));
-      const startX = WORLD_WIDTH / 2 - ((count - 1) * gap) / 2 + orderIndex * gap;
+      const perRow = 5;
+      const col = orderIndex % perRow;
+      const row = Math.floor(orderIndex / perRow);
+
+      const gapX = 42;
+      const gapY = 42;
+      const rowCount = Math.min(perRow, sortedNames.length - row * perRow);
+      const rowWidth = (rowCount - 1) * gapX;
+
+      const rightEdgeX = WORLD_WIDTH - 70;
+      const startX = rightEdgeX - rowWidth + col * gapX;
+      const startY = 75 + row * gapY;
+
       const color = BALL_COLORS[item.index % BALL_COLORS.length];
 
-      const ball = Matter.Bodies.circle(startX, 55, 15, {
+      const ball = Matter.Bodies.circle(startX, startY, 15, {
         label: `ball:${item.nickname}`,
         restitution: 0.64,
         friction: 0.001,
