@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Matter from "matter-js";
+import { useEffect, useRef, useState } from "react";
 
 const COLORS_3 = ["red", "blue", "yellow"];
 const COLORS_5 = ["red", "blue", "yellow", "green", "purple"];
@@ -21,15 +22,6 @@ const COLOR_HEX: Record<string, string> = {
   purple: "#a855f7",
 };
 
-type BallState = {
-  color: string;
-  top: number;
-  left: number;
-  rotate: number;
-  scale: number;
-  finished: boolean;
-};
-
 type LogType = {
   id: number;
   ball_count: number;
@@ -40,58 +32,37 @@ type LogType = {
   payout_amount: number;
 };
 
+const WORLD_WIDTH = 720;
+const WORLD_HEIGHT = 3400;
+const VIEW_HEIGHT = 860;
+
 export default function PinballPage() {
   const [ballCount, setBallCount] = useState<3 | 5>(3);
   const [selectedColor, setSelectedColor] = useState("");
   const [betAmount, setBetAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [finishOrder, setFinishOrder] = useState<string[]>([]);
   const [message, setMessage] = useState("");
-  const [balls, setBalls] = useState<BallState[]>([]);
   const [winnerColor, setWinnerColor] = useState("");
   const [showFireworks, setShowFireworks] = useState(false);
   const [logs, setLogs] = useState<LogType[]>([]);
+  const [cameraY, setCameraY] = useState(0);
+
+  const sceneRef = useRef<HTMLDivElement | null>(null);
+  const engineRef = useRef<Matter.Engine | null>(null);
+  const runnerRef = useRef<Matter.Runner | null>(null);
+  const renderRef = useRef<Matter.Render | null>(null);
+  const ballsRef = useRef<Matter.Body[]>([]);
+  const exitOrderRef = useRef<string[]>([]);
+  const expectedWinnerRef = useRef("");
+  const rafRef = useRef<number | null>(null);
 
   const colors = ballCount === 3 ? COLORS_3 : COLORS_5;
 
-  const pins = useMemo(() => {
-    const arr: { top: number; left: number; size: number }[] = [];
-
-    for (let row = 0; row < 18; row++) {
-      for (let col = 0; col < 8; col++) {
-        arr.push({
-          top: row * 42 + 54,
-          left: col * 72 + (row % 2 ? 36 : 0) + 70,
-          size: row % 3 === 0 ? 14 : 10,
-        });
-      }
-    }
-
-    return arr;
-  }, []);
-
-  const bumpers = useMemo(() => {
-    return [
-      { top: 160, left: 170, rotate: 18 },
-      { top: 230, left: 460, rotate: -22 },
-      { top: 330, left: 280, rotate: -16 },
-      { top: 420, left: 560, rotate: 24 },
-      { top: 520, left: 180, rotate: -28 },
-      { top: 610, left: 420, rotate: 18 },
-    ];
-  }, []);
-
   async function fetchLogs() {
     try {
-      const res = await fetch("/api/game/pinball/logs", {
-        cache: "no-store",
-      });
-
+      const res = await fetch("/api/game/pinball/logs", { cache: "no-store" });
       const data = await res.json();
-
-      if (data.success) {
-        setLogs(data.logs || []);
-      }
+      if (data.success) setLogs(data.logs || []);
     } catch (error) {
       console.error(error);
     }
@@ -99,10 +70,36 @@ export default function PinballPage() {
 
   useEffect(() => {
     fetchLogs();
+
+    return () => {
+      cleanupMatter();
+    };
   }, []);
 
-  function clamp(value: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, value));
+  function cleanupMatter() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    if (renderRef.current) {
+      Matter.Render.stop(renderRef.current);
+      renderRef.current.canvas.remove();
+      renderRef.current.textures = {};
+      renderRef.current = null;
+    }
+
+    if (runnerRef.current) {
+      Matter.Runner.stop(runnerRef.current);
+      runnerRef.current = null;
+    }
+
+    if (engineRef.current) {
+      Matter.World.clear(engineRef.current.world, false);
+      Matter.Engine.clear(engineRef.current);
+      engineRef.current = null;
+    }
+
+    ballsRef.current = [];
+    exitOrderRef.current = [];
+    setCameraY(0);
   }
 
   async function playGame() {
@@ -118,10 +115,9 @@ export default function PinballPage() {
 
     setLoading(true);
     setMessage("핀볼 진행중...");
-    setFinishOrder([]);
-    setBalls([]);
     setWinnerColor("");
     setShowFireworks(false);
+    cleanupMatter();
 
     const res = await fetch("/api/game/pinball/play", {
       method: "POST",
@@ -144,124 +140,221 @@ export default function PinballPage() {
       return;
     }
 
-    const initialBalls = data.finishOrder.map((color: string, index: number) => ({
-      color,
-      top: 10,
-      left: 180 + index * 95,
-      rotate: 0,
-      scale: 1,
-      finished: false,
-    }));
+    expectedWinnerRef.current = data.loserColor;
+    startMatter(data.finishOrder, data.loserColor);
+  }
 
-    setBalls(initialBalls);
+  function startMatter(finishOrder: string[], finalColor: string) {
+    if (!sceneRef.current) return;
 
-    data.finishOrder.forEach((color: string, finishIndex: number) => {
-      let step = 0;
-      let horizontalDirection = finishIndex % 2 === 0 ? 1 : -1;
+    const engine = Matter.Engine.create();
+    engine.gravity.y = 0.85;
+    engineRef.current = engine;
 
-      const totalSteps = 35 + finishIndex * 7;
-      const baseSpeed = 21 - Math.min(finishIndex, 3);
-      const targetLeft = 120 + finishIndex * 115;
+    const render = Matter.Render.create({
+      element: sceneRef.current,
+      engine,
+      options: {
+        width: WORLD_WIDTH,
+        height: WORLD_HEIGHT,
+        wireframes: false,
+        background: "transparent",
+      },
+    });
 
-      const timer = setInterval(() => {
-        step++;
+    renderRef.current = render;
 
-        if (step % 4 === 0) {
-          horizontalDirection *= -1;
-        }
+    const wallStyle = { fillStyle: "#27272a" };
+    const pinStyle = { fillStyle: "#d4d4d8" };
+    const bumperStyle = { fillStyle: "#facc15" };
 
-        setBalls((prev) =>
-          prev.map((ball) => {
-            if (ball.color !== color || ball.finished) return ball;
+    const leftWall = Matter.Bodies.rectangle(-15, WORLD_HEIGHT / 2, 30, WORLD_HEIGHT, {
+      isStatic: true,
+      render: wallStyle,
+    });
 
-            const progress = step / totalSteps;
+    const rightWall = Matter.Bodies.rectangle(WORLD_WIDTH + 15, WORLD_HEIGHT / 2, 30, WORLD_HEIGHT, {
+      isStatic: true,
+      render: wallStyle,
+    });
 
-            const swing =
-              Math.sin(step * 1.7 + finishIndex) * 38 +
-              horizontalDirection * (18 + Math.random() * 22);
+    const topWall = Matter.Bodies.rectangle(WORLD_WIDTH / 2, -20, WORLD_WIDTH, 40, {
+      isStatic: true,
+      render: wallStyle,
+    });
 
-            const fakeHitBoost = step % 5 === 0 ? 18 : 0;
+    Matter.Composite.add(engine.world, [leftWall, rightWall, topWall]);
 
-            const slowZone =
-              progress > 0.65 && finishIndex >= data.finishOrder.length - 2
-                ? Math.random() > 0.5
-                  ? -8
-                  : 4
-                : 0;
-
-            const comebackBoost =
-              progress > 0.82 && finishIndex === data.finishOrder.length - 2
-                ? Math.random() > 0.4
-                  ? 12
-                  : -4
-                : 0;
-
-            const nextTop =
-              ball.top + baseSpeed + fakeHitBoost + slowZone + comebackBoost;
-
-            const mixedLeft =
-              ball.left * 0.82 +
-              (targetLeft + swing + Math.random() * 36 - 18) * 0.18;
-
-            return {
-              ...ball,
-              top: clamp(nextTop, 10, 760),
-              left: clamp(mixedLeft, 45, 680),
-              rotate: ball.rotate + 55 + Math.random() * 45,
-              scale: step % 5 === 0 ? 1.16 : 1,
-            };
+    const pins: Matter.Body[] = [];
+    for (let row = 0; row < 15; row++) {
+      for (let col = 0; col < 6; col++) {
+        const x = 120 + col * 95 + (row % 2 ? 45 : 0);
+        const y = 260 + row * 175;
+        pins.push(
+          Matter.Bodies.circle(x, y, row % 3 === 0 ? 11 : 9, {
+            isStatic: true,
+            restitution: 1.08,
+            friction: 0,
+            render: pinStyle,
           })
         );
+      }
+    }
 
-        if (step >= totalSteps) {
-          clearInterval(timer);
+    const bumpers = [
+      { x: 200, y: 520, w: 210, h: 18, angle: 0.34 },
+      { x: 500, y: 760, w: 210, h: 18, angle: -0.34 },
+      { x: 230, y: 1100, w: 230, h: 18, angle: -0.24 },
+      { x: 500, y: 1450, w: 230, h: 18, angle: 0.28 },
+      { x: 220, y: 1880, w: 240, h: 18, angle: 0.34 },
+      { x: 500, y: 2250, w: 240, h: 18, angle: -0.34 },
+      { x: 360, y: 2680, w: 260, h: 18, angle: 0.18 },
+    ].map((b) =>
+      Matter.Bodies.rectangle(b.x, b.y, b.w, b.h, {
+        isStatic: true,
+        angle: b.angle,
+        restitution: 1.15,
+        friction: 0,
+        render: bumperStyle,
+      })
+    );
 
-          setBalls((prev) =>
-            prev.map((ball) =>
-              ball.color === color
-                ? {
-                    ...ball,
-                    top: 775,
-                    left: clamp(targetLeft, 70, 660),
-                    scale: 1,
-                    finished: true,
-                  }
-                : ball
-            )
-          );
-
-          setFinishOrder((prev) => [...prev, color]);
-
-          if (finishIndex === data.finishOrder.length - 1) {
-            setTimeout(() => {
-              setWinnerColor(data.loserColor);
-              setShowFireworks(true);
-              setMessage(`${COLOR_LABELS[data.loserColor]} WIN!`);
-              fetchLogs();
-
-              setTimeout(() => {
-                setShowFireworks(false);
-              }, 2200);
-
-              setLoading(false);
-            }, 900);
-          }
-        }
-      }, 150);
+    const funnelLeft = Matter.Bodies.rectangle(205, WORLD_HEIGHT - 220, 380, 18, {
+      isStatic: true,
+      angle: 0.55,
+      render: { fillStyle: "#52525b" },
     });
+
+    const funnelRight = Matter.Bodies.rectangle(515, WORLD_HEIGHT - 220, 380, 18, {
+      isStatic: true,
+      angle: -0.55,
+      render: { fillStyle: "#52525b" },
+    });
+
+    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 55, 170, 80, {
+      isStatic: true,
+      isSensor: true,
+      label: "exit",
+      render: {
+        fillStyle: "rgba(250,204,21,0.25)",
+      },
+    });
+
+    Matter.Composite.add(engine.world, [...pins, ...bumpers, funnelLeft, funnelRight, exitSensor]);
+
+    const balls = finishOrder.map((color: string, index: number) => {
+      const orderIndex = finishOrder.indexOf(color);
+      const isFinal = color === finalColor;
+
+      const ball = Matter.Bodies.circle(160 + index * 100, 70, 22, {
+        label: `ball:${color}`,
+        restitution: 0.92,
+        friction: 0.01,
+        frictionAir: isFinal ? 0.010 : 0.004 + orderIndex * 0.001,
+        density: isFinal ? 0.0011 : 0.0014,
+        render: {
+          fillStyle: COLOR_HEX[color],
+          strokeStyle: "#ffffff",
+          lineWidth: 3,
+        },
+      }) as Matter.Body & { color?: string; exited?: boolean };
+
+      ball.color = color;
+      ball.exited = false;
+
+      Matter.Body.setVelocity(ball, {
+        x: (Math.random() - 0.5) * 5,
+        y: 0,
+      });
+
+      return ball;
+    });
+
+    ballsRef.current = balls;
+    Matter.Composite.add(engine.world, balls);
+
+    Matter.Events.on(engine, "collisionStart", (event) => {
+      event.pairs.forEach((pair) => {
+        const bodies = [pair.bodyA, pair.bodyB];
+        const exit = bodies.find((body) => body.label === "exit");
+        const ball = bodies.find((body: any) => body.label?.startsWith("ball:")) as
+          | (Matter.Body & { color?: string; exited?: boolean })
+          | undefined;
+
+        if (!exit || !ball || !ball.color || ball.exited) return;
+
+        const isFinalBall = ball.color === expectedWinnerRef.current;
+        const remainingBeforeFinal = exitOrderRef.current.length < ballCount - 1;
+
+        if (isFinalBall && remainingBeforeFinal) {
+          Matter.Body.setPosition(ball, {
+            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 100 : -100),
+            y: WORLD_HEIGHT - 520,
+          });
+
+          Matter.Body.setVelocity(ball, {
+            x: Math.random() > 0.5 ? 7 : -7,
+            y: -12,
+          });
+
+          return;
+        }
+
+        ball.exited = true;
+        exitOrderRef.current.push(ball.color);
+
+        Matter.Composite.remove(engine.world, ball);
+        ballsRef.current = ballsRef.current.filter((b: any) => b.color !== ball.color);
+
+        if (exitOrderRef.current.length >= ballCount) {
+          finishGame(expectedWinnerRef.current);
+        }
+      });
+    });
+
+    Matter.Render.run(render);
+
+    const runner = Matter.Runner.create();
+    runnerRef.current = runner;
+    Matter.Runner.run(runner, engine);
+
+    function updateCamera() {
+      const activeBalls = ballsRef.current;
+
+      if (activeBalls.length > 0) {
+        const maxY = Math.max(...activeBalls.map((ball) => ball.position.y));
+        const nextCamera = Math.max(0, Math.min(WORLD_HEIGHT - VIEW_HEIGHT, maxY - 330));
+        setCameraY(nextCamera);
+      }
+
+      rafRef.current = requestAnimationFrame(updateCamera);
+    }
+
+    updateCamera();
+  }
+
+  function finishGame(color: string) {
+    setWinnerColor(color);
+    setShowFireworks(true);
+    setMessage(`${COLOR_LABELS[color]} WIN!`);
+    fetchLogs();
+
+    setTimeout(() => {
+      setShowFireworks(false);
+    }, 2400);
+
+    setLoading(false);
   }
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
       {showFireworks && (
         <div className="pointer-events-none fixed inset-0 z-[999] flex items-center justify-center">
-          <div className="absolute h-[420px] w-[420px] animate-ping rounded-full bg-yellow-400/30" />
+          <div className="absolute h-[440px] w-[440px] animate-ping rounded-full bg-yellow-400/30" />
           <div className="absolute h-[280px] w-[280px] animate-ping rounded-full bg-white/20" />
           <div
             className="z-10 text-7xl font-black drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]"
-            style={{
-              color: COLOR_HEX[winnerColor] || "#fff",
-            }}
+            style={{ color: COLOR_HEX[winnerColor] || "#fff" }}
           >
             {COLOR_LABELS[winnerColor]} WIN!
           </div>
@@ -281,9 +374,10 @@ export default function PinballPage() {
                 onClick={() => {
                   setBallCount(count as 3 | 5);
                   setSelectedColor("");
-                  setFinishOrder([]);
                   setMessage("");
-                  setBalls([]);
+                  setWinnerColor("");
+                  setShowFireworks(false);
+                  cleanupMatter();
                 }}
                 disabled={loading}
                 className={`rounded-2xl px-4 py-4 font-black ${
@@ -339,77 +433,19 @@ export default function PinballPage() {
 
         <section className="rounded-3xl bg-zinc-950 p-5">
           <div className="relative h-[860px] overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-b from-zinc-950 via-zinc-900 to-black">
-            <div className="absolute left-6 top-0 h-full w-4 rounded-full bg-zinc-800" />
-            <div className="absolute right-6 top-0 h-full w-4 rounded-full bg-zinc-800" />
-
-            {pins.map((pin, index) => (
-              <div
-                key={index}
-                className="absolute rounded-full bg-zinc-400 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
-                style={{
-                  top: `${pin.top}px`,
-                  left: `${pin.left}px`,
-                  width: `${pin.size}px`,
-                  height: `${pin.size}px`,
-                }}
-              />
-            ))}
-
-            {bumpers.map((bumper, index) => (
-              <div
-                key={index}
-                className="absolute h-4 w-40 rounded-full bg-yellow-500 shadow-[0_0_18px_rgba(250,204,21,0.45)]"
-                style={{
-                  top: `${bumper.top}px`,
-                  left: `${bumper.left}px`,
-                  transform: `rotate(${bumper.rotate}deg)`,
-                }}
-              />
-            ))}
-
-            <div className="absolute bottom-0 left-0 right-0 grid h-20 grid-cols-5 border-t border-zinc-700 bg-black/70">
-              {COLORS_5.map((color) => (
-                <div
-                  key={color}
-                  className="flex items-center justify-center border-r border-zinc-800 text-sm font-black last:border-r-0"
-                  style={{ color: COLOR_HEX[color] }}
-                >
-                  {COLOR_LABELS[color]}
-                </div>
-              ))}
-            </div>
-
-            {balls.map((ball, index) => (
-              <div
-                key={`${ball.color}-${index}`}
-                className="absolute z-20 flex h-11 w-11 items-center justify-center rounded-full border-2 border-white text-xs font-black text-black shadow-[0_0_22px_rgba(255,255,255,0.35)] transition-all duration-150"
-                style={{
-                  top: `${ball.top}px`,
-                  left: `${ball.left}px`,
-                  backgroundColor: COLOR_HEX[ball.color],
-                  transform: `rotate(${ball.rotate}deg) scale(${ball.scale})`,
-                }}
-              >
-                ●
+            <div
+              className="absolute left-0 top-0"
+              style={{
+                width: WORLD_WIDTH,
+                height: WORLD_HEIGHT,
+                transform: `translateY(-${cameraY}px)`,
+                transition: "transform 0.12s linear",
+              }}
+            >
+              <div ref={sceneRef} />
+              <div className="pointer-events-none absolute bottom-[15px] left-1/2 z-20 -translate-x-1/2 rounded-full border border-yellow-400 bg-yellow-400/20 px-8 py-3 text-xl font-black text-yellow-300">
+                WIN GATE
               </div>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-3xl bg-black/60 p-5">
-            <h2 className="mb-4 text-xl font-black text-yellow-400">
-              도착 순서
-            </h2>
-
-            <div className="grid gap-3 md:grid-cols-5">
-              {finishOrder.map((color, index) => (
-                <div
-                  key={`${color}-${index}`}
-                  className="flex h-16 items-center justify-center rounded-2xl text-lg font-black text-black"
-                  style={{ backgroundColor: COLOR_HEX[color] }}
-                >
-                  {index + 1}등 {COLOR_LABELS[color]}
-                </div>
-              ))}
             </div>
           </div>
         </section>
@@ -445,7 +481,7 @@ export default function PinballPage() {
                     className="font-black"
                     style={{ color: COLOR_HEX[log.loser_color] }}
                   >
-                    꼴등: {COLOR_LABELS[log.loser_color]}
+                    WIN: {COLOR_LABELS[log.loser_color]}
                   </div>
 
                   <div className="text-yellow-400">
