@@ -36,10 +36,10 @@ type RotatingBumper = Matter.Body & {
   spinSpeed?: number;
 };
 
-const WORLD_WIDTH = 720;
-const WORLD_HEIGHT = 6800;
-const VIEW_HEIGHT = 1100;
-const CAMERA_SCALE = 0.78;
+const WORLD_WIDTH = 980;
+const WORLD_HEIGHT = 7000;
+const VIEW_HEIGHT = 860;
+const CAMERA_SCALE = 0.72;
 
 export default function PinballPage() {
   const [ballCount, setBallCount] = useState<3 | 5>(3);
@@ -77,10 +77,7 @@ export default function PinballPage() {
 
   useEffect(() => {
     fetchLogs();
-
-    return () => {
-      cleanupMatter();
-    };
+    return () => cleanupMatter();
   }, []);
 
   function cleanupMatter() {
@@ -130,9 +127,7 @@ export default function PinballPage() {
 
     const res = await fetch("/api/game/pinball/play", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ballCount,
         selectedColor,
@@ -153,11 +148,31 @@ export default function PinballPage() {
     startMatter(data.finishOrder, data.loserColor);
   }
 
+  function addWallSegment(
+    bodies: Matter.Body[],
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    angle: number,
+    color = "#52525b"
+  ) {
+    bodies.push(
+      Matter.Bodies.rectangle(x, y, w, h, {
+        isStatic: true,
+        angle,
+        restitution: 0.35,
+        friction: 0,
+        render: { fillStyle: color },
+      })
+    );
+  }
+
   function startMatter(finishOrder: string[], finalColor: string) {
     if (!sceneRef.current) return;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 0.72;
+    engine.gravity.y = 0.74;
     engineRef.current = engine;
 
     const render = Matter.Render.create({
@@ -175,76 +190,142 @@ export default function PinballPage() {
 
     const wallStyle = { fillStyle: "#27272a" };
     const pinStyle = { fillStyle: "#d4d4d8" };
-    const bumperStyle = { fillStyle: "#facc15" };
+    const cyanStyle = { fillStyle: "#22d3ee" };
+    const yellowStyle = { fillStyle: "#facc15" };
 
-    const leftWall = Matter.Bodies.rectangle(-18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
+    const outerWalls = [
+      Matter.Bodies.rectangle(-18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
+        isStatic: true,
+        restitution: 0.25,
+        friction: 0,
+        render: wallStyle,
+      }),
+      Matter.Bodies.rectangle(WORLD_WIDTH + 18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
+        isStatic: true,
+        restitution: 0.25,
+        friction: 0,
+        render: wallStyle,
+      }),
+      Matter.Bodies.rectangle(WORLD_WIDTH / 2, -20, WORLD_WIDTH, 40, {
+        isStatic: true,
+        render: wallStyle,
+      }),
+    ];
+
+    Matter.Composite.add(engine.world, outerWalls);
+
+    const mazeWalls: Matter.Body[] = [];
+
+    addWallSegment(mazeWalls, 225, 520, 380, 18, 0.88);
+    addWallSegment(mazeWalls, 720, 520, 360, 18, -0.82);
+
+    addWallSegment(mazeWalls, 260, 980, 360, 18, -0.68);
+    addWallSegment(mazeWalls, 700, 1080, 380, 18, 0.68);
+
+    addWallSegment(mazeWalls, 190, 1480, 340, 18, 0.62);
+    addWallSegment(mazeWalls, 760, 1580, 360, 18, -0.72);
+
+    addWallSegment(mazeWalls, 470, 2050, 520, 18, 0.15);
+    addWallSegment(mazeWalls, 250, 2380, 380, 18, -0.72);
+    addWallSegment(mazeWalls, 730, 2550, 380, 18, 0.72);
+
+    addWallSegment(mazeWalls, 300, 3050, 420, 18, 0.8);
+    addWallSegment(mazeWalls, 710, 3300, 420, 18, -0.8);
+
+    addWallSegment(mazeWalls, 480, 3850, 620, 18, -0.08);
+    addWallSegment(mazeWalls, 240, 4300, 380, 18, 0.72);
+    addWallSegment(mazeWalls, 740, 4550, 380, 18, -0.72);
+
+    addWallSegment(mazeWalls, 330, 5150, 460, 18, -0.68);
+    addWallSegment(mazeWalls, 700, 5480, 420, 18, 0.72);
+
+    addWallSegment(mazeWalls, 490, 6020, 620, 18, 0.12);
+
+    const triangleA = Matter.Bodies.polygon(490, 1260, 3, 80, {
       isStatic: true,
-      restitution: 0.25,
+      angle: Math.PI / 2,
+      restitution: 0.45,
       friction: 0,
-      render: wallStyle,
+      render: { fillStyle: "#3f3f46" },
     });
 
-    const rightWall = Matter.Bodies.rectangle(WORLD_WIDTH + 18, WORLD_HEIGHT / 2, 36, WORLD_HEIGHT, {
+    const triangleB = Matter.Bodies.polygon(510, 3540, 3, 95, {
       isStatic: true,
-      restitution: 0.25,
+      angle: -Math.PI / 2,
+      restitution: 0.45,
       friction: 0,
-      render: wallStyle,
+      render: { fillStyle: "#3f3f46" },
     });
 
-    const topWall = Matter.Bodies.rectangle(WORLD_WIDTH / 2, -20, WORLD_WIDTH, 40, {
+    const triangleC = Matter.Bodies.polygon(500, 4850, 3, 85, {
       isStatic: true,
-      render: wallStyle,
+      angle: Math.PI,
+      restitution: 0.45,
+      friction: 0,
+      render: { fillStyle: "#3f3f46" },
     });
 
-    Matter.Composite.add(engine.world, [leftWall, rightWall, topWall]);
+    Matter.Composite.add(engine.world, [...mazeWalls, triangleA, triangleB, triangleC]);
 
     const pins: Matter.Body[] = [];
-    const pinRows = 38;
-    const cols = 7;
 
-    for (let row = 0; row < pinRows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const baseX = 80 + col * 93 + (row % 2 ? 46 : 0);
-        const randomX = Math.sin(row * 19 + col * 31) * 18 + (Math.random() * 18 - 9);
-        const randomY = Math.cos(row * 11 + col * 17) * 12 + (Math.random() * 12 - 6);
-        const x = baseX + randomX;
-        const y = 240 + row * 150 + randomY;
+    const pinZones = [
+      { yStart: 180, rows: 7, cols: 7, gapX: 105, gapY: 100 },
+      { yStart: 1720, rows: 6, cols: 6, gapX: 115, gapY: 105 },
+      { yStart: 2700, rows: 7, cols: 7, gapX: 105, gapY: 95 },
+      { yStart: 4050, rows: 6, cols: 7, gapX: 105, gapY: 105 },
+      { yStart: 5650, rows: 5, cols: 8, gapX: 95, gapY: 95 },
+    ];
 
-        if (x > 50 && x < WORLD_WIDTH - 50 && y < WORLD_HEIGHT - 520) {
-          pins.push(
-            Matter.Bodies.circle(x, y, row % 4 === 0 ? 10 : 8, {
-              isStatic: true,
-              restitution: 0.68,
-              friction: 0,
-              render: pinStyle,
-            })
-          );
+    pinZones.forEach((zone, zoneIndex) => {
+      for (let row = 0; row < zone.rows; row++) {
+        for (let col = 0; col < zone.cols; col++) {
+          const baseX =
+            WORLD_WIDTH / 2 -
+            ((zone.cols - 1) * zone.gapX) / 2 +
+            col * zone.gapX +
+            (row % 2 ? zone.gapX / 2 : 0);
+
+          const randomX =
+            Math.sin((row + 1) * 21 + (col + 1) * 37 + zoneIndex * 17) * 22;
+          const randomY =
+            Math.cos((row + 1) * 19 + (col + 1) * 29 + zoneIndex * 13) * 16;
+
+          const x = baseX + randomX;
+          const y = zone.yStart + row * zone.gapY + randomY;
+
+          if (x > 70 && x < WORLD_WIDTH - 70) {
+            pins.push(
+              Matter.Bodies.circle(x, y, row % 3 === 0 ? 10 : 8, {
+                isStatic: true,
+                restitution: 0.65,
+                friction: 0,
+                render: pinStyle,
+              })
+            );
+          }
         }
       }
-    }
+    });
+
+    Matter.Composite.add(engine.world, pins);
 
     const bumperData = [
-      { x: 190, y: 560, w: 210, h: 18, angle: 0.25, spin: 0.012 },
-      { x: 500, y: 880, w: 210, h: 18, angle: -0.3, spin: -0.013 },
-      { x: 245, y: 1250, w: 230, h: 18, angle: -0.18, spin: 0.011 },
-      { x: 500, y: 1650, w: 230, h: 18, angle: 0.24, spin: -0.012 },
-      { x: 205, y: 2100, w: 240, h: 18, angle: 0.28, spin: 0.014 },
-      { x: 510, y: 2550, w: 240, h: 18, angle: -0.3, spin: -0.014 },
-      { x: 360, y: 3100, w: 260, h: 18, angle: 0.18, spin: 0.01 },
-      { x: 190, y: 3650, w: 210, h: 18, angle: -0.25, spin: -0.012 },
-      { x: 510, y: 4200, w: 230, h: 18, angle: 0.27, spin: 0.013 },
-      { x: 360, y: 4850, w: 260, h: 18, angle: -0.15, spin: -0.011 },
-      { x: 210, y: 5450, w: 220, h: 18, angle: 0.3, spin: 0.012 },
-      { x: 500, y: 6050, w: 220, h: 18, angle: -0.3, spin: -0.012 },
+      { x: 250, y: 760, w: 220, h: 16, angle: 0.25, spin: 0.018 },
+      { x: 710, y: 900, w: 220, h: 16, angle: -0.28, spin: -0.018 },
+      { x: 480, y: 2220, w: 280, h: 16, angle: 0.18, spin: 0.015 },
+      { x: 275, y: 3760, w: 240, h: 16, angle: -0.2, spin: -0.017 },
+      { x: 700, y: 5060, w: 240, h: 16, angle: 0.23, spin: 0.017 },
+      { x: 480, y: 6400, w: 320, h: 16, angle: -0.12, spin: -0.014 },
     ];
 
     const bumpers = bumperData.map((b) => {
       const body = Matter.Bodies.rectangle(b.x, b.y, b.w, b.h, {
         isStatic: true,
         angle: b.angle,
-        restitution: 0.92,
+        restitution: 0.85,
         friction: 0,
-        render: bumperStyle,
+        render: yellowStyle,
       }) as RotatingBumper;
 
       body.spinSpeed = b.spin;
@@ -252,86 +333,46 @@ export default function PinballPage() {
     });
 
     bumpersRef.current = bumpers;
+    Matter.Composite.add(engine.world, bumpers);
 
-    const funnelLeft = Matter.Bodies.rectangle(
-      245,
-      WORLD_HEIGHT - 175,
-      320,
-      22,
-      {
+    const funnelWalls = [
+      Matter.Bodies.rectangle(310, WORLD_HEIGHT - 260, 430, 22, {
         isStatic: true,
-        angle: 0.95,
-        restitution: 0.35,
+        angle: 0.88,
+        restitution: 0.28,
         friction: 0,
         render: { fillStyle: "#52525b" },
-      }
-    );
-
-    const funnelRight = Matter.Bodies.rectangle(
-      475,
-      WORLD_HEIGHT - 175,
-      320,
-      22,
-      {
+      }),
+      Matter.Bodies.rectangle(670, WORLD_HEIGHT - 260, 430, 22, {
         isStatic: true,
-        angle: -0.95,
-        restitution: 0.35,
+        angle: -0.88,
+        restitution: 0.28,
         friction: 0,
         render: { fillStyle: "#52525b" },
-      }
-    );
-
-    const bottomLeftWall = Matter.Bodies.rectangle(
-      120,
-      WORLD_HEIGHT - 35,
-      220,
-      30,
-      {
+      }),
+      Matter.Bodies.rectangle(260, WORLD_HEIGHT - 40, 330, 32, {
         isStatic: true,
         render: wallStyle,
-      }
-    );
-
-    const bottomRightWall = Matter.Bodies.rectangle(
-      600,
-      WORLD_HEIGHT - 35,
-      220,
-      30,
-      {
+      }),
+      Matter.Bodies.rectangle(720, WORLD_HEIGHT - 40, 330, 32, {
         isStatic: true,
         render: wallStyle,
-      }
-    );
+      }),
+    ];
 
-    const exitSensor = Matter.Bodies.rectangle(
-      WORLD_WIDTH / 2,
-      WORLD_HEIGHT - 28,
-      90,
-      80,
-      {
-        isStatic: true,
-        isSensor: true,
-        label: "exit",
-        render: {
-          fillStyle: "rgba(250,204,21,0.24)",
-        },
-      }
-    );
+    const exitSensor = Matter.Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT - 28, 95, 80, {
+      isStatic: true,
+      isSensor: true,
+      label: "exit",
+      render: { fillStyle: "rgba(250,204,21,0.28)" },
+    });
 
-    Matter.Composite.add(engine.world, [
-      ...pins,
-      ...bumpers,
-      funnelLeft,
-      funnelRight,
-      bottomLeftWall,
-      bottomRightWall,
-      exitSensor,
-    ]);
+    Matter.Composite.add(engine.world, [...funnelWalls, exitSensor]);
 
     const balls = finishOrder.map((color: string, index: number) => {
       const isFinal = color === finalColor;
 
-      const ball = Matter.Bodies.circle(140 + index * 110, 70, 22, {
+      const ball = Matter.Bodies.circle(320 + index * 85, 70, 22, {
         label: `ball:${color}`,
         restitution: 0.52,
         friction: 0.01,
@@ -395,15 +436,15 @@ export default function PinballPage() {
           };
         }
 
-        if (stuckRef.current[key].count > 35) {
+        if (stuckRef.current[key].count > 32) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.018,
-            y: 0.025,
+            x: (Math.random() - 0.5) * 0.02,
+            y: 0.03,
           });
 
           Matter.Body.setVelocity(ball, {
-            x: (Math.random() - 0.5) * 8,
-            y: Math.max(ball.velocity.y, 5),
+            x: (Math.random() - 0.5) * 9,
+            y: Math.max(ball.velocity.y, 6),
           });
 
           stuckRef.current[key].count = 0;
@@ -411,8 +452,8 @@ export default function PinballPage() {
 
         if (speed < 0.35 && ball.position.y < WORLD_HEIGHT - 260) {
           Matter.Body.applyForce(ball, ball.position, {
-            x: (Math.random() - 0.5) * 0.004,
-            y: 0.006,
+            x: (Math.random() - 0.5) * 0.005,
+            y: 0.007,
           });
         }
       });
@@ -433,13 +474,13 @@ export default function PinballPage() {
 
         if (isFinalBall && remainingBeforeFinal) {
           Matter.Body.setPosition(ball, {
-            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 120 : -120),
-            y: WORLD_HEIGHT - 520,
+            x: WORLD_WIDTH / 2 + (Math.random() > 0.5 ? 180 : -180),
+            y: WORLD_HEIGHT - 650,
           });
 
           Matter.Body.setVelocity(ball, {
-            x: Math.random() > 0.5 ? 6 : -6,
-            y: -10,
+            x: Math.random() > 0.5 ? 7 : -7,
+            y: -12,
           });
 
           return;
@@ -467,8 +508,14 @@ export default function PinballPage() {
       const activeBalls = ballsRef.current;
 
       if (activeBalls.length > 0) {
-        const maxY = Math.max(...activeBalls.map((ball) => ball.position.y));
-        const nextCamera = Math.max(0, Math.min(WORLD_HEIGHT - VIEW_HEIGHT, maxY - 420));
+        const leaderY = Math.max(...activeBalls.map((ball) => ball.position.y));
+        const visibleWorldHeight = VIEW_HEIGHT / CAMERA_SCALE;
+
+        const nextCamera = Math.max(
+          0,
+          Math.min(WORLD_HEIGHT - visibleWorldHeight, leaderY - visibleWorldHeight * 0.45)
+        );
+
         setCameraY(nextCamera);
       }
 
@@ -506,7 +553,7 @@ export default function PinballPage() {
         </div>
       )}
 
-      <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[300px_1fr_360px]">
+      <div className="mx-auto grid max-w-[1600px] gap-6 xl:grid-cols-[300px_1fr_360px]">
         <section className="rounded-3xl bg-zinc-950 p-6">
           <h1 className="mb-6 text-3xl font-black text-yellow-400">
             핀볼 WIN 색 맞추기
@@ -526,9 +573,7 @@ export default function PinballPage() {
                 }}
                 disabled={loading}
                 className={`rounded-2xl px-4 py-4 font-black ${
-                  ballCount === count
-                    ? "bg-yellow-400 text-black"
-                    : "bg-zinc-800 text-white"
+                  ballCount === count ? "bg-yellow-400 text-black" : "bg-zinc-800 text-white"
                 }`}
               >
                 {count}공
@@ -615,18 +660,13 @@ export default function PinballPage() {
             ) : (
               logs.map((log) => (
                 <div key={log.id} className="rounded-2xl bg-zinc-900 p-4">
-                  <div className="text-sm text-zinc-400">
-                    {log.ball_count}공 모드
-                  </div>
+                  <div className="text-sm text-zinc-400">{log.ball_count}공 모드</div>
 
                   <div className="font-black text-white">
                     선택: {COLOR_LABELS[log.selected_color]}
                   </div>
 
-                  <div
-                    className="font-black"
-                    style={{ color: COLOR_HEX[log.loser_color] }}
-                  >
+                  <div className="font-black" style={{ color: COLOR_HEX[log.loser_color] }}>
                     WIN: {COLOR_LABELS[log.loser_color]}
                   </div>
 
