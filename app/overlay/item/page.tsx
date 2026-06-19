@@ -21,7 +21,7 @@ export default function ItemOverlayPage() {
   const currentIdRef = useRef<number | null>(null);
 
   const outlineStyle = {
-    WebkitTextStroke: "2px #000000",
+    WebkitTextStroke: "3px #000000",
     paintOrder: "stroke fill",
   } as React.CSSProperties;
 
@@ -194,7 +194,7 @@ export default function ItemOverlayPage() {
           )}
 
           <div
-            className="text-[64px] font-black text-center leading-[1.12]"
+            className="text-[52px] font-black text-center leading-[1.18]"
             style={{
               fontWeight: 1000,
             }}
@@ -207,7 +207,7 @@ export default function ItemOverlayPage() {
             style={{
               color: "#ffffff",
               fontWeight: 1000,
-              WebkitTextStroke: "1.5px #000000",
+              WebkitTextStroke: "2.5px #000000",
               paintOrder: "stroke fill",
             }}
           >
