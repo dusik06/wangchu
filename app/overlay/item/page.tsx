@@ -21,9 +21,9 @@ export default function ItemOverlayPage() {
   const currentIdRef = useRef<number | null>(null);
 
   const outlineStyle = {
-  WebkitTextStroke: "8px #000000",
-  paintOrder: "stroke fill",
-} as React.CSSProperties;
+    WebkitTextStroke: "5px #000000",
+    paintOrder: "stroke fill",
+  } as React.CSSProperties;
 
   function clearTimer() {
     if (timerRef.current) {
@@ -42,14 +42,14 @@ export default function ItemOverlayPage() {
 
   function renderColoredText(text: string) {
     const nickname = current?.nickname || "";
-  
+
     const regex = new RegExp(
       `(${nickname})|(도토리\\s*[0-9,]+개)`,
       "g"
     );
-  
+
     const parts = text.split(regex).filter(Boolean);
-  
+
     return parts.map((part, index) => {
       if (part === nickname) {
         return (
@@ -64,7 +64,7 @@ export default function ItemOverlayPage() {
           </span>
         );
       }
-  
+
       if (/도토리\s*[0-9,]+개/.test(part)) {
         return (
           <span
@@ -78,7 +78,7 @@ export default function ItemOverlayPage() {
           </span>
         );
       }
-  
+
       return (
         <span
           key={index}
@@ -189,7 +189,7 @@ export default function ItemOverlayPage() {
           className="flex flex-col items-center justify-center px-14 py-10"
           style={{
             fontFamily:
-              "'Black Han Sans', 'Arial Black', 'Malgun Gothic', sans-serif",
+              "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
           }}
         >
           {current.item_image && (
@@ -201,7 +201,7 @@ export default function ItemOverlayPage() {
           )}
 
           <div
-            className="text-[44px] font-black text-center leading-[1.28]"
+            className="max-w-[1600px] whitespace-nowrap text-[58px] font-black text-center leading-[1.2]"
             style={{
               fontWeight: 1000,
             }}
@@ -210,11 +210,11 @@ export default function ItemOverlayPage() {
           </div>
 
           <div
-            className="mt-5 text-[28px] font-black text-center max-w-[1100px] leading-[1.3]"
+            className="mt-5 text-[36px] font-black text-center max-w-[1400px] leading-[1.25]"
             style={{
               color: "#ffffff",
               fontWeight: 1000,
-              WebkitTextStroke: "8px #000000",
+              WebkitTextStroke: "4px #000000",
               paintOrder: "stroke fill",
             }}
           >
