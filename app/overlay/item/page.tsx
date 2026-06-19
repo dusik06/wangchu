@@ -8,6 +8,7 @@ type AlertItem = {
   item_name: string;
   item_image: string | null;
   item_audio: string | null;
+  overlay_text: string | null;
   message: string;
 };
 
@@ -26,15 +27,21 @@ export default function ItemOverlayPage() {
     }
   }
 
+  function getOverlayText(item: AlertItem) {
+    if (item.overlay_text && item.overlay_text.trim()) {
+      return item.overlay_text.replace(/\{nickname\}/g, item.nickname);
+    }
+
+    return `${item.nickname}님이 ${item.item_name} 아이템을 사용했습니다!`;
+  }
+
   async function markDone(id: number) {
     clearTimer();
 
     try {
       await fetch("/api/overlay/item-done", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
     } catch (error) {
@@ -142,17 +149,7 @@ export default function ItemOverlayPage() {
               fontWeight: 1000,
             }}
           >
-            <span
-              style={{
-                color: "#39ff14",
-                fontWeight: 1000,
-              }}
-            >
-              {current.nickname}
-            </span>
-            님이
-            <br />
-            홈페이지에서 도토리를 사용했습니다!
+            {getOverlayText(current)}
           </div>
 
           <div
