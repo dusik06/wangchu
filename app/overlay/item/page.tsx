@@ -21,9 +21,9 @@ export default function ItemOverlayPage() {
   const currentIdRef = useRef<number | null>(null);
 
   const outlineStyle = {
-    WebkitTextStroke: "3px #000000",
-    paintOrder: "stroke fill",
-  } as React.CSSProperties;
+  WebkitTextStroke: "4px #000000",
+  paintOrder: "stroke fill",
+} as React.CSSProperties;
 
   function clearTimer() {
     if (timerRef.current) {
@@ -194,7 +194,7 @@ export default function ItemOverlayPage() {
           )}
 
           <div
-            className="text-[52px] font-black text-center leading-[1.18]"
+            className="text-[44px] font-black text-center leading-[1.28]"
             style={{
               fontWeight: 1000,
             }}
@@ -203,11 +203,11 @@ export default function ItemOverlayPage() {
           </div>
 
           <div
-            className="mt-5 text-[40px] font-black text-center max-w-[1100px] leading-[1.15]"
+            className="mt-5 text-[28px] font-black text-center max-w-[1100px] leading-[1.3]"
             style={{
               color: "#ffffff",
               fontWeight: 1000,
-              WebkitTextStroke: "2.5px #000000",
+              WebkitTextStroke: "3px #000000",
               paintOrder: "stroke fill",
             }}
           >
