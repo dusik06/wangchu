@@ -41,10 +41,17 @@ export default function ItemOverlayPage() {
   }
 
   function renderColoredText(text: string) {
-    const parts = text.split(/(도토리\s*[0-9,]+개)/g);
-
+    const nickname = current?.nickname || "";
+  
+    const regex = new RegExp(
+      `(${nickname})|(도토리\\s*[0-9,]+개)`,
+      "g"
+    );
+  
+    const parts = text.split(regex).filter(Boolean);
+  
     return parts.map((part, index) => {
-      if (part === current?.nickname) {
+      if (part === nickname) {
         return (
           <span
             key={index}
@@ -57,7 +64,7 @@ export default function ItemOverlayPage() {
           </span>
         );
       }
-
+  
       if (/도토리\s*[0-9,]+개/.test(part)) {
         return (
           <span
@@ -71,7 +78,7 @@ export default function ItemOverlayPage() {
           </span>
         );
       }
-
+  
       return (
         <span
           key={index}
