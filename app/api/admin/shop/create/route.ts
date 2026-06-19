@@ -34,6 +34,7 @@ export async function POST(req: Request) {
   const price = Number(body.price || 0);
   const itemImage = String(body.itemImage || "").trim();
   const itemAudio = String(body.itemAudio || "").trim();
+  const overlayText = String(body.overlayText || "").trim();
 
   if (!itemName) {
     return NextResponse.json(
@@ -49,22 +50,6 @@ export async function POST(req: Request) {
     );
   }
 
-  if (itemType === "signature") {
-    if (!itemImage) {
-      return NextResponse.json(
-        { error: "시그아이템은 이미지 URL이 필요합니다." },
-        { status: 400 }
-      );
-    }
-
-    if (!itemAudio) {
-      return NextResponse.json(
-        { error: "시그아이템은 노래 URL이 필요합니다." },
-        { status: 400 }
-      );
-    }
-  }
-
   await db.query(
     `
     INSERT INTO shop_items
@@ -74,9 +59,10 @@ export async function POST(req: Request) {
       price,
       item_image,
       item_audio,
+      overlay_text,
       is_active
     )
-    VALUES (?, ?, ?, ?, ?, 1)
+    VALUES (?, ?, ?, ?, ?, ?, 1)
     `,
     [
       itemName,
@@ -84,6 +70,7 @@ export async function POST(req: Request) {
       price,
       itemImage || null,
       itemAudio || null,
+      overlayText || null,
     ]
   );
 

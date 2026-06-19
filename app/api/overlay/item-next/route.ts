@@ -13,7 +13,8 @@ export async function GET() {
         item_name,
         item_image,
         item_audio,
-        message
+        message,
+        overlay_text
       FROM item_use_alerts
       WHERE status = 'pending'
       ORDER BY id ASC
@@ -27,6 +28,13 @@ export async function GET() {
       return NextResponse.json({ item: null });
     }
 
+    if (item.overlay_text) {
+      item.overlay_text = item.overlay_text.replace(
+        /\{nickname\}/g,
+        item.nickname
+      );
+    }
+
     await db.query(
       "UPDATE item_use_alerts SET status = 'playing' WHERE id = ?",
       [item.id]
@@ -35,6 +43,7 @@ export async function GET() {
     return NextResponse.json({ item });
   } catch (error) {
     console.error(error);
+
     return NextResponse.json(
       { error: "아이템 알림 조회 오류" },
       { status: 500 }

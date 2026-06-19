@@ -67,18 +67,15 @@ export async function POST(req: Request) {
 
     const user = users[0];
 
-    if (!user) {
-      await connection.rollback();
-
-      return NextResponse.json(
-        { error: "유저 정보를 찾을 수 없습니다." },
-        { status: 404 }
-      );
-    }
-
     const [items]: any = await connection.query(
       `
-      SELECT id, item_name, item_image, item_audio, item_count
+      SELECT
+        id,
+        item_name,
+        item_image,
+        item_audio,
+        overlay_text,
+        item_count
       FROM user_inventory
       WHERE id = ?
         AND user_id = ?
@@ -123,17 +120,18 @@ export async function POST(req: Request) {
     await connection.query(
       `
       INSERT INTO item_use_alerts
-        (
-          user_id,
-          nickname,
-          item_name,
-          item_image,
-          item_audio,
-          message,
-          status
-        )
+      (
+        user_id,
+        nickname,
+        item_name,
+        item_image,
+        item_audio,
+        overlay_text,
+        message,
+        status
+      )
       VALUES
-        (?, ?, ?, ?, ?, ?, 'pending')
+      (?, ?, ?, ?, ?, ?, ?, 'pending')
       `,
       [
         user.id,
@@ -141,6 +139,7 @@ export async function POST(req: Request) {
         item.item_name,
         item.item_image || null,
         item.item_audio || null,
+        item.overlay_text || null,
         message,
       ]
     );

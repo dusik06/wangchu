@@ -139,6 +139,13 @@ export default async function AdminPage() {
           <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold hover:bg-slate-700" href="/admin/coupons">
             쿠폰 관리
           </a>
+
+<a
+  className="cursor-pointer rounded-xl bg-rose-500 p-6 font-bold hover:bg-rose-400"
+  href="/admin/nickname-logs"
+>
+  📝 닉네임 변경 기록
+</a>
         </div>
       </div>
     </main>

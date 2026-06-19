@@ -209,8 +209,8 @@ export default async function Home() {
   const isLiveOn = video?.isLive === true;
   const videos = Array.isArray(video?.videos) ? video.videos : [];
   const shorts = Array.isArray(video?.shorts)
-  ? video.shorts.slice(0, 10)
-  : videos.slice(0, 10);
+    ? video.shorts.slice(0, 10)
+    : videos.slice(0, 10);
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
@@ -259,18 +259,12 @@ export default async function Home() {
                 <a href="/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">주사위 홀짝</a>
                 <a href="/prediction" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">승패 예측</a>
                 <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">
-  사다리게임
-</a>
+                  사다리게임
+                </a>
                 <span className="block rounded-xl px-4 py-3 text-zinc-500">뽑기 준비중</span>
-                <span className="block rounded-xl px-4 py-3 text-zinc-500">핀볼 준비중</span>
-              </div>
-            </div>
-
-            <div className="group relative">
-              <button className="hover:text-[#f7d36b]">랭킹 ▾</button>
-              <div className="invisible absolute left-0 top-8 w-52 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
-                <a href="#ranking" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리랭킹</a>
-                <a href="#ranking" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">배팅랭킹</a>
+                <a href="/game/pinball" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">
+                  핀볼게임
+                </a>
               </div>
             </div>
 
@@ -302,15 +296,14 @@ export default async function Home() {
           </nav>
 
           <div className="flex items-center gap-3">
-          {currentUser && (
-  <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:flex">
-    <span className="text-lg">🌰</span>
-    <span className="whitespace-nowrap text-sm font-black text-white">
-      {currentUser.dotori?.toLocaleString() || 0}개
-    </span>
-  </div>
-)}
-
+            {currentUser && (
+              <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:flex">
+                <span className="text-lg">🌰</span>
+                <span className="whitespace-nowrap text-sm font-black text-white">
+                  {currentUser.dotori?.toLocaleString() || 0}개
+                </span>
+              </div>
+            )}
 
             <LoginButton />
           </div>
@@ -328,13 +321,13 @@ export default async function Home() {
             </div>
 
             <div className="space-y-5">
-            <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-3xl border border-[#3b321f] bg-black">
+              <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-3xl border border-[#3b321f] bg-black">
                 <VideoPlayer videos={videos} />
               </div>
 
-                <ShortsSlider videos={shorts} />
-              </div>
+              <ShortsSlider videos={shorts} />
             </div>
+          </div>
 
           <div className="space-y-5">
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
@@ -391,20 +384,20 @@ export default async function Home() {
                   <p className="text-xs text-zinc-500">예측하기</p>
                 </a>
                 <a href="/game/ladder" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
-  <div className="text-4xl">🪜</div>
-  <p className="mt-3 font-black">사다리게임</p>
-  <p className="text-xs text-zinc-500">게임하기</p>
-</a>
+                  <div className="text-4xl">🪜</div>
+                  <p className="mt-3 font-black">사다리게임</p>
+                  <p className="text-xs text-zinc-500">게임하기</p>
+                </a>
                 <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-75">
                   <div className="text-4xl">🎁</div>
                   <p className="mt-3 font-black">뽑기</p>
                   <p className="text-xs text-zinc-500">COMING SOON</p>
                 </div>
-                <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-75">
+                <a href="/game/pinball" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">🕹️</div>
                   <p className="mt-3 font-black">핀볼</p>
-                  <p className="text-xs text-zinc-500">COMING SOON</p>
-                </div>
+                  <p className="text-xs text-zinc-500">게임하기</p>
+                </a>
                 <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-60">
                   <div className="text-4xl">?</div>
                   <p className="mt-3 font-black">준비중</p>
@@ -416,8 +409,6 @@ export default async function Home() {
 
           <aside id="ranking" className="space-y-5">
             <GameRanking dotoriRanking={dotoriRanking} />
-
-            
           </aside>
         </section>
 

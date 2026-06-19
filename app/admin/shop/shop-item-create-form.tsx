@@ -8,6 +8,7 @@ export default function ShopItemCreateForm() {
   const [price, setPrice] = useState("");
   const [itemImage, setItemImage] = useState("");
   const [itemAudio, setItemAudio] = useState("");
+  const [overlayText, setOverlayText] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function createItem() {
@@ -46,6 +47,7 @@ export default function ShopItemCreateForm() {
         price: Number(price),
         itemImage,
         itemAudio,
+        overlayText,
       }),
     });
 
@@ -75,10 +77,7 @@ export default function ShopItemCreateForm() {
               : "border-white/10 bg-slate-800 text-white"
           }`}
         >
-          1번 일반아이템
-          <p className="mt-1 text-sm font-normal opacity-80">
-            이름과 도토리 가격만 등록
-          </p>
+          일반아이템
         </button>
 
         <button
@@ -90,63 +89,59 @@ export default function ShopItemCreateForm() {
               : "border-white/10 bg-slate-800 text-white"
           }`}
         >
-          2번 시그아이템
-          <p className="mt-1 text-sm font-normal opacity-80">
-            이미지 URL + 노래 URL 필수
-          </p>
+          시그아이템
         </button>
       </div>
 
       <div className="grid gap-4">
-        <div>
-          <label className="mb-2 block text-sm font-bold text-slate-300">
-            아이템 이름
-          </label>
-          <input
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            placeholder="예: 노래재생권"
-            className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none"
-          />
-        </div>
+        <input
+          value={itemName}
+          onChange={(e) => setItemName(e.target.value)}
+          placeholder="아이템 이름"
+          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+        />
+
+        <input
+          value={price}
+          onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+          placeholder="가격 / 도토리"
+          className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+        />
 
         <div>
-          <label className="mb-2 block text-sm font-bold text-slate-300">
-            가격 / 도토리
-          </label>
-          <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-            placeholder="예: 100"
-            className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none"
+          <textarea
+            value={overlayText}
+            onChange={(e) => setOverlayText(e.target.value)}
+            placeholder="{nickname}님이 노래를 신청했습니다!"
+            className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white min-h-[120px]"
           />
+
+          <div className="mt-2 rounded-xl bg-slate-800 p-4 text-sm text-slate-300">
+            <p className="font-bold text-yellow-300 mb-2">사용 예시</p>
+            <p>{`{nickname}님이 노래를 신청했습니다!`}</p>
+            <p>{`{nickname}님의 시그 발동!`}</p>
+            <p>{`{nickname}님이 폭죽을 터뜨렸습니다!`}</p>
+            <p className="mt-2 text-xs text-slate-400">
+              ※ {"{nickname}"} 은 실제 사용자의 닉네임으로 자동 변경됩니다.
+            </p>
+          </div>
         </div>
 
         {itemType === "signature" && (
           <>
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-300">
-                이미지 URL
-              </label>
-              <input
-                value={itemImage}
-                onChange={(e) => setItemImage(e.target.value)}
-                placeholder="https://..."
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none"
-              />
-            </div>
+            <input
+              value={itemImage}
+              onChange={(e) => setItemImage(e.target.value)}
+              placeholder="이미지 URL"
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+            />
 
-            <div>
-              <label className="mb-2 block text-sm font-bold text-slate-300">
-                노래 URL
-              </label>
-              <input
-                value={itemAudio}
-                onChange={(e) => setItemAudio(e.target.value)}
-                placeholder="https://...mp3"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none"
-              />
-            </div>
+            <input
+              value={itemAudio}
+              onChange={(e) => setItemAudio(e.target.value)}
+              placeholder="노래 URL"
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+            />
           </>
         )}
 
