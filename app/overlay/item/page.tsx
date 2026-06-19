@@ -21,7 +21,7 @@ export default function ItemOverlayPage() {
   const currentIdRef = useRef<number | null>(null);
 
   const outlineStyle = {
-    WebkitTextStroke: "5px #000000",
+    WebkitTextStroke: "7px #000000",
     paintOrder: "stroke fill",
   } as React.CSSProperties;
 
@@ -40,14 +40,25 @@ export default function ItemOverlayPage() {
     return `${item.nickname}님이 ${item.item_name} 아이템을 사용했습니다!`;
   }
 
+  function splitOverlayLines(text: string) {
+    const match = text.match(/^(.*?도토리\s*[0-9,]+개)를?\s*(.*)$/);
+
+    if (!match) {
+      return {
+        firstLine: text,
+        secondLine: "",
+      };
+    }
+
+    return {
+      firstLine: `${match[1]}를`,
+      secondLine: match[2] || "사용했습니다.",
+    };
+  }
+
   function renderColoredText(text: string) {
     const nickname = current?.nickname || "";
-
-    const regex = new RegExp(
-      `(${nickname})|(도토리\\s*[0-9,]+개)`,
-      "g"
-    );
-
+    const regex = new RegExp(`(${nickname})|(도토리\\s*[0-9,]+개)`, "g");
     const parts = text.split(regex).filter(Boolean);
 
     return parts.map((part, index) => {
@@ -182,6 +193,9 @@ export default function ItemOverlayPage() {
     };
   }, [isPlaying]);
 
+  const overlayText = current ? getOverlayText(current) : "";
+  const overlayLines = splitOverlayLines(overlayText);
+
   return (
     <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
       {current && (
@@ -201,12 +215,13 @@ export default function ItemOverlayPage() {
           )}
 
           <div
-            className="max-w-[1600px] whitespace-nowrap text-[58px] font-black text-center leading-[1.2]"
+            className="text-[54px] font-black text-center leading-[1.25]"
             style={{
               fontWeight: 1000,
             }}
           >
-            {renderColoredText(getOverlayText(current))}
+            <div>{renderColoredText(overlayLines.firstLine)}</div>
+            <div>{renderColoredText(overlayLines.secondLine)}</div>
           </div>
 
           <div
@@ -214,7 +229,7 @@ export default function ItemOverlayPage() {
             style={{
               color: "#ffffff",
               fontWeight: 1000,
-              WebkitTextStroke: "4px #000000",
+              WebkitTextStroke: "6px #000000",
               paintOrder: "stroke fill",
             }}
           >
