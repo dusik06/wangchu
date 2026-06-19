@@ -21,7 +21,7 @@ export default function ItemOverlayPage() {
   const currentIdRef = useRef<number | null>(null);
 
   const outlineStyle = {
-  WebkitTextStroke: "4px #000000",
+  WebkitTextStroke: "6px #000000",
   paintOrder: "stroke fill",
 } as React.CSSProperties;
 
@@ -207,7 +207,7 @@ export default function ItemOverlayPage() {
             style={{
               color: "#ffffff",
               fontWeight: 1000,
-              WebkitTextStroke: "3px #000000",
+              WebkitTextStroke: "6px #000000",
               paintOrder: "stroke fill",
             }}
           >
