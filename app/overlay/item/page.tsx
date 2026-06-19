@@ -20,6 +20,11 @@ export default function ItemOverlayPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const currentIdRef = useRef<number | null>(null);
 
+  const outlineStyle = {
+    WebkitTextStroke: "2px #000000",
+    paintOrder: "stroke fill",
+  } as React.CSSProperties;
+
   function clearTimer() {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -33,6 +38,52 @@ export default function ItemOverlayPage() {
     }
 
     return `${item.nickname}님이 ${item.item_name} 아이템을 사용했습니다!`;
+  }
+
+  function renderColoredText(text: string) {
+    const parts = text.split(/(도토리\s*[0-9,]+개)/g);
+
+    return parts.map((part, index) => {
+      if (part === current?.nickname) {
+        return (
+          <span
+            key={index}
+            style={{
+              color: "#8dff8d",
+              ...outlineStyle,
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+
+      if (/도토리\s*[0-9,]+개/.test(part)) {
+        return (
+          <span
+            key={index}
+            style={{
+              color: "#ff2d2d",
+              ...outlineStyle,
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+
+      return (
+        <span
+          key={index}
+          style={{
+            color: "#ffffff",
+            ...outlineStyle,
+          }}
+        >
+          {part}
+        </span>
+      );
+    });
   }
 
   async function markDone(id: number) {
@@ -145,18 +196,19 @@ export default function ItemOverlayPage() {
           <div
             className="text-[64px] font-black text-center leading-[1.12]"
             style={{
-              color: "#000000",
               fontWeight: 1000,
             }}
           >
-            {getOverlayText(current)}
+            {renderColoredText(getOverlayText(current))}
           </div>
 
           <div
             className="mt-5 text-[40px] font-black text-center max-w-[1100px] leading-[1.15]"
             style={{
-              color: "#000000",
+              color: "#ffffff",
               fontWeight: 1000,
+              WebkitTextStroke: "1.5px #000000",
+              paintOrder: "stroke fill",
             }}
           >
             {current.message}
