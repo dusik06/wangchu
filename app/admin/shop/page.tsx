@@ -3,6 +3,7 @@ import db from "@/lib/db";
 import { redirect } from "next/navigation";
 import ShopItemCreateForm from "./shop-item-create-form";
 import DeleteButton from "./delete-button";
+import ShopItemEditForm from "./shop-item-edit-form";
 
 export default async function AdminShopPage() {
   const session = await getServerSession();
@@ -89,6 +90,8 @@ export default async function AdminShopPage() {
                   ) : (
                     <p className="mt-2 text-xs text-slate-400">노래 없음</p>
                   )}
+
+                  <ShopItemEditForm item={item} />
 
                   <DeleteButton
                     itemId={item.id}
