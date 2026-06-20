@@ -32,9 +32,7 @@ export default async function AdminUsersPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-pink-400">
-            회원 관리
-          </h1>
+          <h1 className="text-3xl font-bold text-pink-400">회원 관리</h1>
 
           <a href="/admin" className="bg-slate-800 px-4 py-2 rounded-lg">
             관리자 홈
@@ -72,7 +70,15 @@ export default async function AdminUsersPage() {
                     )}
                   </td>
 
-                  <td className="p-4 font-bold">{user.nickname}</td>
+                  <td className="p-4 font-bold">
+                    <a
+                      href={`/admin/users/${user.id}`}
+                      className="text-cyan-400 hover:underline"
+                    >
+                      {user.nickname}
+                    </a>
+                  </td>
+
                   <td className="p-4 text-gray-300">{user.email}</td>
 
                   <td className="p-4">
