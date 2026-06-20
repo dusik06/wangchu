@@ -77,17 +77,23 @@ export default async function AdminPage() {
         <div className="mb-8 grid gap-5 md:grid-cols-5">
           <div className="rounded-xl bg-slate-800 p-5">
             <p className="text-gray-400">전체 회원</p>
-            <h2 className="mt-2 text-3xl font-bold">{userCountRows[0].count}명</h2>
+            <h2 className="mt-2 text-3xl font-bold">
+              {userCountRows[0].count}명
+            </h2>
           </div>
 
           <div className="rounded-xl bg-slate-800 p-5">
             <p className="text-gray-400">오늘 출석</p>
-            <h2 className="mt-2 text-3xl font-bold">{attendanceRows[0].count}명</h2>
+            <h2 className="mt-2 text-3xl font-bold">
+              {attendanceRows[0].count}명
+            </h2>
           </div>
 
           <div className="rounded-xl bg-slate-800 p-5">
             <p className="text-gray-400">쿠폰 수</p>
-            <h2 className="mt-2 text-3xl font-bold">{couponRows[0].count}개</h2>
+            <h2 className="mt-2 text-3xl font-bold">
+              {couponRows[0].count}개
+            </h2>
           </div>
 
           <div className="rounded-xl bg-slate-800 p-5">
@@ -99,53 +105,89 @@ export default async function AdminPage() {
 
           <div className="rounded-xl bg-slate-800 p-5">
             <p className="text-gray-400">주사위 게임</p>
-            <h2 className="mt-2 text-3xl font-bold">{diceRows[0].count}건</h2>
+            <h2 className="mt-2 text-3xl font-bold">
+              {diceRows[0].count}건
+            </h2>
           </div>
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
-          <a className="cursor-pointer rounded-xl bg-purple-600 p-6 font-bold hover:bg-purple-500" href="/admin/users">
+          <a
+            className="cursor-pointer rounded-xl bg-purple-600 p-6 font-bold hover:bg-purple-500"
+            href="/admin/users"
+          >
             회원 관리
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-pink-500 p-6 font-bold hover:bg-pink-400" href="/admin/dotori">
+          <a
+            className="cursor-pointer rounded-xl bg-pink-500 p-6 font-bold hover:bg-pink-400"
+            href="/admin/dotori"
+          >
             도토리 지급
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-cyan-500 p-6 font-bold text-slate-950 hover:bg-cyan-400" href="/admin/shop">
+          <a
+            className="cursor-pointer rounded-xl bg-cyan-500 p-6 font-bold text-slate-950 hover:bg-cyan-400"
+            href="/admin/shop"
+          >
             🛒 아이템 생성
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-green-500 p-6 font-bold text-slate-950 hover:bg-green-400" href="/admin/live-status">
+          <a
+            className="cursor-pointer rounded-xl bg-green-500 p-6 font-bold text-slate-950 hover:bg-green-400"
+            href="/admin/live-status"
+          >
             🔴 라이브 상태 관리
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-yellow-500 p-6 font-bold text-slate-950 hover:bg-yellow-400" href="/admin/game">
+          <a
+            className="cursor-pointer rounded-xl bg-yellow-500 p-6 font-bold text-slate-950 hover:bg-yellow-400"
+            href="/admin/game"
+          >
             🎲 게임 기록 관리
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-indigo-500 p-6 font-bold hover:bg-indigo-400" href="/admin/prediction">
+          <a
+            className="cursor-pointer rounded-xl bg-indigo-500 p-6 font-bold hover:bg-indigo-400"
+            href="/admin/prediction"
+          >
             📊 승패 예측 생성
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-orange-500 p-6 font-bold hover:bg-orange-400" href="/admin/prediction/settle">
+          <a
+            className="cursor-pointer rounded-xl bg-orange-500 p-6 font-bold hover:bg-orange-400"
+            href="/admin/prediction/settle"
+          >
             💰 예측 결과 정산
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-emerald-500 p-6 font-bold text-slate-950 hover:bg-emerald-400" href="/admin/site-logo">
+          <a
+            className="cursor-pointer rounded-xl bg-emerald-500 p-6 font-bold text-slate-950 hover:bg-emerald-400"
+            href="/admin/site-logo"
+          >
             🖼️ 사이트 로고 설정
           </a>
 
-          <a className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold hover:bg-slate-700" href="/admin/coupons">
+          <a
+            className="cursor-pointer rounded-xl bg-slate-800 p-6 font-bold hover:bg-slate-700"
+            href="/admin/coupons"
+          >
             쿠폰 관리
           </a>
 
-<a
-  className="cursor-pointer rounded-xl bg-rose-500 p-6 font-bold hover:bg-rose-400"
-  href="/admin/nickname-logs"
->
-  📝 닉네임 변경 기록
-</a>
+          <a
+            className="cursor-pointer rounded-xl bg-rose-500 p-6 font-bold hover:bg-rose-400"
+            href="/admin/nickname-logs"
+          >
+            📝 닉네임 변경 기록
+          </a>
+
+          <a
+            className="cursor-pointer rounded-xl bg-amber-500 p-6 font-bold text-black hover:bg-amber-400"
+            href="/admin/stocks"
+          >
+            📈 주식 관리
+          </a>
         </div>
       </div>
     </main>
