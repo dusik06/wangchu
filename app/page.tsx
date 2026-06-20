@@ -347,6 +347,15 @@ export default async function Home() {
               <span className={`rounded-md px-2 py-1 text-xs font-black ${isLiveOn ? "bg-red-600 text-white" : "bg-zinc-700 text-zinc-200"}`}>
                 {isLiveOn ? "LIVE" : "OFF"}
               </span>
+
+              <a
+    href="https://www.youtube.com/@%EB%B0%95%EC%99%95%EC%B8%84"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="rounded-md bg-red-600 px-3 py-1 text-xs font-black text-white hover:bg-red-500"
+  >
+    라이브 보러가기
+  </a>
             </div>
 
             <div className="space-y-5">

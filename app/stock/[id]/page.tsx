@@ -12,11 +12,7 @@ function formatNumber(value: any) {
 
 function formatDate(value: any) {
   const d = new Date(value);
-
-  if (Number.isNaN(d.getTime())) {
-    return "";
-  }
-
+  if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("ko-KR");
 }
 
@@ -26,12 +22,24 @@ function getPriceColor(diff: number) {
   return "text-zinc-400";
 }
 
+function getRangeConfig(range?: string) {
+  if (range === "1m") return { key: "1m", label: "1분", minutes: 60 };
+  if (range === "30m") return { key: "30m", label: "30분", minutes: 1800 };
+  if (range === "1h") return { key: "1h", label: "1시간", minutes: 3600 };
+  return { key: "10m", label: "10분", minutes: 720 };
+}
+
 export default async function StockDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ range?: string }>;
 }) {
   const { id } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const rangeConfig = getRangeConfig(sp?.range);
+
   const session = await getServerSession(authOptions);
 
   let currentUser: any = null;
@@ -76,8 +84,9 @@ export default async function StockDetailPage({
     SELECT *
     FROM stock_price_logs
     WHERE stock_id = ?
+      AND created_at >= DATE_SUB(NOW(), INTERVAL ${rangeConfig.minutes} MINUTE)
     ORDER BY id ASC
-    LIMIT 144
+    LIMIT 240
     `,
     [id]
   );
@@ -168,6 +177,13 @@ export default async function StockDetailPage({
 
   const dangerPrice = currentPrice <= 100;
 
+  const ranges = [
+    { key: "1m", label: "1분" },
+    { key: "10m", label: "10분" },
+    { key: "30m", label: "30분" },
+    { key: "1h", label: "1시간" },
+  ];
+
   return (
     <main className="min-h-screen bg-[#05070d] px-4 py-8 text-white">
       <div className="mx-auto max-w-[1500px]">
@@ -229,7 +245,7 @@ export default async function StockDetailPage({
                 )}
 
                 <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-zinc-300">
-                  10분마다 가격 갱신
+                  현재 차트: {rangeConfig.label}
                 </span>
               </div>
             </div>
@@ -271,11 +287,20 @@ export default async function StockDetailPage({
             <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">가격 차트</h2>
-                <div className="flex gap-2 text-xs font-bold text-zinc-400">
-                  <span className="rounded-lg bg-slate-800 px-3 py-2">1분</span>
-                  <span className="rounded-lg bg-slate-800 px-3 py-2">10분</span>
-                  <span className="rounded-lg bg-slate-800 px-3 py-2">30분</span>
-                  <span className="rounded-lg bg-slate-800 px-3 py-2">1시간</span>
+                <div className="flex gap-2 text-xs font-bold">
+                  {ranges.map((range) => (
+                    <a
+                      key={range.key}
+                      href={`/stock/${id}?range=${range.key}`}
+                      className={`rounded-lg px-3 py-2 ${
+                        rangeConfig.key === range.key
+                          ? "bg-[#f7d36b] text-black"
+                          : "bg-slate-800 text-zinc-400 hover:bg-slate-700"
+                      }`}
+                    >
+                      {range.label}
+                    </a>
+                  ))}
                 </div>
               </div>
 
@@ -319,7 +344,7 @@ export default async function StockDetailPage({
               )}
 
               <p className="mt-3 text-sm text-zinc-500">
-                막대에 마우스를 올리면 해당 가격 기록을 볼 수 있습니다.
+                선택한 시간 범위 안의 가격 기록을 보여줍니다.
               </p>
             </div>
 
