@@ -293,6 +293,10 @@ export default async function Home() {
               </div>
             </div>
 
+            <a href="/stock" className="hover:text-[#f7d36b]">
+  주식
+</a>
+
             {currentUser && (
               <div className="group relative">
                 <button className="hover:text-[#f7d36b]">마이페이지 ▾</button>

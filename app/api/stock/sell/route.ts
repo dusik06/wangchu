@@ -101,7 +101,11 @@ export async function POST(req: Request) {
 
     const currentQuantity = Number(holding.quantity);
     const currentTotalBuy = Number(holding.total_buy_amount);
-    const sellBuyAmount = Math.floor((currentTotalBuy * quantity) / currentQuantity);
+    const sellBuyAmount = Math.floor(
+      (currentTotalBuy * quantity) / currentQuantity
+    );
+    const profitAmount = totalAmount - sellBuyAmount;
+
     const nextQuantity = currentQuantity - quantity;
     const nextTotalBuyAmount = Math.max(0, currentTotalBuy - sellBuyAmount);
 
@@ -138,10 +142,28 @@ export async function POST(req: Request) {
     await connection.query(
       `
       INSERT INTO stock_trades
-      (user_id, stock_id, trade_type, quantity, price, total_amount, created_at)
-      VALUES (?, ?, 'SELL', ?, ?, ?, NOW())
+      (
+        user_id,
+        stock_id,
+        trade_type,
+        quantity,
+        price,
+        total_amount,
+        buy_cost_amount,
+        profit_amount,
+        created_at
+      )
+      VALUES (?, ?, 'SELL', ?, ?, ?, ?, ?, NOW())
       `,
-      [user.id, stock.id, quantity, price, totalAmount]
+      [
+        user.id,
+        stock.id,
+        quantity,
+        price,
+        totalAmount,
+        sellBuyAmount,
+        profitAmount,
+      ]
     );
 
     await connection.query(
@@ -164,6 +186,7 @@ export async function POST(req: Request) {
       price,
       quantity,
       totalAmount,
+      profitAmount,
     });
   } catch (error) {
     await connection.rollback();
