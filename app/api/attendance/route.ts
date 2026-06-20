@@ -62,7 +62,7 @@ export async function POST() {
 
   await db.query(
     "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-    [userId, reward, "출석체크"]
+    [userId, reward, "출석 보상"]
   );
 
   return NextResponse.json({

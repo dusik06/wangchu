@@ -103,6 +103,17 @@ export async function POST(req: Request) {
         status,
       ]
     );
+await connection.query(
+  `
+  INSERT INTO dotori_logs (user_id, amount, reason)
+  VALUES (?, ?, ?)
+  `,
+  [
+    userId,
+    -betAmount,
+    `주사위 배팅 (${choice})`,
+  ]
+);
 
     await connection.commit();
 

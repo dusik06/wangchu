@@ -116,6 +116,33 @@ export async function POST(req: Request) {
         payoutAmount,
       ]
     );
+await connection.query(
+  `
+  INSERT INTO dotori_logs (user_id, amount, reason)
+  VALUES (?, ?, ?)
+  `,
+  [
+    user.id,
+    -betAmount,
+    isWin
+      ? `사다리 배팅 성공 (${betType})`
+      : `사다리 배팅 실패 (${betType})`,
+  ]
+);
+
+if (isWin && payoutAmount > 0) {
+  await connection.query(
+    `
+    INSERT INTO dotori_logs (user_id, amount, reason)
+    VALUES (?, ?, ?)
+    `,
+    [
+      user.id,
+      payoutAmount,
+      `사다리 당첨금 지급 (${betType})`,
+    ]
+  );
+}
 
     await connection.commit();
 

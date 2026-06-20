@@ -108,6 +108,17 @@ export async function POST(req: Request) {
         odds,
       ]
     );
+await connection.query(
+  `
+  INSERT INTO dotori_logs (user_id, amount, reason)
+  VALUES (?, ?, ?)
+  `,
+  [
+    session.user.id,
+    -betAmount,
+    `승패예측 배팅 (${choice})`,
+  ]
+);
 
     await connection.commit();
 

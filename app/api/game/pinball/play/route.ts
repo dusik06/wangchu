@@ -133,6 +133,33 @@ export async function POST(req: Request) {
         payoutAmount,
       ]
     );
+await connection.query(
+  `
+  INSERT INTO dotori_logs (user_id, amount, reason)
+  VALUES (?, ?, ?)
+  `,
+  [
+    user.id,
+    -betAmount,
+    isWin
+      ? `핀볼 배팅 성공 (${selectedColor})`
+      : `핀볼 배팅 실패 (${selectedColor})`,
+  ]
+);
+
+if (isWin && payoutAmount > 0) {
+  await connection.query(
+    `
+    INSERT INTO dotori_logs (user_id, amount, reason)
+    VALUES (?, ?, ?)
+    `,
+    [
+      user.id,
+      payoutAmount,
+      `핀볼 당첨금 지급 (${winnerColor})`,
+    ]
+  );
+}
 
     await connection.commit();
 
