@@ -178,6 +178,29 @@ async function getDotoriRanking() {
   }
 }
 
+async function getStockPreview() {
+  try {
+    const [rows]: any = await db.query(`
+      SELECT
+        s.*,
+        (
+          SELECT price
+          FROM stock_price_logs
+          WHERE stock_id = s.id
+          ORDER BY id DESC
+          LIMIT 1 OFFSET 1
+        ) AS prev_price
+      FROM stock_items s
+      ORDER BY s.is_listed DESC, s.current_price DESC
+      LIMIT 5
+    `);
+
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
@@ -192,6 +215,7 @@ export default async function Home() {
     recentComments,
     shopItems,
     dotoriRanking,
+    stockPreview,
   ] = await Promise.all([
     getCurrentUser(session?.user?.email),
     getYoutubeVideo(),
@@ -203,6 +227,7 @@ export default async function Home() {
     getRecentComments(),
     getShopItems(),
     getDotoriRanking(),
+    getStockPreview(),
   ]);
 
   const isAdmin = currentUser?.role === "admin";
@@ -408,8 +433,83 @@ export default async function Home() {
           </div>
 
           <aside id="ranking" className="space-y-5">
-            <GameRanking dotoriRanking={dotoriRanking} />
-          </aside>
+  <GameRanking dotoriRanking={dotoriRanking} />
+
+  <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-lg font-black text-[#f7d36b]">
+        📈 주식 현황
+      </h2>
+
+      <a
+        href="/stock"
+        className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]"
+      >
+        전체 보기 〉
+      </a>
+    </div>
+
+    {stockPreview.length === 0 ? (
+      <p className="text-sm text-zinc-400">
+        등록된 주식이 없습니다.
+      </p>
+    ) : (
+      <div className="space-y-3">
+        {stockPreview.map((stock: any) => {
+          const prev = Number(stock.prev_price || 0);
+          const current = Number(stock.current_price || 0);
+          const diff = current - prev;
+          const rate =
+            prev > 0 ? Math.floor((diff / prev) * 100) : 0;
+
+          return (
+            <a
+              key={stock.id}
+              href={`/stock/${stock.id}`}
+              className="block rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 hover:border-[#f7d36b]/60"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-black">
+                  {stock.stock_name}
+                </span>
+
+                {stock.is_listed ? (
+                  <span className="text-xs text-emerald-400">
+                    상장중
+                  </span>
+                ) : (
+                  <span className="text-xs text-red-400">
+                    상장폐지
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-2 text-lg font-black text-[#f7d36b]">
+                {current.toLocaleString()} 도토리
+              </p>
+
+              <p
+                className={`mt-1 text-sm font-bold ${
+                  diff > 0
+                    ? "text-red-400"
+                    : diff < 0
+                    ? "text-blue-400"
+                    : "text-zinc-400"
+                }`}
+              >
+                {diff > 0 && "▲"}
+                {diff < 0 && "▼"}
+                {diff === 0
+                  ? "변동 없음"
+                  : `${Math.abs(diff).toLocaleString()} (${Math.abs(rate)}%)`}
+              </p>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</aside>
         </section>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.5fr]">
