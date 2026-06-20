@@ -40,13 +40,18 @@ export default async function AdminStocksPage() {
     LIMIT 30
   `);
 
+  const [delistLogs]: any = await db.query(`
+    SELECT *
+    FROM stock_delist_logs
+    ORDER BY id DESC
+    LIMIT 30
+  `);
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-white">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-black text-[#f7d36b]">
-            주식 관리
-          </h1>
+          <h1 className="text-3xl font-black text-[#f7d36b]">주식 관리</h1>
 
           <a href="/admin" className="rounded-xl bg-slate-800 px-4 py-3">
             관리자 홈
@@ -54,7 +59,6 @@ export default async function AdminStocksPage() {
         </div>
 
         <StockCreateForm />
-
         <StockEventForm stocks={stocks} />
 
         <section className="mt-8 rounded-2xl border border-white/10 bg-slate-900 p-6">
@@ -123,6 +127,55 @@ export default async function AdminStocksPage() {
                   </p>
 
                   <StockEventDeleteButton eventId={event.id} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-red-500/20 bg-red-950/20 p-6">
+          <h2 className="mb-4 text-xl font-black text-red-300">
+            상장폐지 기록
+          </h2>
+
+          {delistLogs.length === 0 ? (
+            <p className="text-zinc-400">상장폐지 기록이 없습니다.</p>
+          ) : (
+            <div className="space-y-3">
+              {delistLogs.map((log: any) => (
+                <div
+                  key={log.id}
+                  className="rounded-xl border border-white/10 bg-slate-800 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-black text-red-300">
+                      {log.stock_name}
+                    </p>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-black ${
+                        log.delist_type === "AUTO"
+                          ? "bg-red-500 text-white"
+                          : "bg-orange-500 text-white"
+                      }`}
+                    >
+                      {log.delist_type === "AUTO"
+                        ? "자동 상폐"
+                        : "관리자 상폐"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-1 text-sm text-zinc-300">
+                    <p>이전 가격: {Number(log.old_price).toLocaleString()}</p>
+                    <p>최종 가격: {Number(log.new_price).toLocaleString()}</p>
+                    <p>변동 금액: {Number(log.change_amount).toLocaleString()}</p>
+                    <p>변동률: {log.change_rate}%</p>
+                    <p>삭제된 보유량: {Number(log.deleted_quantity).toLocaleString()}주</p>
+                    <p>사유: {log.reason}</p>
+                    <p className="text-zinc-500">
+                      {String(log.created_at).slice(0, 19)}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

@@ -16,6 +16,14 @@ function formatDate(value: any) {
   return d.toLocaleString("ko-KR");
 }
 
+function formatShortTime(value: any) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
 function getPriceColor(diff: number) {
   if (diff > 0) return "text-red-400";
   if (diff < 0) return "text-blue-400";
@@ -184,6 +192,55 @@ export default async function StockDetailPage({
     { key: "1h", label: "1시간" },
   ];
 
+  const chartHeight = 360;
+  const chartWidth = Math.max(logs.length - 1, 1);
+
+  const linePoints = logs
+    .map((log: any, index: number) => {
+      const price = Number(log.price || 0);
+      const x = (index / chartWidth) * 100;
+      const y = 100 - ((price - chartMin) / chartRange) * 88 - 6;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  const highIndex = logs.findIndex(
+    (log: any) => Number(log.price || 0) === highPrice
+  );
+  const lowIndex = logs.findIndex(
+    (log: any) => Number(log.price || 0) === lowPrice
+  );
+
+  const highPoint =
+    highIndex >= 0
+      ? {
+          x: (highIndex / chartWidth) * 100,
+          y: 100 - ((highPrice - chartMin) / chartRange) * 88 - 6,
+        }
+      : null;
+
+  const lowPoint =
+    lowIndex >= 0
+      ? {
+          x: (lowIndex / chartWidth) * 100,
+          y: 100 - ((lowPrice - chartMin) / chartRange) * 88 - 6,
+        }
+      : null;
+
+  const currentLineY = 100 - ((currentPrice - chartMin) / chartRange) * 88 - 6;
+
+  const yTicks = [
+    chartMax,
+    Math.floor(chartMax - chartRange * 0.25),
+    Math.floor(chartMax - chartRange * 0.5),
+    Math.floor(chartMax - chartRange * 0.75),
+    chartMin,
+  ];
+
+  const firstLog = logs[0] || null;
+  const middleLog = logs[Math.floor(logs.length / 2)] || null;
+  const lastLog = logs[logs.length - 1] || null;
+
   return (
     <main className="min-h-screen bg-[#05070d] px-4 py-8 text-white">
       <div className="mx-auto max-w-[1500px]">
@@ -285,8 +342,14 @@ export default async function StockDetailPage({
         <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
           <div className="space-y-5">
             <div className="rounded-3xl border border-white/10 bg-slate-900 p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-black">가격 차트</h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black">가격 차트</h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    선 그래프 + 가격 눈금 + 최고/최저 라벨
+                  </p>
+                </div>
+
                 <div className="flex gap-2 text-xs font-bold">
                   {ranges.map((range) => (
                     <a
@@ -307,45 +370,129 @@ export default async function StockDetailPage({
               {logs.length === 0 ? (
                 <p className="text-zinc-400">아직 가격 기록이 없습니다.</p>
               ) : (
-                <div className="relative h-[420px] overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-5">
-                  <div className="absolute inset-x-5 top-5 border-t border-white/10" />
-                  <div className="absolute inset-x-5 top-1/3 border-t border-white/10" />
-                  <div className="absolute inset-x-5 top-2/3 border-t border-white/10" />
-                  <div className="absolute inset-x-5 bottom-5 border-t border-white/10" />
+                <div
+                  className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-5"
+                  style={{ height: chartHeight + 80 }}
+                >
+                  <div className="absolute bottom-12 left-5 right-16 top-5">
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent" />
 
-                  <div className="relative z-10 flex h-full items-end gap-1">
-                    {logs.map((log: any, index: number) => {
-                      const price = Number(log.price || 0);
-                      const prev =
-                        index > 0 ? Number(logs[index - 1].price || 0) : price;
-                      const candleDiff = price - prev;
-                      const height = Math.max(
-                        8,
-                        Math.floor(((price - chartMin) / chartRange) * 350) + 12
-                      );
+                    {[0, 25, 50, 75, 100].map((top) => (
+                      <div
+                        key={top}
+                        className="absolute left-0 right-0 border-t border-white/10"
+                        style={{ top: `${top}%` }}
+                      />
+                    ))}
 
-                      return (
-                        <div
-                          key={log.id}
-                          title={`${formatDate(log.created_at)} / ${formatNumber(
-                            price
-                          )}개`}
-                          className={`flex-1 rounded-t ${
-                            candleDiff >= 0
-                              ? "bg-red-500 hover:bg-red-400"
-                              : "bg-blue-500 hover:bg-blue-400"
-                          }`}
-                          style={{ height }}
+                    <div
+                      className="absolute left-0 right-0 border-t border-dashed border-yellow-300/50"
+                      style={{ top: `${currentLineY}%` }}
+                    >
+                      <span className="absolute -right-14 -top-3 rounded bg-yellow-300 px-2 py-1 text-[10px] font-black text-black">
+                        현재가
+                      </span>
+                    </div>
+
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className="absolute inset-0 h-full w-full overflow-visible"
+                    >
+                      <polyline
+                        points={linePoints}
+                        fill="none"
+                        stroke={diff >= 0 ? "#f87171" : "#60a5fa"}
+                        strokeWidth="1.4"
+                        vectorEffect="non-scaling-stroke"
+                      />
+
+                      {logs.map((log: any, index: number) => {
+                        const price = Number(log.price || 0);
+                        const prev =
+                          index > 0
+                            ? Number(logs[index - 1].price || 0)
+                            : price;
+                        const pointDiff = price - prev;
+                        const x = (index / chartWidth) * 100;
+                        const y =
+                          100 - ((price - chartMin) / chartRange) * 88 - 6;
+
+                        return (
+                          <circle
+                            key={log.id}
+                            cx={x}
+                            cy={y}
+                            r="0.65"
+                            fill={pointDiff >= 0 ? "#ef4444" : "#3b82f6"}
+                          >
+                            <title>
+                              {formatDate(log.created_at)} /{" "}
+                              {formatNumber(price)}개
+                            </title>
+                          </circle>
+                        );
+                      })}
+
+                      {highPoint && (
+                        <circle
+                          cx={highPoint.x}
+                          cy={highPoint.y}
+                          r="1.2"
+                          fill="#ef4444"
                         />
-                      );
-                    })}
+                      )}
+
+                      {lowPoint && (
+                        <circle
+                          cx={lowPoint.x}
+                          cy={lowPoint.y}
+                          r="1.2"
+                          fill="#3b82f6"
+                        />
+                      )}
+                    </svg>
+
+                    {highPoint && (
+                      <div
+                        className="absolute rounded-lg bg-red-500 px-2 py-1 text-[10px] font-black text-white"
+                        style={{
+                          left: `${Math.min(highPoint.x, 82)}%`,
+                          top: `${Math.max(highPoint.y - 8, 0)}%`,
+                        }}
+                      >
+                        최고 {formatNumber(highPrice)}
+                      </div>
+                    )}
+
+                    {lowPoint && (
+                      <div
+                        className="absolute rounded-lg bg-blue-500 px-2 py-1 text-[10px] font-black text-white"
+                        style={{
+                          left: `${Math.min(lowPoint.x, 82)}%`,
+                          top: `${Math.min(lowPoint.y + 4, 88)}%`,
+                        }}
+                      >
+                        최저 {formatNumber(lowPrice)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="absolute bottom-12 right-4 top-5 flex w-12 flex-col justify-between text-right text-[11px] text-zinc-500">
+                    {yTicks.map((tick, index) => (
+                      <span key={index}>{formatNumber(tick)}</span>
+                    ))}
+                  </div>
+
+                  <div className="absolute bottom-4 left-5 right-16 flex justify-between text-[11px] text-zinc-500">
+                    <span>{firstLog ? formatShortTime(firstLog.created_at) : ""}</span>
+                    <span>
+                      {middleLog ? formatShortTime(middleLog.created_at) : ""}
+                    </span>
+                    <span>{lastLog ? formatShortTime(lastLog.created_at) : ""}</span>
                   </div>
                 </div>
               )}
-
-              <p className="mt-3 text-sm text-zinc-500">
-                선택한 시간 범위 안의 가격 기록을 보여줍니다.
-              </p>
             </div>
 
             <section className="rounded-3xl border border-white/10 bg-slate-900 p-6">

@@ -36,13 +36,20 @@ export async function POST() {
 
       const event = events[0] || null;
 
-      let rate = randomInt(-Number(stock.normal_rate), Number(stock.normal_rate));
+      let rate = randomInt(
+        -Number(stock.normal_rate),
+        Number(stock.normal_rate)
+      );
+
       let eventTitle = null;
 
       const specialRoll = randomInt(1, 100);
 
       if (specialRoll <= Number(stock.special_chance)) {
-        rate = randomInt(-Number(stock.special_rate), Number(stock.special_rate));
+        rate = randomInt(
+          -Number(stock.special_rate),
+          Number(stock.special_rate)
+        );
       }
 
       if (event) {
@@ -62,6 +69,19 @@ export async function POST() {
       const newPrice = oldPrice + changeAmount;
 
       if (newPrice <= 0) {
+        const [holdingRows]: any = await connection.query(
+          `
+          SELECT IFNULL(SUM(quantity), 0) AS total_quantity
+          FROM stock_holdings
+          WHERE stock_id = ?
+          `,
+          [stock.id]
+        );
+
+        const deletedQuantity = Number(
+          holdingRows[0]?.total_quantity || 0
+        );
+
         await connection.query(
           `
           UPDATE stock_items
@@ -80,6 +100,44 @@ export async function POST() {
           VALUES (?, 0, ?, ?, ?, NOW())
           `,
           [stock.id, -oldPrice, -100, eventTitle || "상장폐지"]
+        );
+
+        await connection.query(
+          `
+          INSERT INTO stock_delist_logs
+          (
+            stock_id,
+            stock_name,
+            delist_type,
+            old_price,
+            new_price,
+            change_amount,
+            change_rate,
+            deleted_quantity,
+            reason,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+          `,
+          [
+            stock.id,
+            stock.stock_name,
+            "AUTO",
+            oldPrice,
+            0,
+            -oldPrice,
+            -100,
+            deletedQuantity,
+            eventTitle || "가격 0 이하 자동 상장폐지",
+          ]
+        );
+
+        await connection.query(
+          `
+          DELETE FROM stock_holdings
+          WHERE stock_id = ?
+          `,
+          [stock.id]
         );
       } else {
         await connection.query(
