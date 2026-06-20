@@ -12,7 +12,7 @@ function formatNumber(value: any) {
 function getChangeText(currentPrice: number, prevPrice: number | null) {
   if (!prevPrice || prevPrice <= 0) {
     return {
-      text: "변동 없음",
+      text: "기준가 없음",
       className: "text-zinc-400",
     };
   }
@@ -29,7 +29,7 @@ function getChangeText(currentPrice: number, prevPrice: number | null) {
 
   if (diff < 0) {
     return {
-      text: `▼ ${formatNumber(Math.abs(diff))} (${rate}%)`,
+      text: `▼ ${formatNumber(Math.abs(diff))} (${Math.abs(rate)}%)`,
       className: "text-blue-400",
     };
   }
@@ -61,8 +61,9 @@ export default async function StockPage() {
         SELECT price
         FROM stock_price_logs
         WHERE stock_id = s.id
-        ORDER BY id DESC
-        LIMIT 1 OFFSET 1
+          AND created_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
       ) AS prev_price
     FROM stock_items s
     ORDER BY s.is_listed DESC, s.id ASC
@@ -80,8 +81,9 @@ export default async function StockPage() {
             SELECT price
             FROM stock_price_logs
             WHERE stock_id = s.id
-            ORDER BY id DESC
-            LIMIT 1 OFFSET 1
+              AND created_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
           ) AS prev_price
         FROM stock_holdings h
         INNER JOIN stock_items s ON s.id = h.stock_id
