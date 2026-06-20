@@ -75,24 +75,20 @@ export default async function StockPage() {
         SELECT
           h.*,
           s.stock_name,
-          s.current_price,
-          s.is_listed,
-          (
-            SELECT price
-            FROM stock_price_logs
-            WHERE stock_id = s.id
-              AND created_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-            ORDER BY created_at DESC, id DESC
-            LIMIT 1
-          ) AS prev_price
+          s.current_price
         FROM stock_holdings h
         INNER JOIN stock_items s ON s.id = h.stock_id
         WHERE h.user_id = ?
-        ORDER BY h.id DESC
         `,
         [currentUser.id]
       )
     : [[]];
+
+  const holdingsMap = new Map();
+
+  for (const holding of holdings) {
+    holdingsMap.set(Number(holding.stock_id), holding);
+  }
 
   const totalBuyAmount = holdings.reduce(
     (sum: number, h: any) => sum + Number(h.total_buy_amount || 0),
@@ -179,88 +175,34 @@ export default async function StockPage() {
           </section>
         )}
 
-        {currentUser && (
-          <section className="mb-8 rounded-2xl border border-white/10 bg-slate-900 p-6">
-            <h2 className="mb-4 text-xl font-black">내 보유 주식</h2>
-
-            {holdings.length === 0 ? (
-              <p className="text-zinc-400">보유 중인 주식이 없습니다.</p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-3">
-                {holdings.map((holding: any) => {
-                  const evalAmount =
-                    Number(holding.current_price) * Number(holding.quantity);
-                  const holdingProfit =
-                    evalAmount - Number(holding.total_buy_amount);
-                  const holdingRate =
-                    Number(holding.total_buy_amount) > 0
-                      ? Math.floor(
-                          (holdingProfit / Number(holding.total_buy_amount)) *
-                            100
-                        )
-                      : 0;
-
-                  return (
-                    <div
-                      key={holding.id}
-                      title={`10분 전 가격: ${formatNumber(
-                        holding.prev_price
-                      )} / 현재 가격: ${formatNumber(
-                        holding.current_price
-                      )} / 내 투자금: ${formatNumber(
-                        holding.total_buy_amount
-                      )} / 평가손익: ${formatNumber(
-                        holdingProfit
-                      )} (${holdingRate}%)`}
-                      className="rounded-2xl border border-white/10 bg-slate-800 p-5"
-                    >
-                      <p className="text-lg font-black">
-                        {holding.stock_name}
-                      </p>
-
-                      <p className="mt-2 text-sm text-zinc-400">
-                        보유 {formatNumber(holding.quantity)}주
-                      </p>
-
-                      <p className="mt-2 text-sm text-zinc-400">
-                        평균 매수가{" "}
-                        {formatNumber(
-                          Math.floor(
-                            Number(holding.total_buy_amount) /
-                              Number(holding.quantity)
-                          )
-                        )}
-                        개
-                      </p>
-
-                      <p className="mt-2 text-sm text-zinc-400">
-                        현재가 {formatNumber(holding.current_price)}개
-                      </p>
-
-                      <p
-                        className={`mt-3 text-xl font-black ${
-                          holdingProfit >= 0
-                            ? "text-red-400"
-                            : "text-blue-400"
-                        }`}
-                      >
-                        {holdingProfit >= 0 ? "+" : ""}
-                        {formatNumber(holdingProfit)}개 ({holdingRate}%)
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
-
         <section className="grid gap-5 md:grid-cols-3">
           {stocks.map((stock: any) => {
             const change = getChangeText(
               Number(stock.current_price),
               stock.prev_price ? Number(stock.prev_price) : null
             );
+
+            const myHolding = holdingsMap.get(Number(stock.id));
+            const myQuantity = Number(myHolding?.quantity || 0);
+            const myBuyAmount = Number(myHolding?.total_buy_amount || 0);
+            const myAvgPrice =
+              myQuantity > 0
+                ? Math.floor(myBuyAmount / Math.max(myQuantity, 1))
+                : 0;
+            const myEvalAmount = myQuantity * Number(stock.current_price);
+            const myProfit = myEvalAmount - myBuyAmount;
+            const myProfitRate =
+              myBuyAmount > 0
+                ? Math.floor((myProfit / myBuyAmount) * 100)
+                : 0;
+
+            const buyableQuantity =
+              currentUser && Number(stock.current_price) > 0
+                ? Math.floor(
+                    Number(currentUser.dotori || 0) /
+                      Number(stock.current_price)
+                  )
+                : 0;
 
             return (
               <div
@@ -299,7 +241,18 @@ export default async function StockPage() {
                 </p>
 
                 {currentUser && stock.is_listed ? (
-                  <StockTradeBox stockId={stock.id} />
+                  <StockTradeBox
+                    stockId={stock.id}
+                    currentPrice={Number(stock.current_price)}
+                    userDotori={Number(currentUser.dotori || 0)}
+                    myQuantity={myQuantity}
+                    myAvgPrice={myAvgPrice}
+                    myBuyAmount={myBuyAmount}
+                    myEvalAmount={myEvalAmount}
+                    myProfit={myProfit}
+                    myProfitRate={myProfitRate}
+                    buyableQuantity={buyableQuantity}
+                  />
                 ) : (
                   <p className="mt-4 rounded-xl bg-slate-800 p-4 text-sm text-zinc-400">
                     {currentUser ? "거래 불가" : "로그인 후 거래 가능"}
