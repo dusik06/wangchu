@@ -18,6 +18,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "아이템 정보가 없습니다." }, { status: 400 });
   }
 
+  if (!quantity || quantity < 1 || quantity > 99) {
+    return NextResponse.json(
+      { error: "구매 수량은 1개부터 99개까지 가능합니다." },
+      { status: 400 }
+    );
+  }
+
   const connection = await db.getConnection();
 
   try {
@@ -30,17 +37,54 @@ export async function POST(req: Request) {
 
     const user = users[0];
 
+    if (!user) {
+      await connection.rollback();
+      return NextResponse.json({ error: "유저를 찾을 수 없습니다." }, { status: 404 });
+    }
+
     const [items]: any = await connection.query(
-      "SELECT * FROM shop_items WHERE id = ? LIMIT 1",
+      "SELECT * FROM shop_items WHERE id = ? AND is_active = 1 LIMIT 1",
       [itemId]
     );
 
     const item = items[0];
-    const totalPrice = Number(item.price) * quantity;
+
+    if (!item) {
+      await connection.rollback();
+      return NextResponse.json({ error: "아이템이 없습니다." }, { status: 404 });
+    }
+
+    const price = Number(item.price) || 0;
+    const totalPrice = price * quantity;
+
+    if (totalPrice <= 0) {
+      await connection.rollback();
+      return NextResponse.json({ error: "상품 가격이 올바르지 않습니다." }, { status: 400 });
+    }
+
+    if ((Number(user.dotori) || 0) < totalPrice) {
+      await connection.rollback();
+      return NextResponse.json({ error: "도토리가 부족합니다." }, { status: 400 });
+    }
+
+    const [updateResult]: any = await connection.query(
+      `
+      UPDATE users
+      SET dotori = dotori - ?
+      WHERE id = ?
+        AND dotori >= ?
+      `,
+      [totalPrice, user.id, totalPrice]
+    );
+
+    if (!updateResult.affectedRows) {
+      await connection.rollback();
+      return NextResponse.json({ error: "도토리가 부족합니다." }, { status: 400 });
+    }
 
     await connection.query(
-      "UPDATE users SET dotori = dotori - ? WHERE id = ?",
-      [totalPrice, user.id]
+      "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
+      [user.id, -totalPrice, `${item.item_name} ${quantity}개 구매`]
     );
 
     const [inventoryRows]: any = await connection.query(
@@ -73,16 +117,9 @@ export async function POST(req: Request) {
       await connection.query(
         `
         INSERT INTO user_inventory
-        (
-          user_id,
-          item_name,
-          item_image,
-          item_audio,
-          overlay_text,
-          item_count
-        )
+          (user_id, item_name, item_image, item_audio, overlay_text, item_count)
         VALUES
-        (?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?)
         `,
         [
           user.id,
@@ -99,13 +136,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      message: "구매 완료",
+      quantity,
+      totalPrice,
     });
   } catch (error) {
     await connection.rollback();
     console.error(error);
 
     return NextResponse.json(
-      { error: "구매 실패" },
+      { error: "구매 중 오류가 발생했습니다." },
       { status: 500 }
     );
   } finally {
