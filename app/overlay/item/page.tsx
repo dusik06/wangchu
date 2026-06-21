@@ -155,7 +155,7 @@ export default function ItemOverlayPage() {
         audio.pause();
         audio.src = "";
         audio.currentTime = 0;
-        audio.volume = 0.2;
+        audio.volume = 0.4;
         audio.muted = false;
         audio.loop = false;
 
