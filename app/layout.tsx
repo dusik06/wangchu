@@ -59,6 +59,15 @@ export default async function RootLayout({
               <p>
                 도토리는 운영 정책에 따라 지급, 조정 또는 회수될 수 있습니다.
               </p>
+
+              <div className="mt-3">
+                <a
+                  href="/terms"
+                  className="font-bold text-zinc-300 underline underline-offset-4 hover:text-white"
+                >
+                  이용약관 및 운영정책 보기
+                </a>
+              </div>
             </div>
           </footer>
         </Providers>
