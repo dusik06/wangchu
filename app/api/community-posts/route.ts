@@ -48,22 +48,9 @@ export async function POST(req: Request) {
     noticeValue = 1;
   }
 
-  const [settings]: any = await db.query(
-    "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('post_reward', 'post_daily_limit')"
-  );
-
-  let postReward = 5;
-  let postDailyLimit = 3;
-
-  settings.forEach((item: any) => {
-    if (item.setting_key === "post_reward") {
-      postReward = Number(item.setting_value);
-    }
-
-    if (item.setting_key === "post_daily_limit") {
-      postDailyLimit = Number(item.setting_value);
-    }
-  });
+  // 고정값
+  const postReward = 20;
+  const postDailyLimit = 3;
 
   const [todayRewardPosts]: any = await db.query(
     "SELECT COUNT(*) AS count FROM community_posts WHERE user_id = ? AND reward_given = 1 AND DATE(created_at) = CURDATE()",
@@ -72,7 +59,8 @@ export async function POST(req: Request) {
 
   let rewardGiven = 0;
 
-  if (content.length >= 20 && todayRewardPosts[0].count < postDailyLimit) {
+  // 내용 길이 조건 제거
+  if (todayRewardPosts[0].count < postDailyLimit) {
     rewardGiven = 1;
   }
 
@@ -98,7 +86,7 @@ export async function POST(req: Request) {
 
     await db.query(
       "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-      [userId, postReward, "게시글 작성"]
+      [userId, postReward, "게시글 작성 보상"]
     );
   }
 
@@ -106,7 +94,7 @@ export async function POST(req: Request) {
     success: true,
     message: rewardGiven
       ? `게시글 작성 완료! 도토리 ${postReward}개 지급`
-      : "게시글 작성 완료!",
+      : "게시글 작성 완료! (오늘 보상 횟수 초과)",
     postId,
   });
 }
