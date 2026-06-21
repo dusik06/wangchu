@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import StockTradeBox from "./stock-trade-box";
+import PolicyNotice from "@/components/PolicyNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -262,6 +263,8 @@ export default async function StockPage() {
             );
           })}
         </section>
+
+        <PolicyNotice />
       </div>
     </main>
   );

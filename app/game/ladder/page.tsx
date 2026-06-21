@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import PolicyNotice from "@/components/PolicyNotice";
 
 type LogType = {
   id: number;
@@ -331,6 +332,7 @@ export default function LadderPage() {
             </div>
           </aside>
         </section>
+        <PolicyNotice />
       </div>
     </main>
   );

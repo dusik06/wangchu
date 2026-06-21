@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
+import PolicyNotice from "@/components/PolicyNotice";
 
 export default function GamePage() {
   const [dotori, setDotori] = useState<number | null>(null);
@@ -309,6 +310,7 @@ export default function GamePage() {
             </div>
 
             <GameHighlights />
+            <PolicyNotice />
           </div>
 
           <aside className="space-y-6">
