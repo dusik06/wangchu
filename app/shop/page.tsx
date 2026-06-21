@@ -9,7 +9,7 @@ export default async function ShopPage() {
     SELECT *
     FROM shop_items
     WHERE is_active = 1
-    ORDER BY id DESC
+    ORDER BY price ASC, id DESC
     `
   );
 
@@ -37,7 +37,9 @@ export default async function ShopPage() {
                         : "bg-slate-700 text-white"
                     }`}
                   >
-                    {item.item_type === "signature" ? "시그아이템" : "일반아이템"}
+                    {item.item_type === "signature"
+                      ? "시그아이템"
+                      : "일반아이템"}
                   </span>
 
                   <span className="text-yellow-300 font-black">
