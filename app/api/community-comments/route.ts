@@ -38,13 +38,51 @@ export async function POST(req: Request) {
 
   const userId = users[0].id;
 
-  await db.query(
-    "INSERT INTO community_comments (post_id, user_id, content, parent_id, reward_given) VALUES (?, ?, ?, ?, 0)",
-    [postId, userId, content, parentId]
+  const commentReward = 5;
+  const commentDailyLimit = 5;
+
+  const [todayRewardComments]: any = await db.query(
+    `
+    SELECT COUNT(*) AS count
+    FROM community_comments
+    WHERE user_id = ?
+      AND reward_given = 1
+      AND DATE(created_at) = CURDATE()
+    `,
+    [userId]
   );
+
+  let rewardGiven = 0;
+
+  if (todayRewardComments[0].count < commentDailyLimit) {
+    rewardGiven = 1;
+  }
+
+  await db.query(
+    `
+    INSERT INTO community_comments
+    (post_id, user_id, content, parent_id, reward_given)
+    VALUES (?, ?, ?, ?, ?)
+    `,
+    [postId, userId, content, parentId, rewardGiven]
+  );
+
+  if (rewardGiven) {
+    await db.query(
+      "UPDATE users SET dotori = dotori + ? WHERE id = ?",
+      [commentReward, userId]
+    );
+
+    await db.query(
+      "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
+      [userId, commentReward, "댓글 작성 보상"]
+    );
+  }
 
   return NextResponse.json({
     success: true,
-    message: "댓글 작성 완료!",
+    message: rewardGiven
+      ? `댓글 작성 완료! 도토리 ${commentReward}개 지급`
+      : "댓글 작성 완료! (오늘 보상 횟수 초과)",
   });
 }
