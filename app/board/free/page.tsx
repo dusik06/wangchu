@@ -24,10 +24,6 @@ function formatMonthDay(date: any) {
   return `${month}/${day}`;
 }
 
-function cleanTitle(title: any) {
-  return String(title || "").replace(/^0(?=[가-힣A-Za-z0-9])/g, "");
-}
-
 export default async function FreeBoardPage({
   searchParams,
 }: {
@@ -67,8 +63,8 @@ export default async function FreeBoardPage({
     SELECT COUNT(*) AS total
     FROM community_posts
     WHERE category = ?
-    AND is_blind = 0
-    AND (title LIKE ? OR content LIKE ?)
+      AND is_blind = 0
+      AND (title LIKE ? OR content LIKE ?)
     `,
     [selectedCategory, `%${keyword}%`, `%${keyword}%`]
   );
@@ -78,7 +74,7 @@ export default async function FreeBoardPage({
 
   const [posts]: any = await db.query(
     `
-    SELECT 
+    SELECT
       p.id,
       p.title,
       p.views,
@@ -92,28 +88,17 @@ export default async function FreeBoardPage({
       u.image,
       t.title_name,
       t.title_color,
-      COUNT(c.id) AS comment_count
+      (
+        SELECT COUNT(*)
+        FROM community_comments c
+        WHERE c.post_id = p.id
+      ) AS comment_count
     FROM community_posts p
     JOIN users u ON p.user_id = u.id
     LEFT JOIN user_titles t ON u.current_title_id = t.id
-    LEFT JOIN community_comments c ON p.id = c.post_id
     WHERE p.category = ?
-    AND p.is_blind = 0
-    AND (p.title LIKE ? OR p.content LIKE ?)
-    GROUP BY 
-      p.id,
-      p.title,
-      p.views,
-      p.likes,
-      p.is_notice,
-      p.is_best,
-      p.created_at,
-      u.nickname,
-      u.role,
-      u.profile_image,
-      u.image,
-      t.title_name,
-      t.title_color
+      AND p.is_blind = 0
+      AND (p.title LIKE ? OR p.content LIKE ?)
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
     `,
@@ -229,9 +214,9 @@ export default async function FreeBoardPage({
                         </span>
                       )}
 
-                      {cleanTitle(post.title)}
+                      {post.title}
 
-                      {post.comment_count > 0 && (
+                      {Number(post.comment_count) > 0 && (
                         <span className="text-pink-400 ml-2">
                           [{post.comment_count}]
                         </span>
