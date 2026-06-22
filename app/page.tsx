@@ -264,8 +264,49 @@ export default async function Home() {
             <div className="group relative">
               <button className="hover:text-[#f7d36b]">게시판 ▾</button>
               <div className="invisible absolute left-0 top-8 w-52 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
-                <a href="/board/free" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">자유게시판</a>
-                {currentUser && <a href="/board/my" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">내 활동</a>}
+              <a
+  href="/board/free?category=free"
+  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+>
+  자유게시판
+</a>
+
+<a
+  href="/board/free?category=notice"
+  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+>
+  공지사항
+</a>
+
+<a
+  href="/board/free?category=suggestion"
+  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+>
+  건의사항
+</a>
+
+<a
+  href="/board/free?category=from_wangchu"
+  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+>
+  왕츄가 팬한테
+</a>
+
+<a
+  href="/board/free?category=to_wangchu"
+  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+>
+  팬이 왕츄한테
+</a>
+
+{currentUser && (
+  <a
+    href="/board/my"
+    className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
+  >
+    내 활동
+  </a>
+)}
               </div>
             </div>
 

@@ -24,6 +24,10 @@ function formatMonthDay(date: any) {
   return `${month}/${day}`;
 }
 
+function cleanTitle(title: any) {
+  return String(title || "").replace(/^0(?=[가-힣A-Za-z0-9])/g, "");
+}
+
 export default async function FreeBoardPage({
   searchParams,
 }: {
@@ -119,7 +123,6 @@ export default async function FreeBoardPage({
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-6xl mx-auto p-6">
-        {/* 카테고리 탭 */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {Object.entries(categoryMap).map(([key, label]) => (
             <a
@@ -226,7 +229,7 @@ export default async function FreeBoardPage({
                         </span>
                       )}
 
-                      {post.title}
+                      {cleanTitle(post.title)}
 
                       {post.comment_count > 0 && (
                         <span className="text-pink-400 ml-2">
