@@ -126,10 +126,7 @@ export default async function FreeBoardPage({
           <h1 className="text-3xl font-bold text-pink-400">{boardTitle}</h1>
 
           <div className="flex gap-2">
-            <a
-              href="/"
-              className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
-            >
+            <a href="/" className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">
               메인
             </a>
 
@@ -152,35 +149,15 @@ export default async function FreeBoardPage({
             className="flex-1 bg-slate-800 rounded-xl px-4 py-3 outline-none"
           />
 
-          <button
-            type="submit"
-            className="bg-pink-500 px-5 rounded-xl font-bold cursor-pointer"
-          >
+          <button type="submit" className="bg-pink-500 px-5 rounded-xl font-bold cursor-pointer">
             검색
           </button>
         </form>
 
         <div className="flex gap-2 mb-4">
-          <a
-            href={`/board/free?category=${selectedCategory}&sort=latest&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
-          >
-            최신순
-          </a>
-
-          <a
-            href={`/board/free?category=${selectedCategory}&sort=likes&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
-          >
-            추천순
-          </a>
-
-          <a
-            href={`/board/free?category=${selectedCategory}&sort=views&keyword=${keyword}`}
-            className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
-          >
-            조회순
-          </a>
+          <a href={`/board/free?category=${selectedCategory}&sort=latest&keyword=${keyword}`} className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">최신순</a>
+          <a href={`/board/free?category=${selectedCategory}&sort=likes&keyword=${keyword}`} className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">추천순</a>
+          <a href={`/board/free?category=${selectedCategory}&sort=views&keyword=${keyword}`} className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">조회순</a>
         </div>
 
         <div className="bg-slate-900 rounded-2xl overflow-hidden">
@@ -204,23 +181,16 @@ export default async function FreeBoardPage({
                   </td>
 
                   <td className="p-4">
-                    <a
-                      href={`/board/free/${post.id}`}
-                      className="hover:text-pink-400 cursor-pointer"
-                    >
-                      {post.is_best && (
-                        <span className="text-green-400 mr-2 font-bold">
-                          BEST
-                        </span>
-                      )}
+                    <a href={`/board/free/${post.id}`} className="hover:text-pink-400 cursor-pointer">
+                      {Number(post.is_best) === 1 ? (
+                        <span className="text-green-400 mr-2 font-bold">BEST</span>
+                      ) : null}
 
                       {post.title}
 
-                      {Number(post.comment_count) > 0 && (
-                        <span className="text-pink-400 ml-2">
-                          [{post.comment_count}]
-                        </span>
-                      )}
+                      {Number(post.comment_count) > 0 ? (
+                        <span className="text-pink-400 ml-2">[{post.comment_count}]</span>
+                      ) : null}
                     </a>
                   </td>
 
@@ -240,13 +210,13 @@ export default async function FreeBoardPage({
                 </tr>
               ))}
 
-              {posts.length === 0 && (
+              {posts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-400">
                     게시글이 없습니다.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
