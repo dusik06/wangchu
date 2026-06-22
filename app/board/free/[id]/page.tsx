@@ -9,8 +9,17 @@ import CommentDeleteButton from "./comment-delete-button";
 import CommentEditButton from "./comment-edit-button";
 import ImageDeleteButton from "./image-delete-button";
 import BlindToggleButton from "./blind-toggle-button";
+import MoveCategory from "./move-category";
 
 export const dynamic = "force-dynamic";
+
+const categoryMap: Record<string, string> = {
+  free: "자유게시판",
+  notice: "공지사항",
+  suggestion: "건의사항",
+  from_wangchu: "왕츄가 팬한테",
+  to_wangchu: "팬이 왕츄한테",
+};
 
 function formatMonthDay(date: any) {
   const d = new Date(date);
@@ -81,6 +90,7 @@ export default async function FreeBoardDetailPage({
       p.reports,
       p.is_notice,
       p.is_blind,
+      p.category,
       p.created_at,
       u.nickname,
       u.role,
@@ -137,10 +147,12 @@ export default async function FreeBoardDetailPage({
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-2xl font-black text-pink-400">자유게시판</h1>
+          <h1 className="text-2xl font-black text-pink-400">
+            {categoryMap[post.category] || "자유게시판"}
+          </h1>
 
           <a
-            href="/board/free"
+            href={`/board/free?category=${post.category}`}
             className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-bold hover:bg-slate-700"
           >
             목록
@@ -225,6 +237,10 @@ export default async function FreeBoardDetailPage({
               <>
                 <AdminDeleteButton postId={postId} />
                 <BlindToggleButton postId={postId} isBlind={post.is_blind} />
+                <MoveCategory
+                  postId={postId}
+                  currentCategory={post.category}
+                />
               </>
             ) : null}
           </div>
@@ -281,7 +297,6 @@ export default async function FreeBoardDetailPage({
                           commentId={comment.id}
                           defaultContent={comment.content}
                         />
-
                         <CommentDeleteButton commentId={comment.id} />
                       </div>
                     ) : null}
@@ -332,7 +347,6 @@ export default async function FreeBoardDetailPage({
                               commentId={reply.id}
                               defaultContent={reply.content}
                             />
-
                             <CommentDeleteButton commentId={reply.id} />
                           </div>
                         ) : null}

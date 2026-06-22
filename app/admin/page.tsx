@@ -134,6 +134,13 @@ export default async function AdminPage() {
           </a>
 
           <a
+            className="cursor-pointer rounded-xl bg-red-500 p-6 font-bold hover:bg-red-400"
+            href="/admin/user-items"
+          >
+            🎒 유저 아이템 관리
+          </a>
+
+          <a
             className="cursor-pointer rounded-xl bg-green-500 p-6 font-bold text-slate-950 hover:bg-green-400"
             href="/admin/live-status"
           >

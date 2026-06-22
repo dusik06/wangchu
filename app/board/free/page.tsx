@@ -3,6 +3,14 @@ import UserNameWithTitle from "@/components/UserNameWithTitle";
 
 export const dynamic = "force-dynamic";
 
+const categoryMap: Record<string, string> = {
+  free: "자유게시판",
+  notice: "공지사항",
+  suggestion: "건의사항",
+  from_wangchu: "왕츄가 팬한테",
+  to_wangchu: "팬이 왕츄한테",
+};
+
 function formatMonthDay(date: any) {
   const d = new Date(date);
 
@@ -23,11 +31,19 @@ export default async function FreeBoardPage({
     keyword?: string;
     page?: string;
     sort?: string;
+    category?: string;
   };
 }) {
   const keyword = searchParams?.keyword || "";
   const currentPage = Number(searchParams?.page || "1");
   const sort = searchParams?.sort || "latest";
+
+  const selectedCategory =
+    searchParams?.category && categoryMap[searchParams.category]
+      ? searchParams.category
+      : "free";
+
+  const boardTitle = categoryMap[selectedCategory];
 
   const limit = 10;
   const offset = (currentPage - 1) * limit;
@@ -46,11 +62,11 @@ export default async function FreeBoardPage({
     `
     SELECT COUNT(*) AS total
     FROM community_posts
-    WHERE category = 'free'
+    WHERE category = ?
     AND is_blind = 0
     AND (title LIKE ? OR content LIKE ?)
     `,
-    [`%${keyword}%`, `%${keyword}%`]
+    [selectedCategory, `%${keyword}%`, `%${keyword}%`]
   );
 
   const totalPosts = countRows[0].total;
@@ -77,7 +93,7 @@ export default async function FreeBoardPage({
     JOIN users u ON p.user_id = u.id
     LEFT JOIN user_titles t ON u.current_title_id = t.id
     LEFT JOIN community_comments c ON p.id = c.post_id
-    WHERE p.category = 'free'
+    WHERE p.category = ?
     AND p.is_blind = 0
     AND (p.title LIKE ? OR p.content LIKE ?)
     GROUP BY 
@@ -97,17 +113,35 @@ export default async function FreeBoardPage({
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
     `,
-    [`%${keyword}%`, `%${keyword}%`, limit, offset]
+    [selectedCategory, `%${keyword}%`, `%${keyword}%`, limit, offset]
   );
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="max-w-6xl mx-auto p-6">
+        {/* 카테고리 탭 */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {Object.entries(categoryMap).map(([key, label]) => (
+            <a
+              key={key}
+              href={`/board/free?category=${key}`}
+              className={`px-4 py-2 rounded-lg font-bold cursor-pointer ${
+                selectedCategory === key ? "bg-pink-500" : "bg-slate-800"
+              }`}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+
         <div className="flex justify-between mb-6">
-          <h1 className="text-3xl font-bold text-pink-400">자유게시판</h1>
+          <h1 className="text-3xl font-bold text-pink-400">{boardTitle}</h1>
 
           <div className="flex gap-2">
-            <a href="/" className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer">
+            <a
+              href="/"
+              className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
+            >
               메인
             </a>
 
@@ -121,6 +155,8 @@ export default async function FreeBoardPage({
         </div>
 
         <form action="/board/free" method="GET" className="flex gap-2 mb-4">
+          <input type="hidden" name="category" value={selectedCategory} />
+
           <input
             name="keyword"
             defaultValue={keyword}
@@ -138,21 +174,21 @@ export default async function FreeBoardPage({
 
         <div className="flex gap-2 mb-4">
           <a
-            href={`/board/free?sort=latest&keyword=${keyword}`}
+            href={`/board/free?category=${selectedCategory}&sort=latest&keyword=${keyword}`}
             className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             최신순
           </a>
 
           <a
-            href={`/board/free?sort=likes&keyword=${keyword}`}
+            href={`/board/free?category=${selectedCategory}&sort=likes&keyword=${keyword}`}
             className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             추천순
           </a>
 
           <a
-            href={`/board/free?sort=views&keyword=${keyword}`}
+            href={`/board/free?category=${selectedCategory}&sort=views&keyword=${keyword}`}
             className="bg-slate-800 px-4 py-2 rounded-lg cursor-pointer"
           >
             조회순
@@ -184,19 +220,19 @@ export default async function FreeBoardPage({
                       href={`/board/free/${post.id}`}
                       className="hover:text-pink-400 cursor-pointer"
                     >
-                      {post.is_best ? (
+                      {post.is_best && (
                         <span className="text-green-400 mr-2 font-bold">
                           BEST
                         </span>
-                      ) : null}
+                      )}
 
                       {post.title}
 
-                      {post.comment_count > 0 ? (
+                      {post.comment_count > 0 && (
                         <span className="text-pink-400 ml-2">
                           [{post.comment_count}]
                         </span>
-                      ) : null}
+                      )}
                     </a>
                   </td>
 
@@ -216,13 +252,13 @@ export default async function FreeBoardPage({
                 </tr>
               ))}
 
-              {posts.length === 0 ? (
+              {posts.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-400">
                     게시글이 없습니다.
                   </td>
                 </tr>
-              ) : null}
+              )}
             </tbody>
           </table>
         </div>
@@ -231,7 +267,7 @@ export default async function FreeBoardPage({
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <a
               key={page}
-              href={`/board/free?page=${page}&keyword=${keyword}&sort=${sort}`}
+              href={`/board/free?page=${page}&keyword=${keyword}&sort=${sort}&category=${selectedCategory}`}
               className={`px-4 py-2 rounded-lg cursor-pointer ${
                 currentPage === page ? "bg-pink-500" : "bg-slate-800"
               }`}

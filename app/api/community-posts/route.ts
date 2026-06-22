@@ -16,8 +16,7 @@ export async function POST(req: Request) {
 
   const title = String(body.title || "").trim();
   const content = String(body.content || "").trim();
-  const category = String(body.category || "free");
-  const isNotice = Boolean(body.isNotice || false);
+  let category = String(body.category || "free");
   const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
 
   if (!title || !content) {
@@ -42,13 +41,36 @@ export async function POST(req: Request) {
   const userId = users[0].id;
   const role = users[0].role;
 
+  // 허용 카테고리 검증
+  const allCategories = [
+    "free",
+    "notice",
+    "suggestion",
+    "from_wangchu",
+    "to_wangchu",
+  ];
+
+  if (!allCategories.includes(category)) {
+    category = "free";
+  }
+
+  // 관리자 전용 카테고리 차단
+  if (
+    role !== "admin" &&
+    (category === "notice" || category === "from_wangchu")
+  ) {
+    return NextResponse.json({
+      success: false,
+      message: "해당 게시판에 글을 작성할 권한이 없습니다.",
+    });
+  }
+
   let noticeValue = 0;
 
-  if (isNotice && role === "admin") {
+  if (category === "notice") {
     noticeValue = 1;
   }
 
-  // 고정값
   const postReward = 20;
   const postDailyLimit = 3;
 
@@ -59,13 +81,16 @@ export async function POST(req: Request) {
 
   let rewardGiven = 0;
 
-  // 내용 길이 조건 제거
   if (todayRewardPosts[0].count < postDailyLimit) {
     rewardGiven = 1;
   }
 
   const [result]: any = await db.query(
-    "INSERT INTO community_posts (user_id, title, content, reward_given, category, is_notice) VALUES (?, ?, ?, ?, ?, ?)",
+    `
+    INSERT INTO community_posts
+    (user_id, title, content, reward_given, category, is_notice)
+    VALUES (?, ?, ?, ?, ?, ?)
+    `,
     [userId, title, content, rewardGiven, category, noticeValue]
   );
 

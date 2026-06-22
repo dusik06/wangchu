@@ -6,7 +6,6 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("free");
-  const [isNotice, setIsNotice] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,7 +69,6 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
           title,
           content,
           category,
-          isNotice: isAdmin ? isNotice : false,
           imageUrls,
         }),
       });
@@ -80,7 +78,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
       alert(data.message || "처리되었습니다.");
 
       if (data.success) {
-        window.location.href = "/board/free";
+        window.location.href = `/board/${category}`;
       }
     } catch (error) {
       console.error(error);
@@ -102,20 +100,20 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
           onChange={(e) => setCategory(e.target.value)}
           className="w-full bg-slate-800 rounded-xl px-4 py-3 outline-none"
         >
+          {/* 전체 가능 */}
           <option value="free">자유게시판</option>
+          <option value="suggestion">건의사항</option>
+          <option value="to_wangchu">팬이 왕츄한테</option>
+
+          {/* 관리자 전용 */}
+          {isAdmin && (
+            <>
+              <option value="notice">공지사항</option>
+              <option value="from_wangchu">왕츄가 팬한테</option>
+            </>
+          )}
         </select>
       </div>
-
-      {isAdmin && (
-        <div className="mb-4 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={isNotice}
-            onChange={(e) => setIsNotice(e.target.checked)}
-          />
-          <span className="text-sm text-yellow-400">공지로 등록</span>
-        </div>
-      )}
 
       <input
         value={title}
@@ -127,7 +125,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="내용을 입력하세요. 20자 이상 작성하면 하루 최대 3회까지 도토리를 받을 수 있어요."
+        placeholder="내용을 입력하세요."
         className="w-full h-80 bg-slate-800 rounded-xl px-4 py-3 mb-4 outline-none resize-none"
       />
 
