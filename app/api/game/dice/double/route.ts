@@ -3,9 +3,20 @@ import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-function getDiceResult() {
-  const dice = Math.floor(Math.random() * 6) + 1;
-  const result = dice % 2 === 0 ? "EVEN" : "ODD";
+function getDiceResult(choice: string) {
+  const winChance = 40;
+  const isWin = Math.random() * 100 < winChance;
+
+  const result = isWin
+    ? choice
+    : choice === "ODD"
+    ? "EVEN"
+    : "ODD";
+
+  const dice =
+    result === "ODD"
+      ? [1, 3, 5][Math.floor(Math.random() * 3)]
+      : [2, 4, 6][Math.floor(Math.random() * 3)];
 
   return { dice, result };
 }
@@ -59,7 +70,7 @@ export async function POST(req: Request) {
     }
 
     const game = games[0];
-    const { dice, result } = getDiceResult();
+    const { dice, result } = getDiceResult(doubleChoice);
 
     const doubleWin = doubleChoice === result;
     const payoutAmount = doubleWin ? Math.floor(game.bet_amount * 4.5) : 0;

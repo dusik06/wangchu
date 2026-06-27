@@ -3,9 +3,20 @@ import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-function getDiceResult() {
-  const dice = Math.floor(Math.random() * 6) + 1;
-  const result = dice % 2 === 0 ? "EVEN" : "ODD";
+function getDiceResult(choice: string) {
+  const winChance = 45;
+  const isWin = Math.random() * 100 < winChance;
+
+  const result = isWin
+    ? choice
+    : choice === "ODD"
+    ? "EVEN"
+    : "ODD";
+
+  const dice =
+    result === "ODD"
+      ? [1, 3, 5][Math.floor(Math.random() * 3)]
+      : [2, 4, 6][Math.floor(Math.random() * 3)];
 
   return { dice, result };
 }
@@ -74,7 +85,7 @@ export async function POST(req: Request) {
       [betAmount, userId]
     );
 
-    const { dice, result } = getDiceResult();
+    const { dice, result } = getDiceResult(choice);
     const firstWin = choice === result;
     const status = firstWin ? "PENDING_CHOICE" : "LOSE";
 
@@ -103,17 +114,14 @@ export async function POST(req: Request) {
         status,
       ]
     );
-await connection.query(
-  `
-  INSERT INTO dotori_logs (user_id, amount, reason)
-  VALUES (?, ?, ?)
-  `,
-  [
-    userId,
-    -betAmount,
-    `주사위 배팅 (${choice})`,
-  ]
-);
+
+    await connection.query(
+      `
+      INSERT INTO dotori_logs (user_id, amount, reason)
+      VALUES (?, ?, ?)
+      `,
+      [userId, -betAmount, `주사위 배팅 (${choice})`]
+    );
 
     await connection.commit();
 
