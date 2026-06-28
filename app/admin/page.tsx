@@ -141,6 +141,13 @@ export default async function AdminPage() {
           </a>
 
           <a
+            className="cursor-pointer rounded-xl bg-yellow-400 p-6 font-bold text-black hover:bg-yellow-300"
+            href="/admin/lottery"
+          >
+            🎟 로또 관리
+          </a>
+
+          <a
             className="cursor-pointer rounded-xl bg-green-500 p-6 font-bold text-slate-950 hover:bg-green-400"
             href="/admin/live-status"
           >
