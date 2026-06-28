@@ -201,6 +201,41 @@ async function getStockPreview() {
   }
 }
 
+async function getLotteryPreview() {
+  try {
+    const [roundRows]: any = await db.query(`
+      SELECT
+        r.*,
+        (
+          SELECT COUNT(*)
+          FROM lottery_entries
+          WHERE round_id = r.id
+        ) AS participant_count
+      FROM lottery_rounds r
+      WHERE r.status = 'OPEN'
+      ORDER BY r.id DESC
+      LIMIT 1
+    `);
+
+    const [winnerRows]: any = await db.query(`
+      SELECT nickname, rank_position, reward_amount
+      FROM lottery_winners
+      ORDER BY id DESC
+      LIMIT 5
+    `);
+
+    return {
+      current: roundRows[0] || null,
+      winners: winnerRows || [],
+    };
+  } catch {
+    return {
+      current: null,
+      winners: [],
+    };
+  }
+}
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
@@ -216,6 +251,7 @@ export default async function Home() {
     shopItems,
     dotoriRanking,
     stockPreview,
+    lotteryPreview,
   ] = await Promise.all([
     getCurrentUser(session?.user?.email),
     getYoutubeVideo(),
@@ -228,6 +264,7 @@ export default async function Home() {
     getShopItems(),
     getDotoriRanking(),
     getStockPreview(),
+    getLotteryPreview(),
   ]);
 
   const isAdmin = currentUser?.role === "admin";
@@ -488,7 +525,67 @@ export default async function Home() {
 
           <aside id="ranking" className="space-y-5">
   <GameRanking dotoriRanking={dotoriRanking} />
+  <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-lg font-black text-[#f7d36b]">
+      🎟 도토리 로또
+    </h2>
 
+    <a
+      href="/lottery"
+      className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]"
+    >
+      참여하기 〉
+    </a>
+  </div>
+
+  {lotteryPreview?.current ? (
+    <>
+      <div className="rounded-2xl bg-[#151925] p-4 mb-4">
+        <p className="text-sm text-zinc-400">현재 회차</p>
+        <p className="text-xl font-black">
+          {lotteryPreview.current.round_number}회차
+        </p>
+
+        <p className="mt-3 text-sm text-zinc-400">누적 상금</p>
+        <p className="text-xl font-black text-yellow-300">
+          {Number(lotteryPreview.current.total_reward).toLocaleString()} 도토리
+        </p>
+
+        <p className="mt-3 text-sm text-zinc-400">참여자</p>
+        <p className="text-lg font-black">
+          {Number(lotteryPreview.current.participant_count)}명
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-black text-[#f7d36b]">
+          최근 당첨자
+        </p>
+
+        {lotteryPreview.winners.length === 0 ? (
+          <p className="text-sm text-zinc-400">
+            아직 당첨 기록이 없습니다.
+          </p>
+        ) : (
+          lotteryPreview.winners.map((winner: any, index: number) => (
+            <div
+              key={index}
+              className="rounded-xl bg-[#151925] px-3 py-2 text-sm"
+            >
+              {winner.nickname} · {winner.rank_position}등 ·{" "}
+              {Number(winner.reward_amount).toLocaleString()}개
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  ) : (
+    <p className="text-sm text-zinc-400">
+      진행 중인 로또가 없습니다.
+    </p>
+  )}
+</div>
   <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
     <div className="mb-4 flex items-center justify-between">
       <h2 className="text-lg font-black text-[#f7d36b]">
