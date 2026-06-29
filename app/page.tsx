@@ -1,5 +1,4 @@
 import VideoPlayer from "./video-player";
-import MyDotori from "./my-dotori";
 import AttendanceButton from "./attendance-button";
 import LoginButton from "./login-button";
 import GameHighlights from "@/components/game/GameHighlights";
@@ -14,15 +13,8 @@ const YOUTUBE_LIVE_URL = "https://www.youtube.com/watch?v=P9fMwfGrucU";
 async function getYoutubeVideo() {
   try {
     const baseUrl = process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
-
-    const res = await fetch(`${baseUrl}/api/youtube`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      throw new Error("youtube api failed");
-    }
-
+    const res = await fetch(`${baseUrl}/api/youtube`, { cache: "no-store" });
+    if (!res.ok) throw new Error("youtube api failed");
     return res.json();
   } catch {
     return {
@@ -301,49 +293,14 @@ export default async function Home() {
             <div className="group relative">
               <button className="hover:text-[#f7d36b]">게시판 ▾</button>
               <div className="invisible absolute left-0 top-8 w-52 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
-              <a
-  href="/board/free?category=free"
-  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
->
-  자유게시판
-</a>
-
-<a
-  href="/board/free?category=notice"
-  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
->
-  공지사항
-</a>
-
-<a
-  href="/board/free?category=suggestion"
-  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
->
-  건의사항
-</a>
-
-<a
-  href="/board/free?category=from_wangchu"
-  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
->
-  왕츄가 팬한테
-</a>
-
-<a
-  href="/board/free?category=to_wangchu"
-  className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
->
-  팬이 왕츄한테
-</a>
-
-{currentUser && (
-  <a
-    href="/board/my"
-    className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]"
-  >
-    내 활동
-  </a>
-)}
+                <a href="/board/free?category=free" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">자유게시판</a>
+                <a href="/board/free?category=notice" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">공지사항</a>
+                <a href="/board/free?category=suggestion" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">건의사항</a>
+                <a href="/board/free?category=from_wangchu" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">왕츄가 팬한테</a>
+                <a href="/board/free?category=to_wangchu" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">팬이 왕츄한테</a>
+                {currentUser && (
+                  <a href="/board/my" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">내 활동</a>
+                )}
               </div>
             </div>
 
@@ -361,19 +318,13 @@ export default async function Home() {
               <div className="invisible absolute left-0 top-8 w-56 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
                 <a href="/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">주사위 홀짝</a>
                 <a href="/prediction" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">승패 예측</a>
-                <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">
-                  사다리게임
-                </a>
-                <span className="block rounded-xl px-4 py-3 text-zinc-500">뽑기 준비중</span>
-                <a href="/game/pinball" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">
-                  핀볼게임
-                </a>
+                <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">사다리게임</a>
+                <a href="/game/pinball" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">핀볼게임</a>
+                <a href="/lottery" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 로또</a>
               </div>
             </div>
 
-            <a href="/stock" className="hover:text-[#f7d36b]">
-  주식
-</a>
+            <a href="/stock" className="hover:text-[#f7d36b]">주식</a>
 
             {currentUser && (
               <div className="group relative">
@@ -397,6 +348,7 @@ export default async function Home() {
                   <a href="/admin/shop" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">아이템 생성</a>
                   <a href="/admin/dotori" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 지급</a>
                   <a href="/admin/board" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">게시판 관리</a>
+                  <a href="/admin/lottery" className="block rounded-xl px-4 py-3 text-[#f7d36b] hover:bg-[#2b2415]">로또 관리</a>
                 </div>
               </div>
             )}
@@ -427,13 +379,13 @@ export default async function Home() {
               </span>
 
               <a
-    href="https://www.youtube.com/@%EB%B0%95%EC%99%95%EC%B8%84"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="rounded-md bg-red-600 px-3 py-1 text-xs font-black text-white hover:bg-red-500"
-  >
-    라이브 보러가기
-  </a>
+                href="https://www.youtube.com/@%EB%B0%95%EC%99%95%EC%B8%84"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md bg-red-600 px-3 py-1 text-xs font-black text-white hover:bg-red-500"
+              >
+                라이브 보러가기
+              </a>
             </div>
 
             <div className="space-y-5">
@@ -453,18 +405,22 @@ export default async function Home() {
                   <div className="text-3xl">📅</div>
                   <div className="mt-2 text-xs font-black">방송일정</div>
                 </a>
+
                 <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center">
                   <div className="text-3xl">✅</div>
                   <div className="mt-2 text-xs font-black">출석체크</div>
                 </div>
+
                 <a href="/coupon" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
                   <div className="text-3xl">🎫</div>
                   <div className="mt-2 text-xs font-black">쿠폰입력</div>
                 </a>
+
                 <a href="/shop" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
                   <div className="text-3xl">🛒</div>
                   <div className="mt-2 text-xs font-black">상점</div>
                 </a>
+
                 <a href="/board/free" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
                   <div className="text-3xl">💬</div>
                   <div className="mt-2 text-xs font-black">게시판</div>
@@ -494,173 +450,156 @@ export default async function Home() {
                   <p className="mt-3 font-black">주사위 홀짝</p>
                   <p className="text-xs text-zinc-500">게임하기</p>
                 </a>
+
                 <a href="/prediction" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">📊</div>
                   <p className="mt-3 font-black">승패 예측</p>
                   <p className="text-xs text-zinc-500">예측하기</p>
                 </a>
+
                 <a href="/game/ladder" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">🪜</div>
                   <p className="mt-3 font-black">사다리게임</p>
                   <p className="text-xs text-zinc-500">게임하기</p>
                 </a>
-                <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-75">
-                  <div className="text-4xl">🎁</div>
-                  <p className="mt-3 font-black">뽑기</p>
-                  <p className="text-xs text-zinc-500">COMING SOON</p>
-                </div>
+
                 <a href="/game/pinball" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">🕹️</div>
                   <p className="mt-3 font-black">핀볼</p>
                   <p className="text-xs text-zinc-500">게임하기</p>
                 </a>
-                <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 opacity-60">
-                  <div className="text-4xl">?</div>
-                  <p className="mt-3 font-black">준비중</p>
-                  <p className="text-xs text-zinc-500">COMING SOON</p>
-                </div>
+
+                <a href="/lottery" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
+                  <div className="text-4xl">🎟️</div>
+                  <p className="mt-3 font-black">도토리 로또</p>
+                  <p className="text-xs text-zinc-500">참여하기</p>
+                </a>
               </div>
+            </div>
+
+            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-black text-[#f7d36b]">🎟 도토리 로또</h2>
+
+                <a href="/lottery" className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]">
+                  참여하기 〉
+                </a>
+              </div>
+
+              {lotteryPreview?.current ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-2xl bg-[#151925] p-4">
+                      <p className="text-sm text-zinc-400">현재 회차</p>
+                      <p className="mt-1 text-xl font-black">
+                        {lotteryPreview.current.round_number}회차
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#151925] p-4">
+                      <p className="text-sm text-zinc-400">누적 상금</p>
+                      <p className="mt-1 text-xl font-black text-yellow-300">
+                        {Number(lotteryPreview.current.total_reward).toLocaleString()} 도토리
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-[#151925] p-4">
+                      <p className="text-sm text-zinc-400">참여자</p>
+                      <p className="mt-1 text-xl font-black">
+                        {Number(lotteryPreview.current.participant_count)}명
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-[#151925] p-4">
+                    <p className="mb-2 text-sm font-black text-[#f7d36b]">최근 당첨자</p>
+
+                    {lotteryPreview.winners.length === 0 ? (
+                      <p className="text-sm text-zinc-400">아직 당첨 기록이 없습니다.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {lotteryPreview.winners.map((winner: any, index: number) => (
+                          <div key={index} className="text-sm text-zinc-300">
+                            {winner.nickname} · {winner.rank_position}등 ·{" "}
+                            <span className="font-black text-yellow-300">
+                              {Number(winner.reward_amount).toLocaleString()}개
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-zinc-400">진행 중인 로또가 없습니다.</p>
+              )}
             </div>
           </div>
 
           <aside id="ranking" className="space-y-5">
-  <GameRanking dotoriRanking={dotoriRanking} />
-  <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
-  <div className="mb-4 flex items-center justify-between">
-    <h2 className="text-lg font-black text-[#f7d36b]">
-      🎟 도토리 로또
-    </h2>
+            <GameRanking dotoriRanking={dotoriRanking} />
 
-    <a
-      href="/lottery"
-      className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]"
-    >
-      참여하기 〉
-    </a>
-  </div>
+            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-black text-[#f7d36b]">📈 주식 현황</h2>
 
-  {lotteryPreview?.current ? (
-    <>
-      <div className="rounded-2xl bg-[#151925] p-4 mb-4">
-        <p className="text-sm text-zinc-400">현재 회차</p>
-        <p className="text-xl font-black">
-          {lotteryPreview.current.round_number}회차
-        </p>
-
-        <p className="mt-3 text-sm text-zinc-400">누적 상금</p>
-        <p className="text-xl font-black text-yellow-300">
-          {Number(lotteryPreview.current.total_reward).toLocaleString()} 도토리
-        </p>
-
-        <p className="mt-3 text-sm text-zinc-400">참여자</p>
-        <p className="text-lg font-black">
-          {Number(lotteryPreview.current.participant_count)}명
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-sm font-black text-[#f7d36b]">
-          최근 당첨자
-        </p>
-
-        {lotteryPreview.winners.length === 0 ? (
-          <p className="text-sm text-zinc-400">
-            아직 당첨 기록이 없습니다.
-          </p>
-        ) : (
-          lotteryPreview.winners.map((winner: any, index: number) => (
-            <div
-              key={index}
-              className="rounded-xl bg-[#151925] px-3 py-2 text-sm"
-            >
-              {winner.nickname} · {winner.rank_position}등 ·{" "}
-              {Number(winner.reward_amount).toLocaleString()}개
-            </div>
-          ))
-        )}
-      </div>
-    </>
-  ) : (
-    <p className="text-sm text-zinc-400">
-      진행 중인 로또가 없습니다.
-    </p>
-  )}
-</div>
-  <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
-    <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-lg font-black text-[#f7d36b]">
-        📈 주식 현황
-      </h2>
-
-      <a
-        href="/stock"
-        className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]"
-      >
-        전체 보기 〉
-      </a>
-    </div>
-
-    {stockPreview.length === 0 ? (
-      <p className="text-sm text-zinc-400">
-        등록된 주식이 없습니다.
-      </p>
-    ) : (
-      <div className="space-y-3">
-        {stockPreview.map((stock: any) => {
-          const prev = Number(stock.prev_price || 0);
-          const current = Number(stock.current_price || 0);
-          const diff = current - prev;
-          const rate =
-            prev > 0 ? Math.floor((diff / prev) * 100) : 0;
-
-          return (
-            <a
-              key={stock.id}
-              href={`/stock/${stock.id}`}
-              className="block rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 hover:border-[#f7d36b]/60"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-black">
-                  {stock.stock_name}
-                </span>
-
-                {stock.is_listed ? (
-                  <span className="text-xs text-emerald-400">
-                    상장중
-                  </span>
-                ) : (
-                  <span className="text-xs text-red-400">
-                    상장폐지
-                  </span>
-                )}
+                <a href="/stock" className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]">
+                  전체 보기 〉
+                </a>
               </div>
 
-              <p className="mt-2 text-lg font-black text-[#f7d36b]">
-                {current.toLocaleString()} 도토리
-              </p>
+              {stockPreview.length === 0 ? (
+                <p className="text-sm text-zinc-400">등록된 주식이 없습니다.</p>
+              ) : (
+                <div className="space-y-3">
+                  {stockPreview.map((stock: any) => {
+                    const prev = Number(stock.prev_price || 0);
+                    const current = Number(stock.current_price || 0);
+                    const diff = current - prev;
+                    const rate = prev > 0 ? Math.floor((diff / prev) * 100) : 0;
 
-              <p
-                className={`mt-1 text-sm font-bold ${
-                  diff > 0
-                    ? "text-red-400"
-                    : diff < 0
-                    ? "text-blue-400"
-                    : "text-zinc-400"
-                }`}
-              >
-                {diff > 0 && "▲"}
-                {diff < 0 && "▼"}
-                {diff === 0
-                  ? "변동 없음"
-                  : `${Math.abs(diff).toLocaleString()} (${Math.abs(rate)}%)`}
-              </p>
-            </a>
-          );
-        })}
-      </div>
-    )}
-  </div>
-</aside>
+                    return (
+                      <a
+                        key={stock.id}
+                        href={`/stock/${stock.id}`}
+                        className="block rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 hover:border-[#f7d36b]/60"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black">{stock.stock_name}</span>
+
+                          {stock.is_listed ? (
+                            <span className="text-xs text-emerald-400">상장중</span>
+                          ) : (
+                            <span className="text-xs text-red-400">상장폐지</span>
+                          )}
+                        </div>
+
+                        <p className="mt-2 text-lg font-black text-[#f7d36b]">
+                          {current.toLocaleString()} 도토리
+                        </p>
+
+                        <p
+                          className={`mt-1 text-sm font-bold ${
+                            diff > 0
+                              ? "text-red-400"
+                              : diff < 0
+                              ? "text-blue-400"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          {diff > 0 && "▲"}
+                          {diff < 0 && "▼"}
+                          {diff === 0
+                            ? "변동 없음"
+                            : `${Math.abs(diff).toLocaleString()} (${Math.abs(rate)}%)`}
+                        </p>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </aside>
         </section>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.5fr]">

@@ -92,26 +92,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const [exists]: any = await connection.query(
-      `
-      SELECT id
-      FROM lottery_entries
-      WHERE round_id = ?
-        AND user_id = ?
-      LIMIT 1
-      `,
-      [roundId, user.id]
-    );
-
-    if (exists.length) {
-      await connection.rollback();
-
-      return NextResponse.json({
-        success: false,
-        message: "이미 이번 회차에 참여했습니다.",
-      });
-    }
-
     await connection.query(
       "UPDATE users SET dotori = dotori - ? WHERE id = ?",
       [ENTRY_COST, user.id]
