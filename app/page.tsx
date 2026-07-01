@@ -400,32 +400,62 @@ export default async function Home() {
           <div className="space-y-5">
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
               <h2 className="mb-4 text-xl font-black text-[#f7d36b]">바로가기</h2>
-              <div className="grid grid-cols-5 gap-3">
-                <a href={YOUTUBE_LIVE_URL} target="_blank" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
-                  <div className="text-3xl">📅</div>
-                  <div className="mt-2 text-xs font-black">방송일정</div>
-                </a>
+              <div className="grid grid-cols-6 gap-3">
+  <a
+    href={YOUTUBE_LIVE_URL}
+    target="_blank"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">📅</div>
+    <div className="mt-2 text-xs font-black">방송일정</div>
+  </a>
 
-                <div className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center">
-                  <div className="text-3xl">✅</div>
-                  <div className="mt-2 text-xs font-black">출석체크</div>
-                </div>
+  <a
+    href="https://www.instagram.com/parkwangchu/"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">📸</div>
+    <div className="mt-2 text-xs font-black">인스타</div>
+  </a>
 
-                <a href="/coupon" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
-                  <div className="text-3xl">🎫</div>
-                  <div className="mt-2 text-xs font-black">쿠폰입력</div>
-                </a>
+  <a
+    href="https://www.tiktok.com/@parkwangchu"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">🎵</div>
+    <div className="mt-2 text-xs font-black">틱톡</div>
+  </a>
 
-                <a href="/shop" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
-                  <div className="text-3xl">🛒</div>
-                  <div className="mt-2 text-xs font-black">상점</div>
-                </a>
+  <a
+    href="https://toon.at/donate/wonywangchu"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">💰</div>
+    <div className="mt-2 text-xs font-black">투네이션</div>
+  </a>
 
-                <a href="/board/free" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
-                  <div className="text-3xl">💬</div>
-                  <div className="mt-2 text-xs font-black">게시판</div>
-                </a>
-              </div>
+  <a
+    href="/shop"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">🛒</div>
+    <div className="mt-2 text-xs font-black">상점</div>
+  </a>
+
+  <a
+    href="/board/free"
+    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+  >
+    <div className="text-3xl">💬</div>
+    <div className="mt-2 text-xs font-black">게시판</div>
+  </a>
+</div>
             </div>
 
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
