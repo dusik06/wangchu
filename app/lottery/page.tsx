@@ -44,9 +44,10 @@ export default async function LotteryPage() {
     myEntries = entries;
   }
 
-  const [lastWinners]: any = await db.query(`
+  const [history]: any = await db.query(`
     SELECT *
-    FROM lottery_winners
+    FROM lottery_rounds
+    WHERE status = 'CLOSED'
     ORDER BY id DESC
     LIMIT 10
   `);
@@ -123,22 +124,53 @@ export default async function LotteryPage() {
             <section className="rounded-2xl bg-slate-900 p-6">
               <h2 className="mb-4 text-xl font-black">이전 당첨 기록</h2>
 
-              {lastWinners.length === 0 ? (
-                <p className="text-slate-400">아직 당첨 기록이 없습니다.</p>
+              {history.length === 0 ? (
+                <p className="text-slate-400">아직 기록 없음</p>
               ) : (
-                lastWinners.map((winner: any) => (
-                  <div
-                    key={winner.id}
-                    className="mb-2 flex justify-between rounded-xl bg-slate-800 px-4 py-3"
-                  >
-                    <span>
-                      {winner.nickname} · {winner.rank_position}등
-                    </span>
-                    <span>
-                      {Number(winner.reward_amount).toLocaleString()} 도토리
-                    </span>
-                  </div>
-                ))
+                history.map((item: any) => {
+                  const myRecord =
+                    currentUser &&
+                    myEntries.find((entry) => entry.round_id === item.id);
+
+                  return (
+                    <details
+                      key={item.id}
+                      className="mb-3 rounded-xl bg-slate-800"
+                    >
+                      <summary className="cursor-pointer px-4 py-4 font-bold">
+                        {item.round_number}회차 · 당첨번호: {item.winning_numbers}
+                      </summary>
+
+                      <div className="border-t border-slate-700 px-4 py-4 space-y-2 text-sm">
+                        {myRecord ? (
+                          <>
+                            <p>내 번호: {myRecord.numbers}</p>
+                            <p>맞춘 개수: {myRecord.matched_count}개</p>
+
+                            {myRecord.is_winner ? (
+                              <>
+                                <p className="text-yellow-400 font-black">
+                                  {myRecord.rank_position}등 당첨
+                                </p>
+                                <p className="text-green-400 font-black">
+                                  +{Number(
+                                    myRecord.reward_amount
+                                  ).toLocaleString()} 도토리
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-red-400">미당첨</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-slate-400">
+                            이 회차 참여 기록 없음
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  );
+                })
               )}
             </section>
           </>
