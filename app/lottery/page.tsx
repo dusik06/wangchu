@@ -64,12 +64,15 @@ export default async function LotteryPage() {
               <div className="rounded-2xl bg-slate-900 p-5">
                 {round.round_number}회차
               </div>
+
               <div className="rounded-2xl bg-slate-900 p-5">
                 {Number(round.total_reward).toLocaleString()} 도토리
               </div>
+
               <div className="rounded-2xl bg-slate-900 p-5">
                 참가비 50도토리
               </div>
+
               <div className="rounded-2xl bg-slate-900 p-5">
                 {currentUser
                   ? `${Number(currentUser.dotori).toLocaleString()}개`
@@ -90,7 +93,7 @@ export default async function LotteryPage() {
                 <p>• 2등 (4개 일치) = 총상금 20%</p>
                 <p>• 3등 (3개 일치) = 총상금 10%</p>
                 <p>• 당첨자 없으면 해당 등수 상금 이월</p>
-                <p>• 매주 수요일 관리자 직접 추첨</p>
+                <p>• 매주 수요일 / 일요일 관리자 직접 추첨</p>
               </div>
             </section>
 
@@ -118,21 +121,25 @@ export default async function LotteryPage() {
             </section>
 
             <section className="rounded-2xl bg-slate-900 p-6">
-              <h2 className="mb-4 text-xl font-black">최근 당첨 기록</h2>
+              <h2 className="mb-4 text-xl font-black">이전 당첨 기록</h2>
 
-              {lastWinners.map((winner: any) => (
-                <div
-                  key={winner.id}
-                  className="flex justify-between rounded-xl bg-slate-800 px-4 py-3 mb-2"
-                >
-                  <span>
-                    {winner.nickname} · {winner.rank_position}등
-                  </span>
-                  <span>
-                    {Number(winner.reward_amount).toLocaleString()} 도토리
-                  </span>
-                </div>
-              ))}
+              {lastWinners.length === 0 ? (
+                <p className="text-slate-400">아직 당첨 기록이 없습니다.</p>
+              ) : (
+                lastWinners.map((winner: any) => (
+                  <div
+                    key={winner.id}
+                    className="mb-2 flex justify-between rounded-xl bg-slate-800 px-4 py-3"
+                  >
+                    <span>
+                      {winner.nickname} · {winner.rank_position}등
+                    </span>
+                    <span>
+                      {Number(winner.reward_amount).toLocaleString()} 도토리
+                    </span>
+                  </div>
+                ))
+              )}
             </section>
           </>
         )}
