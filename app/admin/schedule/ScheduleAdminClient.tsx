@@ -31,13 +31,8 @@ function getCalendarDays(year: number, month: number) {
 
   const days: (number | null)[] = [];
 
-  for (let i = 0; i < firstDay; i++) {
-    days.push(null);
-  }
-
-  for (let day = 1; day <= totalDays; day++) {
-    days.push(day);
-  }
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let day = 1; day <= totalDays; day++) days.push(day);
 
   return days;
 }
@@ -53,6 +48,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [editing, setEditing] = useState<ScheduleItem | null>(null);
 
   const days = getCalendarDays(year, month);
 
@@ -60,10 +56,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
     const map: Record<string, ScheduleItem[]> = {};
 
     schedules.forEach((item) => {
-      if (!map[item.schedule_date]) {
-        map[item.schedule_date] = [];
-      }
-
+      if (!map[item.schedule_date]) map[item.schedule_date] = [];
       map[item.schedule_date].push(item);
     });
 
@@ -73,6 +66,8 @@ export default function ScheduleAdminClient({ schedules }: Props) {
   const selectedSchedules = scheduleMap[selectedDate] || [];
 
   function moveMonth(type: "prev" | "next") {
+    setEditing(null);
+
     if (type === "prev") {
       if (month === 1) {
         setYear(year - 1);
@@ -92,6 +87,11 @@ export default function ScheduleAdminClient({ schedules }: Props) {
     }
   }
 
+  function selectDate(date: string) {
+    setSelectedDate(date);
+    setEditing(null);
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-7xl">
@@ -101,7 +101,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
               📅 방송 일정 관리
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              날짜 클릭 → 오른쪽에서 바로 일정 등록
+              날짜 클릭 → 일정 등록 / 기존 일정 클릭 → 수정·삭제
             </p>
           </div>
 
@@ -149,9 +149,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
 
             <div className="grid grid-cols-7 gap-3">
               {days.map((day, index) => {
-                if (!day) {
-                  return <div key={index} className="min-h-[135px]" />;
-                }
+                if (!day) return <div key={index} className="min-h-[135px]" />;
 
                 const key = formatDateKey(year, month, day);
                 const items = scheduleMap[key] || [];
@@ -165,7 +163,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setSelectedDate(key)}
+                    onClick={() => selectDate(key)}
                     className={`min-h-[135px] rounded-2xl border p-3 text-left transition hover:scale-105 ${
                       hasOffday
                         ? "border-slate-500 bg-slate-700"
@@ -208,20 +206,27 @@ export default function ScheduleAdminClient({ schedules }: Props) {
           <aside className="space-y-5">
             <div className="rounded-3xl bg-slate-900 p-6">
               <h2 className="mb-2 text-xl font-black text-yellow-400">
-                선택한 날짜
+                {editing ? "일정 수정" : "일정 등록"}
               </h2>
 
               <p className="mb-5 rounded-xl bg-slate-800 px-4 py-3 text-lg font-black">
-                {selectedDate}
+                {editing ? editing.schedule_date : selectedDate}
               </p>
 
-              <form action="/api/admin/schedule" method="POST">
-                <input type="hidden" name="schedule_date" value={selectedDate} />
+              <form action="/api/admin/schedule" method="POST" key={editing?.id || selectedDate}>
+                <input type="hidden" name="mode" value={editing ? "update" : "create"} />
+                <input type="hidden" name="id" value={editing?.id || ""} />
+                <input
+                  type="hidden"
+                  name="schedule_date"
+                  value={editing ? editing.schedule_date : selectedDate}
+                />
 
                 <div className="space-y-4">
                   <input
                     type="time"
                     name="schedule_time"
+                    defaultValue={editing?.schedule_time || ""}
                     className="w-full rounded-xl bg-slate-800 px-4 py-3"
                   />
 
@@ -230,6 +235,7 @@ export default function ScheduleAdminClient({ schedules }: Props) {
                     name="title"
                     placeholder="방송 제목 / 휴방 사유"
                     required
+                    defaultValue={editing?.title || ""}
                     className="w-full rounded-xl bg-slate-800 px-4 py-3"
                   />
 
@@ -237,16 +243,25 @@ export default function ScheduleAdminClient({ schedules }: Props) {
                     name="description"
                     placeholder="상세 내용 / 공지"
                     rows={5}
+                    defaultValue={editing?.description || ""}
                     className="w-full rounded-xl bg-slate-800 px-4 py-3"
                   />
 
                   <label className="flex items-center gap-2 text-sm font-bold">
-                    <input type="checkbox" name="is_important" />
+                    <input
+                      type="checkbox"
+                      name="is_important"
+                      defaultChecked={editing?.is_important || false}
+                    />
                     중요 일정 ⭐
                   </label>
 
                   <label className="flex items-center gap-2 text-sm font-bold">
-                    <input type="checkbox" name="is_offday" />
+                    <input
+                      type="checkbox"
+                      name="is_offday"
+                      defaultChecked={editing?.is_offday || false}
+                    />
                     휴방
                   </label>
 
@@ -254,10 +269,38 @@ export default function ScheduleAdminClient({ schedules }: Props) {
                     type="submit"
                     className="w-full rounded-xl bg-yellow-500 px-5 py-3 font-black text-black hover:bg-yellow-400"
                   >
-                    이 날짜에 등록하기
+                    {editing ? "수정 저장하기" : "이 날짜에 등록하기"}
                   </button>
+
+                  {editing && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(null)}
+                      className="w-full rounded-xl bg-slate-700 px-5 py-3 font-black hover:bg-slate-600"
+                    >
+                      새 일정 등록으로 돌아가기
+                    </button>
+                  )}
                 </div>
               </form>
+
+              {editing && (
+                <form
+                  action="/api/admin/schedule"
+                  method="POST"
+                  className="mt-3"
+                >
+                  <input type="hidden" name="mode" value="delete" />
+                  <input type="hidden" name="id" value={editing.id} />
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-xl bg-red-600 px-5 py-3 font-black hover:bg-red-500"
+                  >
+                    삭제하기
+                  </button>
+                </form>
+              )}
             </div>
 
             <div className="rounded-3xl bg-slate-900 p-6">
@@ -272,9 +315,11 @@ export default function ScheduleAdminClient({ schedules }: Props) {
               ) : (
                 <div className="space-y-3">
                   {selectedSchedules.map((item) => (
-                    <div
+                    <button
                       key={item.id}
-                      className={`rounded-2xl p-4 ${
+                      type="button"
+                      onClick={() => setEditing(item)}
+                      className={`w-full rounded-2xl p-4 text-left hover:ring-2 hover:ring-yellow-400 ${
                         item.is_offday ? "bg-slate-700" : "bg-slate-800"
                       }`}
                     >
@@ -294,7 +339,11 @@ export default function ScheduleAdminClient({ schedules }: Props) {
                           {item.description}
                         </p>
                       )}
-                    </div>
+
+                      <p className="mt-3 text-xs text-slate-500">
+                        클릭하면 수정 가능
+                      </p>
+                    </button>
                   ))}
                 </div>
               )}
