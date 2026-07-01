@@ -110,7 +110,9 @@ export default function ItemOverlayPage() {
     try {
       await fetch("/api/overlay/item-done", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ id }),
       });
     } catch (error) {
@@ -197,55 +199,73 @@ export default function ItemOverlayPage() {
   const overlayLines = splitOverlayLines(overlayText);
 
   return (
-    <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
-      {current && (
-        <div
-          className="flex flex-col items-center justify-center px-14 py-10"
-          style={{
-            fontFamily:
-              "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
+    <>
+      <style jsx global>{`
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          background: transparent !important;
+          overflow: hidden;
+        }
+
+        body {
+          background-color: transparent !important;
+        }
+      `}</style>
+
+      <main className="w-screen h-screen bg-transparent overflow-hidden flex items-center justify-center pointer-events-none">
+        {current && (
+          <div
+            className="flex flex-col items-center justify-center px-14 py-10"
+            style={{
+              fontFamily:
+                "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
+            }}
+          >
+            {current.item_image && (
+              <img
+                src={current.item_image}
+                alt={current.item_name}
+                className="w-[300px] max-h-[300px] object-contain mb-6 rounded-2xl"
+              />
+            )}
+
+            <div
+              className="text-[54px] font-black text-center leading-[1.25]"
+              style={{
+                fontWeight: 1000,
+              }}
+            >
+              <div>{renderColoredText(overlayLines.firstLine)}</div>
+              <div>{renderColoredText(overlayLines.secondLine)}</div>
+            </div>
+
+            <div
+              className="mt-5 text-[36px] font-black text-center max-w-[1400px] leading-[1.25]"
+              style={{
+                color: "#ffffff",
+                fontWeight: 1000,
+                WebkitTextStroke: "8px #000000",
+                paintOrder: "stroke fill",
+              }}
+            >
+              {current.message}
+            </div>
+          </div>
+        )}
+
+        <audio
+          ref={audioRef}
+          preload="auto"
+          onEnded={() => {
+            if (!currentIdRef.current) return;
+            finish(currentIdRef.current);
           }}
-        >
-          {current.item_image && (
-            <img
-              src={current.item_image}
-              alt={current.item_name}
-              className="w-[300px] max-h-[300px] object-contain mb-6 rounded-2xl"
-            />
-          )}
-
-          <div
-            className="text-[54px] font-black text-center leading-[1.25]"
-            style={{
-              fontWeight: 1000,
-            }}
-          >
-            <div>{renderColoredText(overlayLines.firstLine)}</div>
-            <div>{renderColoredText(overlayLines.secondLine)}</div>
-          </div>
-
-          <div
-            className="mt-5 text-[36px] font-black text-center max-w-[1400px] leading-[1.25]"
-            style={{
-              color: "#ffffff",
-              fontWeight: 1000,
-              WebkitTextStroke: "8px #000000",
-              paintOrder: "stroke fill",
-            }}
-          >
-            {current.message}
-          </div>
-        </div>
-      )}
-
-      <audio
-        ref={audioRef}
-        preload="auto"
-        onEnded={() => {
-          if (!currentIdRef.current) return;
-          finish(currentIdRef.current);
-        }}
-      />
-    </main>
+        />
+      </main>
+    </>
   );
 }
