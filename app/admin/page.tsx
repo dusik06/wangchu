@@ -169,6 +169,13 @@ export default async function AdminPage() {
           </a>
 
           <a
+  className="cursor-pointer rounded-xl bg-blue-500 p-6 font-bold text-white hover:bg-blue-400"
+  href="/admin/schedule"
+>
+  📅 방송 일정 관리
+</a>
+
+          <a
             className="cursor-pointer rounded-xl bg-orange-500 p-6 font-bold hover:bg-orange-400"
             href="/admin/prediction/settle"
           >
