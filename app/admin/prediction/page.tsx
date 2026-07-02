@@ -20,17 +20,13 @@ type PredictionGame = {
 function toDateTimeLocal(value: string) {
   if (!value) return "";
 
-  const date = new Date(value);
+  const clean = value.replace("T", " ").slice(0, 19);
+  const [datePart, timePart] = clean.split(" ");
 
-  if (Number.isNaN(date.getTime())) {
-    return value.replace(" ", "T").slice(0, 16);
-  }
+  if (!datePart || !timePart) return "";
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
+  const [year, month, day] = datePart.split("-");
+  const [hour, minute] = timePart.split(":");
 
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
