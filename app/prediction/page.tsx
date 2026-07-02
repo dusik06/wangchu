@@ -29,33 +29,48 @@ type HistoryLog = {
   payout_amount: number;
 };
 
+function parseDbDateTime(value: string) {
+  if (!value) return null;
+
+  const clean = value.replace("T", " ").slice(0, 19);
+  const [datePart, timePart] = clean.split(" ");
+
+  if (!datePart || !timePart) return null;
+
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+}
+
 function formatKstDateTime(value: string) {
-  if (!value) return "마감시간 없음";
+  const date = parseDbDateTime(value);
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (!date) return value || "마감시간 없음";
 
-  return date.toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${month}/${day} ${hour}:${minute}`;
 }
 
 function isClosed(game: PredictionGame) {
   if (game.status !== "OPEN") return true;
 
-  const deadline = new Date(game.betting_deadline);
-  if (Number.isNaN(deadline.getTime())) return false;
+  const deadline = parseDbDateTime(game.betting_deadline);
+  if (!deadline) return false;
 
   return new Date().getTime() > deadline.getTime();
 }
 
 function getRemainText(value: string) {
-  const deadline = new Date(value);
-  if (Number.isNaN(deadline.getTime())) return "마감시간 확인 필요";
+  const deadline = parseDbDateTime(value);
+
+  if (!deadline) return "마감시간 확인 필요";
 
   const diff = deadline.getTime() - new Date().getTime();
 

@@ -71,10 +71,29 @@ export async function POST(req: Request) {
       });
     }
 
-    const now = new Date();
-    const deadline = new Date(game.betting_deadline);
+function parseDbDateTime(value: string) {
+  const clean = value.replace("T", " ").slice(0, 19);
+  const [datePart, timePart] = clean.split(" ");
 
-    if (!game.betting_deadline || Number.isNaN(deadline.getTime())) {
+  if (!datePart || !timePart) return null;
+
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+
+  return new Date(
+    year,
+    month - 1,
+    day,
+    hour || 0,
+    minute || 0,
+    second || 0
+  );
+}
+
+const now = new Date();
+const deadline = parseDbDateTime(game.betting_deadline);
+
+    if (!game.betting_deadline || !deadline) {
       await connection.rollback();
 
       return NextResponse.json({
