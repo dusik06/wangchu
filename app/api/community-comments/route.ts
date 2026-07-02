@@ -40,22 +40,57 @@ export async function POST(req: Request) {
 
   const commentReward = 5;
   const commentDailyLimit = 5;
+  const adminPostCommentReward = 10;
+  const adminPostCommentDailyLimit = 1;
 
-  const [todayRewardComments]: any = await db.query(
+  const [posts]: any = await db.query(
     `
-    SELECT COUNT(*) AS count
-    FROM community_comments
-    WHERE user_id = ?
-      AND reward_given = 1
-      AND DATE(created_at) = CURDATE()
+    SELECT u.role
+    FROM community_posts p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE p.id = ?
+    LIMIT 1
     `,
-    [userId]
+    [postId]
   );
 
-  let rewardGiven = 0;
+  const isAdminPost = posts.length > 0 && posts[0].role === "admin";
 
-  if (todayRewardComments[0].count < commentDailyLimit) {
-    rewardGiven = 1;
+  let rewardGiven = 0;
+  let finalReward = 0;
+
+  if (isAdminPost) {
+    const [todayAdminComments]: any = await db.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM community_comments
+      WHERE user_id = ?
+        AND reward_given = 2
+        AND DATE(created_at) = CURDATE()
+      `,
+      [userId]
+    );
+
+    if (todayAdminComments[0].count < adminPostCommentDailyLimit) {
+      rewardGiven = 2;
+      finalReward = adminPostCommentReward;
+    }
+  } else {
+    const [todayRewardComments]: any = await db.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM community_comments
+      WHERE user_id = ?
+        AND reward_given = 1
+        AND DATE(created_at) = CURDATE()
+      `,
+      [userId]
+    );
+
+    if (todayRewardComments[0].count < commentDailyLimit) {
+      rewardGiven = 1;
+      finalReward = commentReward;
+    }
   }
 
   await db.query(
@@ -70,19 +105,25 @@ export async function POST(req: Request) {
   if (rewardGiven) {
     await db.query(
       "UPDATE users SET dotori = dotori + ? WHERE id = ?",
-      [commentReward, userId]
+      [finalReward, userId]
     );
 
     await db.query(
       "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-      [userId, commentReward, "댓글 작성 보상"]
+      [
+        userId,
+        finalReward,
+        rewardGiven === 2 ? "관리자 글 댓글 보상" : "댓글 작성 보상",
+      ]
     );
   }
 
   return NextResponse.json({
     success: true,
     message: rewardGiven
-      ? `댓글 작성 완료! 도토리 ${commentReward}개 지급`
-      : "댓글 작성 완료! (오늘 보상 횟수 초과)",
+      ? `댓글 작성 완료! 도토리 ${finalReward}개 지급`
+      : isAdminPost
+      ? "댓글 작성 완료! (오늘 관리자 글 댓글 보상 횟수 초과)"
+      : "댓글 작성 완료! (오늘 댓글 보상 횟수 초과)",
   });
 }

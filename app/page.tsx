@@ -7,6 +7,7 @@ import ShortsSlider from "@/components/home/ShortsSlider";
 import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import DailyQuestCard from "@/components/home/DailyQuestCard";
 
 const YOUTUBE_LIVE_URL = "https://www.youtube.com/watch?v=P9fMwfGrucU";
 
@@ -463,6 +464,7 @@ export default async function Home() {
                 <span className="text-sm font-black text-[#f7d36b]">연속 출석</span>
               </div>
               <AttendanceButton />
+              <DailyQuestCard userId={currentUser?.id || null} />
             </div>
 
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
