@@ -33,12 +33,12 @@ export async function POST(req: Request) {
     if (!id) {
       return NextResponse.json({
         success: false,
-        message: "예측 ID 없음",
+        message: "예측 ID가 없습니다.",
       });
     }
 
     if (mode === "delete") {
-      await db.query(
+      const [result]: any = await db.query(
         "DELETE FROM prediction_games WHERE id = ? AND status = 'OPEN'",
         [id]
       );
@@ -46,10 +46,18 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: "삭제 완료",
+        affectedRows: result.affectedRows,
       });
     }
 
-    await db.query(
+    if (!title || !winLabel || !loseLabel || !bettingDeadline) {
+      return NextResponse.json({
+        success: false,
+        message: "주제, 선택지, 마감시간은 필수입니다.",
+      });
+    }
+
+    const [result]: any = await db.query(
       `
       UPDATE prediction_games
       SET
@@ -63,21 +71,28 @@ export async function POST(req: Request) {
         max_bet = ?,
         betting_deadline = ?
       WHERE id = ?
-      AND status = 'OPEN'
+        AND status = 'OPEN'
       `,
       [
         title,
         description || null,
         winLabel,
         loseLabel,
-        Number(winOdds),
-        Number(loseOdds),
-        Number(minBet),
-        Number(maxBet),
+        Number(winOdds || 1.9),
+        Number(loseOdds || 1.9),
+        Number(minBet || 10),
+        Number(maxBet || 10000),
         bettingDeadline,
         id,
       ]
     );
+
+    if (result.affectedRows === 0) {
+      return NextResponse.json({
+        success: false,
+        message: "수정할 수 없는 예측입니다. 이미 정산 완료됐거나 존재하지 않습니다.",
+      });
+    }
 
     return NextResponse.json({
       success: true,

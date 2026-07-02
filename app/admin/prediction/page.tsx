@@ -114,6 +114,7 @@ export default function AdminPredictionPage() {
       method: "POST",
       body: JSON.stringify({
         id: editingId,
+        mode: editingId ? "update" : "create",
         title,
         description,
         winLabel,
