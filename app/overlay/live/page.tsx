@@ -341,57 +341,85 @@ export default function Page() {
               {currentItem.alert_type === "complete" ? (
                 <>
                 <div
-                  className="mb-4 text-[46px] font-black"
+                  className="mb-5 text-[54px] font-black"
+                  style={{
+                    color: "#facc15",
+                    WebkitTextStroke: "8px #000000",
+                    paintOrder: "stroke fill",
+                  }}
+                >
+                  미션 달성!
+                </div>
+              
+                <div
+                  className="mb-5 text-[42px] font-black"
                   style={{
                     color: "#ffffff",
                     WebkitTextStroke: "8px #000000",
                     paintOrder: "stroke fill",
                   }}
                 >
-                  <span
-                    style={{
-                      color: "#8dff8d",
-                      WebkitTextStroke: "8px #000000",
-                    }}
-                  >
-                    {currentItem.nickname}
-                  </span>
-                  님이
-                </div>
-              
-                <div
-                  className="mb-4 text-[42px] font-black"
-                  style={{
-                    color: "#ffffff",
-                    WebkitTextStroke: "8px #000000",
-                    paintOrder: "stroke fill",
-                  }}
-                >
-                  미션에
-                </div>
-              
-                <div
-                  className="mb-4 text-[52px] font-black"
-                  style={{
-                    color: "#ff2d2d",
-                    WebkitTextStroke: "8px #000000",
-                    paintOrder: "stroke fill",
-                  }}
-                >
-                  도토리 {Number(currentItem.dotori_amount || 0).toLocaleString()}개
+                  {currentItem.title}
                 </div>
               
                 <div
                   className="text-[42px] font-black"
                   style={{
-                    color: "#ffffff",
+                    color: "#8dff8d",
                     WebkitTextStroke: "8px #000000",
                     paintOrder: "stroke fill",
                   }}
                 >
-                  지원했습니다.
+                  도토리 목표를 달성했습니다!
                 </div>
               </>
+             ) : (
+                <>
+  <div
+    className="mb-4 text-[46px] font-black"
+    style={{
+      color: "#ffffff",
+      WebkitTextStroke: "8px #000000",
+      paintOrder: "stroke fill",
+    }}
+  >
+    <span style={{ color: "#8dff8d" }}>{currentItem.nickname}</span>
+    님이
+  </div>
+
+  <div
+    className="mb-4 text-[42px] font-black"
+    style={{
+      color: "#ffffff",
+      WebkitTextStroke: "8px #000000",
+      paintOrder: "stroke fill",
+    }}
+  >
+    미션에
+  </div>
+
+  <div
+    className="mb-4 text-[52px] font-black"
+    style={{
+      color: "#ff2d2d",
+      WebkitTextStroke: "8px #000000",
+      paintOrder: "stroke fill",
+    }}
+  >
+    도토리 {Number(currentItem.dotori_amount || 0).toLocaleString()}개를
+  </div>
+
+  <div
+    className="text-[42px] font-black"
+    style={{
+      color: "#ffffff",
+      WebkitTextStroke: "8px #000000",
+      paintOrder: "stroke fill",
+    }}
+  >
+    지원했습니다.
+  </div>
+</>
               )}
             </div>
           </div>
