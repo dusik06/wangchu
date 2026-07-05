@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     await db.query(
       `
       UPDATE broadcast_missions
-      SET status = 'completed',
+      SET status = 'deleted',
           is_selected = 0,
           ended_at = NOW(),
           updated_at = NOW()
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     console.error(error);
 
     return NextResponse.json(
-      { success: false, message: "미션 완료 처리에 실패했습니다." },
+      { success: false, message: "미션 삭제에 실패했습니다." },
       { status: 500 }
     );
   }
