@@ -1,20 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Mission = {
   id: number;
   title: string;
-  description: string | null;
   image_url: string | null;
   goal_dotori: number;
   current_dotori: number;
 };
 
+type OverlayQueueItem = {
+  id: number;
+  type: "item" | "song";
+  nickname: string;
+  title: string;
+  item_image: string | null;
+  item_audio: string | null;
+  overlay_text: string | null;
+  message: string;
+};
+
 export default function Page() {
   const [mission, setMission] = useState<Mission | null>(null);
+  const [currentItem, setCurrentItem] = useState<OverlayQueueItem | null>(null);
 
-  async function loadState() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const playingKeyRef = useRef<string | null>(null);
+
+  const outlineStyle = {
+    WebkitTextStroke: "9px #000000",
+    paintOrder: "stroke fill",
+  } as React.CSSProperties;
+
+  function clearPlayTimer() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  async function loadMission() {
     try {
       const res = await fetch("/api/overlay/live-state", {
         cache: "no-store",
@@ -22,55 +49,220 @@ export default function Page() {
 
       const data = await res.json();
 
-      if (!data.success) {
+      if (!data.success || !data.mission) {
         setMission(null);
         return;
       }
 
-      setMission(data.mission || null);
+      setMission(data.mission);
     } catch (error) {
       console.error(error);
       setMission(null);
     }
   }
 
-  useEffect(() => {
-    loadState();
+  async function markDone(item: OverlayQueueItem) {
+    clearPlayTimer();
 
-    const timer = setInterval(() => {
-      loadState();
-    }, 2000);
+    try {
+      await fetch("/api/overlay/queue-done", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: item.id,
+          type: item.type,
+        }),
+      });
+    } catch (error) {
+      console.error(error);
+    }
 
-    return () => clearInterval(timer);
-  }, []);
-
-  if (!mission) {
-    return (
-      <>
-        <style jsx global>{`
-          html,
-          body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent !important;
-            overflow: hidden;
-          }
-
-          body {
-            background-color: transparent !important;
-          }
-        `}</style>
-
-        <main className="w-screen h-screen bg-transparent" />
-      </>
-    );
+    playingKeyRef.current = null;
+    setCurrentItem(null);
   }
 
-  const goal = Math.max(Number(mission.goal_dotori || 0), 1);
-  const current = Math.max(Number(mission.current_dotori || 0), 0);
-  const percent = Math.min(100, Math.floor((current / goal) * 100));
+  function finishAfterAudio(item: OverlayQueueItem) {
+    clearPlayTimer();
+
+    timerRef.current = setTimeout(() => {
+      markDone(item);
+    }, 3000);
+  }
+
+  function getItemKey(item: OverlayQueueItem) {
+    return `${item.type}-${item.id}`;
+  }
+
+  function playQueueItem(item: OverlayQueueItem, replay: boolean) {
+    const key = getItemKey(item);
+
+    if (!replay && playingKeyRef.current === key) return;
+
+    clearPlayTimer();
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current.currentTime = 0;
+    }
+
+    playingKeyRef.current = key;
+    setCurrentItem(item);
+
+    if (item.item_audio && audioRef.current) {
+      const audio = audioRef.current;
+
+      audio.volume = item.type === "song" ? 1 : 0.6;
+      audio.muted = false;
+      audio.loop = false;
+
+      setTimeout(() => {
+        if (!audioRef.current) return;
+
+        audioRef.current.src = item.item_audio || "";
+        audioRef.current.load();
+
+        audioRef.current.play().catch((error) => {
+          console.error("오디오 재생 실패:", error);
+
+          timerRef.current = setTimeout(() => {
+            markDone(item);
+          }, 10000);
+        });
+      }, 300);
+    } else {
+      timerRef.current = setTimeout(() => {
+        markDone(item);
+      }, 10000);
+    }
+  }
+
+  async function fetchNextQueue() {
+    try {
+      const res = await fetch("/api/overlay/queue-next", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!data.success) return;
+
+      if (data.command === "refresh") {
+        window.location.reload();
+        return;
+      }
+
+      if (data.command === "skip") {
+        clearPlayTimer();
+
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = "";
+        }
+
+        playingKeyRef.current = null;
+        setCurrentItem(null);
+        return;
+      }
+
+      if (data.command === "replay" && data.item) {
+        playQueueItem(data.item, true);
+        return;
+      }
+
+      if ((data.command === "play" || data.command === "playing") && data.item) {
+        playQueueItem(data.item, false);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function getOverlayText(item: OverlayQueueItem) {
+    if (item.type === "song") {
+      return `${item.nickname}님이 시그를 사용했습니다!`;
+    }
+
+    if (item.overlay_text && item.overlay_text.trim()) {
+      return item.overlay_text.replace(/\{nickname\}/g, item.nickname);
+    }
+
+    return `${item.nickname}님이 ${item.title} 아이템을 사용했습니다!`;
+  }
+
+  function splitOverlayLines(text: string) {
+    const match = text.match(/^(.*?도토리\s*[0-9,]+개)를?\s*(.*)$/);
+
+    if (!match) {
+      return {
+        firstLine: text,
+        secondLine: "",
+      };
+    }
+
+    return {
+      firstLine: `${match[1]}를`,
+      secondLine: match[2] || "사용했습니다.",
+    };
+  }
+
+  function renderColoredText(text: string) {
+    const nickname = currentItem?.nickname || "";
+    const regex = new RegExp(`(${nickname})|(도토리\\s*[0-9,]+개)`, "g");
+    const parts = text.split(regex).filter(Boolean);
+
+    return parts.map((part, index) => {
+      if (part === nickname) {
+        return (
+          <span key={index} style={{ color: "#8dff8d", ...outlineStyle }}>
+            {part}
+          </span>
+        );
+      }
+
+      if (/도토리\s*[0-9,]+개/.test(part)) {
+        return (
+          <span key={index} style={{ color: "#ff2d2d", ...outlineStyle }}>
+            {part}
+          </span>
+        );
+      }
+
+      return (
+        <span key={index} style={{ color: "#ffffff", ...outlineStyle }}>
+          {part}
+        </span>
+      );
+    });
+  }
+
+  useEffect(() => {
+    loadMission();
+    fetchNextQueue();
+
+    const missionTimer = setInterval(loadMission, 2000);
+    const queueTimer = setInterval(fetchNextQueue, 1500);
+
+    return () => {
+      clearInterval(missionTimer);
+      clearInterval(queueTimer);
+      clearPlayTimer();
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  const goal = mission ? Math.max(Number(mission.goal_dotori || 0), 1) : 1;
+  const current = mission ? Math.max(Number(mission.current_dotori || 0), 0) : 0;
+  const percent = mission ? Math.min(100, (current / goal) * 100) : 0;
+
+  const overlayText = currentItem ? getOverlayText(currentItem) : "";
+  const overlayLines = splitOverlayLines(overlayText);
 
   return (
     <>
@@ -90,46 +282,87 @@ export default function Page() {
         }
       `}</style>
 
-      <main className="w-screen h-screen bg-transparent overflow-hidden pointer-events-none">
-        <div className="absolute bottom-10 left-1/2 w-[760px] -translate-x-1/2 rounded-[28px] border border-white/20 bg-black/70 px-7 py-5 text-white shadow-[0_0_40px_rgba(168,85,247,0.45)] backdrop-blur">
-          <div className="flex items-center gap-5">
-            {mission.image_url && (
+      <main className="h-screen w-screen overflow-hidden bg-transparent pointer-events-none">
+        {currentItem && (
+          <div
+            className="flex h-screen w-screen items-center justify-center bg-transparent"
+            style={{
+              fontFamily:
+                "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
+            }}
+          >
+            <div className="flex flex-col items-center justify-center px-14 py-10">
+              {currentItem.item_image && (
+                <img
+                  src={currentItem.item_image}
+                  alt={currentItem.title}
+                  className="mb-6 max-h-[300px] w-[300px] rounded-2xl object-contain"
+                />
+              )}
+
+              <div
+                className="text-center text-[54px] font-black leading-[1.25]"
+                style={{ fontWeight: 1000 }}
+              >
+                <div>{renderColoredText(overlayLines.firstLine)}</div>
+                <div>{renderColoredText(overlayLines.secondLine)}</div>
+              </div>
+
+              {currentItem.message && (
+                <div
+                  className="mt-5 max-w-[1400px] text-center text-[36px] font-black leading-[1.25]"
+                  style={{
+                    color: "#ffffff",
+                    fontWeight: 1000,
+                    WebkitTextStroke: "8px #000000",
+                    paintOrder: "stroke fill",
+                  }}
+                >
+                  {currentItem.message}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!currentItem && mission && (
+          <div className="absolute bottom-10 left-1/2 flex -translate-x-1/2 items-center gap-3">
+            {mission.image_url && mission.image_url.trim() && (
               <img
                 src={mission.image_url}
                 alt={mission.title}
-                className="h-[96px] w-[96px] rounded-2xl object-cover"
+                className="h-[58px] w-[58px] rounded-md object-cover"
               />
             )}
 
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 truncate text-2xl font-black">
+            <div className="flex flex-col gap-2">
+              <div className="text-[24px] font-black text-white [text-shadow:2px_2px_3px_rgba(0,0,0,0.9)]">
                 {mission.title}
               </div>
 
-              {mission.description && (
-                <div className="mb-3 line-clamp-2 text-sm font-bold text-white/70">
-                  {mission.description}
-                </div>
-              )}
-
-              <div className="mb-2 h-5 overflow-hidden rounded-full bg-white/15">
+              <div className="relative h-[42px] w-[760px] overflow-hidden border-2 border-[#9ca3af] bg-[#1f2937] shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
                 <div
-                  className="h-full rounded-full bg-purple-500 transition-all duration-500"
-                  style={{
-                    width: `${percent}%`,
-                  }}
+                  className="absolute left-0 top-0 h-full bg-[#5b8fee] transition-all duration-700"
+                  style={{ width: `${percent}%` }}
                 />
-              </div>
 
-              <div className="flex items-center justify-between text-sm font-black">
-                <span>{percent}%</span>
-                <span>
-                  {current.toLocaleString()} / {goal.toLocaleString()} 도토리
-                </span>
+                <div className="relative z-10 grid h-full grid-cols-2 items-center px-5 text-[25px] font-black text-white [text-shadow:2px_2px_2px_rgba(0,0,0,0.8)]">
+                  <div className="text-left">{current.toLocaleString()}</div>
+                  <div className="text-right">{goal.toLocaleString()}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        <audio
+          ref={audioRef}
+          preload="auto"
+          onEnded={() => {
+            if (!currentItem) return;
+            finishAfterAudio(currentItem);
+          }}
+        />
       </main>
     </>
   );

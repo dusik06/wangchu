@@ -8,6 +8,7 @@ import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import DailyQuestCard from "@/components/home/DailyQuestCard";
+import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
 
 const YOUTUBE_LIVE_URL = "https://www.youtube.com/watch?v=P9fMwfGrucU";
 
@@ -409,6 +410,13 @@ export default async function Home() {
     <div className="text-3xl">📅</div>
     <div className="mt-2 text-xs font-black">방송일정</div>
   </a>
+  <a
+  href="/missions"
+  className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
+>
+  <div className="text-3xl">📢</div>
+  <div className="mt-2 text-xs font-black">방송미션</div>
+</a>
 
   <a
     href="https://www.instagram.com/parkwangchu/"
@@ -507,6 +515,8 @@ export default async function Home() {
                 </a>
               </div>
             </div>
+
+            <BroadcastMissionCard isAdmin={isAdmin} />
 
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
               <div className="mb-4 flex items-center justify-between">
