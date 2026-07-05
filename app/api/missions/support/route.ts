@@ -109,6 +109,16 @@ export async function POST(req: Request) {
       [user.id, -amount, `방송 미션 지원: ${mission.title}`]
     );
 
+    await conn.query(
+      `
+      INSERT INTO mission_overlay_alerts
+        (mission_id, alert_type, nickname, dotori_amount, mission_title, status, created_at)
+      VALUES
+        (?, 'support', ?, ?, ?, 'pending', NOW())
+      `,
+      [missionId, user.nickname || "익명", amount, mission.title]
+    );
+
     const nextCurrent = Number(mission.current_dotori || 0) + amount;
     const goal = Number(mission.goal_dotori || 0);
 
@@ -124,6 +134,16 @@ export async function POST(req: Request) {
         WHERE id = ?
         `,
         [nextCurrent, missionId]
+      );
+
+      await conn.query(
+        `
+        INSERT INTO mission_overlay_alerts
+          (mission_id, alert_type, nickname, dotori_amount, mission_title, status, created_at)
+        VALUES
+          (?, 'complete', ?, ?, ?, 'pending', NOW())
+        `,
+        [missionId, user.nickname || "익명", amount, mission.title]
       );
     } else {
       await conn.query(

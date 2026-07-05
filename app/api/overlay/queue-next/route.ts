@@ -26,6 +26,31 @@ async function getItem(id: number) {
   return rows[0] || null;
 }
 
+async function getMissionAlert(id: number) {
+  const [rows]: any = await db.query(
+    `
+    SELECT
+      id,
+      'mission' AS type,
+      alert_type,
+      nickname,
+      mission_title AS title,
+      NULL AS item_image,
+      NULL AS item_audio,
+      '' AS message,
+      NULL AS overlay_text,
+      dotori_amount,
+      created_at
+    FROM mission_overlay_alerts
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [id]
+  );
+
+  return rows[0] || null;
+}
+
 export async function GET() {
   const conn = await (db as any).getConnection();
 
@@ -86,6 +111,13 @@ export async function GET() {
       `);
 
       await conn.query(`
+        UPDATE mission_overlay_alerts
+        SET status = 'skipped',
+            played_at = NOW()
+        WHERE status = 'playing'
+      `);
+
+      await conn.query(`
         UPDATE overlay_queue_control
         SET command = 'none',
             target_type = NULL,
@@ -115,7 +147,10 @@ export async function GET() {
 
       await conn.commit();
 
-      const item = await getItem(Number(control.target_id));
+      const item =
+        control.target_type === "mission"
+          ? await getMissionAlert(Number(control.target_id))
+          : await getItem(Number(control.target_id));
 
       return NextResponse.json({
         success: true,
@@ -125,18 +160,40 @@ export async function GET() {
     }
 
     const [playingRows]: any = await conn.query(`
-      SELECT
-        id,
-        'item' AS type,
-        nickname,
-        item_name AS title,
-        item_image,
-        item_audio,
-        message,
-        overlay_text,
-        created_at
-      FROM item_use_alerts
-      WHERE status = 'playing'
+      SELECT *
+      FROM (
+        SELECT
+          id,
+          'item' AS type,
+          NULL AS alert_type,
+          nickname,
+          item_name AS title,
+          item_image,
+          item_audio,
+          message,
+          overlay_text,
+          0 AS dotori_amount,
+          created_at
+        FROM item_use_alerts
+        WHERE status = 'playing'
+
+        UNION ALL
+
+        SELECT
+          id,
+          'mission' AS type,
+          alert_type,
+          nickname,
+          mission_title AS title,
+          NULL AS item_image,
+          NULL AS item_audio,
+          '' AS message,
+          NULL AS overlay_text,
+          dotori_amount,
+          created_at
+        FROM mission_overlay_alerts
+        WHERE status = 'playing'
+      ) q
       ORDER BY created_at ASC, id ASC
       LIMIT 1
     `);
@@ -152,18 +209,40 @@ export async function GET() {
     }
 
     const [nextRows]: any = await conn.query(`
-      SELECT
-        id,
-        'item' AS type,
-        nickname,
-        item_name AS title,
-        item_image,
-        item_audio,
-        message,
-        overlay_text,
-        created_at
-      FROM item_use_alerts
-      WHERE status = 'pending'
+      SELECT *
+      FROM (
+        SELECT
+          id,
+          'item' AS type,
+          NULL AS alert_type,
+          nickname,
+          item_name AS title,
+          item_image,
+          item_audio,
+          message,
+          overlay_text,
+          0 AS dotori_amount,
+          created_at
+        FROM item_use_alerts
+        WHERE status = 'pending'
+
+        UNION ALL
+
+        SELECT
+          id,
+          'mission' AS type,
+          alert_type,
+          nickname,
+          mission_title AS title,
+          NULL AS item_image,
+          NULL AS item_audio,
+          '' AS message,
+          NULL AS overlay_text,
+          dotori_amount,
+          created_at
+        FROM mission_overlay_alerts
+        WHERE status = 'pending'
+      ) q
       ORDER BY created_at ASC, id ASC
       LIMIT 1
       FOR UPDATE
@@ -181,15 +260,27 @@ export async function GET() {
       });
     }
 
-    await conn.query(
-      `
-      UPDATE item_use_alerts
-      SET status = 'playing'
-      WHERE id = ?
-        AND status = 'pending'
-      `,
-      [nextItem.id]
-    );
+    if (nextItem.type === "mission") {
+      await conn.query(
+        `
+        UPDATE mission_overlay_alerts
+        SET status = 'playing'
+        WHERE id = ?
+          AND status = 'pending'
+        `,
+        [nextItem.id]
+      );
+    } else {
+      await conn.query(
+        `
+        UPDATE item_use_alerts
+        SET status = 'playing'
+        WHERE id = ?
+          AND status = 'pending'
+        `,
+        [nextItem.id]
+      );
+    }
 
     await conn.commit();
 

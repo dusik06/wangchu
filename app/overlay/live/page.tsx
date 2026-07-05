@@ -12,18 +12,21 @@ type Mission = {
 
 type OverlayQueueItem = {
   id: number;
-  type: "item" | "song";
+  type: "item" | "mission";
+  alert_type?: "support" | "complete" | null;
   nickname: string;
   title: string;
   item_image: string | null;
   item_audio: string | null;
   overlay_text: string | null;
   message: string;
+  dotori_amount?: number;
 };
 
 export default function Page() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [currentItem, setCurrentItem] = useState<OverlayQueueItem | null>(null);
+  const [visible, setVisible] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,15 +52,11 @@ export default function Page() {
 
       const data = await res.json();
 
-      if (!data.success || !data.mission) {
-        setMission(null);
-        return;
-      }
+      if (!data.success) return;
 
-      setMission(data.mission);
+      setMission(data.mission || null);
     } catch (error) {
       console.error(error);
-      setMission(null);
     }
   }
 
@@ -80,7 +79,16 @@ export default function Page() {
     }
 
     playingKeyRef.current = null;
-    setCurrentItem(null);
+    setVisible(false);
+
+    setTimeout(() => {
+      setCurrentItem(null);
+      loadMission();
+    }, 400);
+  }
+
+  function getItemKey(item: OverlayQueueItem) {
+    return `${item.type}-${item.id}`;
   }
 
   function finishAfterAudio(item: OverlayQueueItem) {
@@ -88,11 +96,7 @@ export default function Page() {
 
     timerRef.current = setTimeout(() => {
       markDone(item);
-    }, 3000);
-  }
-
-  function getItemKey(item: OverlayQueueItem) {
-    return `${item.type}-${item.id}`;
+    }, 2500);
   }
 
   function playQueueItem(item: OverlayQueueItem, replay: boolean) {
@@ -111,10 +115,22 @@ export default function Page() {
     playingKeyRef.current = key;
     setCurrentItem(item);
 
+    setTimeout(() => {
+      setVisible(true);
+    }, 50);
+
+    if (item.type === "mission") {
+      timerRef.current = setTimeout(() => {
+        markDone(item);
+      }, item.alert_type === "complete" ? 6500 : 4500);
+
+      return;
+    }
+
     if (item.item_audio && audioRef.current) {
       const audio = audioRef.current;
 
-      audio.volume = item.type === "song" ? 1 : 0.6;
+      audio.volume = 0.6;
       audio.muted = false;
       audio.loop = false;
 
@@ -163,7 +179,12 @@ export default function Page() {
         }
 
         playingKeyRef.current = null;
-        setCurrentItem(null);
+        setVisible(false);
+
+        setTimeout(() => {
+          setCurrentItem(null);
+        }, 400);
+
         return;
       }
 
@@ -181,10 +202,6 @@ export default function Page() {
   }
 
   function getOverlayText(item: OverlayQueueItem) {
-    if (item.type === "song") {
-      return `${item.nickname}님이 시그를 사용했습니다!`;
-    }
-
     if (item.overlay_text && item.overlay_text.trim()) {
       return item.overlay_text.replace(/\{nickname\}/g, item.nickname);
     }
@@ -242,7 +259,7 @@ export default function Page() {
     loadMission();
     fetchNextQueue();
 
-    const missionTimer = setInterval(loadMission, 2000);
+    const missionTimer = setInterval(loadMission, 8000);
     const queueTimer = setInterval(fetchNextQueue, 1500);
 
     return () => {
@@ -280,12 +297,86 @@ export default function Page() {
         body {
           background-color: transparent !important;
         }
+
+        @keyframes missionPopIn {
+          0% {
+            opacity: 0;
+            transform: translateY(40px) scale(0.88);
+          }
+          70% {
+            opacity: 1;
+            transform: translateY(-6px) scale(1.04);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes missionGlow {
+          0%,
+          100% {
+            filter: drop-shadow(0 0 18px rgba(96, 165, 250, 0.65));
+          }
+          50% {
+            filter: drop-shadow(0 0 40px rgba(250, 204, 21, 0.95));
+          }
+        }
       `}</style>
 
       <main className="h-screen w-screen overflow-hidden bg-transparent pointer-events-none">
-        {currentItem && (
+        {currentItem && currentItem.type === "mission" && (
+          <div className="flex h-screen w-screen items-center justify-center">
+            <div
+              className={[
+                "rounded-[34px] border border-white/20 bg-black/75 px-16 py-12 text-center backdrop-blur transition-all duration-500",
+                visible ? "opacity-100 scale-100" : "opacity-0 scale-90",
+              ].join(" ")}
+              style={{
+                animation: visible
+                  ? "missionPopIn 520ms ease-out, missionGlow 1.8s ease-in-out infinite"
+                  : undefined,
+              }}
+            >
+              {currentItem.alert_type === "complete" ? (
+                <>
+                  <div className="mb-5 text-[54px] font-black text-yellow-300 [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    🎉 미션 달성!
+                  </div>
+
+                  <div className="mb-5 text-[42px] font-black text-white [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    {currentItem.title}
+                  </div>
+
+                  <div className="text-[36px] font-black text-[#8dff8d] [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    감사합니다!
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-5 text-[44px] font-black text-[#8dff8d] [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    {currentItem.nickname}님이
+                  </div>
+
+                  <div className="mb-5 text-[52px] font-black text-[#ff2d2d] [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    도토리 {Number(currentItem.dotori_amount || 0).toLocaleString()}개를
+                  </div>
+
+                  <div className="text-[44px] font-black text-white [text-shadow:3px_3px_0_rgba(0,0,0,0.9)]">
+                    지원했습니다!
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {currentItem && currentItem.type === "item" && (
           <div
-            className="flex h-screen w-screen items-center justify-center bg-transparent"
+            className={[
+              "flex h-screen w-screen items-center justify-center bg-transparent transition-all duration-500",
+              visible ? "opacity-100 scale-100" : "opacity-0 scale-90",
+            ].join(" ")}
             style={{
               fontFamily:
                 "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
