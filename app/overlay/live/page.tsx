@@ -202,6 +202,15 @@ export default function Page() {
   }
 
   function getOverlayText(item: OverlayQueueItem) {
+    if (item.type === "mission") {
+        if (item.alert_type === "complete") {
+          return `미션 달성!\n${item.title}\n도토리 목표를 달성했습니다!`;
+        }
+      
+        return `${item.nickname}님이 미션에 도토리 ${Number(
+          item.dotori_amount || 0
+        ).toLocaleString()}개를 지원했습니다.`;
+      }
     if (item.overlay_text && item.overlay_text.trim()) {
       return item.overlay_text.replace(/\{nickname\}/g, item.nickname);
     }
