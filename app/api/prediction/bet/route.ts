@@ -71,23 +71,18 @@ export async function POST(req: Request) {
       });
     }
 
-function parseDbDateTime(value: string) {
-  const clean = value.replace("T", " ").slice(0, 19);
-  const [datePart, timePart] = clean.split(" ");
+function parseDbDateTime(value: any) {
+  if (!value) return null;
 
-  if (!datePart || !timePart) return null;
+  if (value instanceof Date) {
+    return value;
+  }
 
-  const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute, second] = timePart.split(":").map(Number);
+  if (typeof value === "string") {
+    return new Date(value);
+  }
 
-  return new Date(
-    year,
-    month - 1,
-    day,
-    hour || 0,
-    minute || 0,
-    second || 0
-  );
+  return null;
 }
 
 const now = new Date();
