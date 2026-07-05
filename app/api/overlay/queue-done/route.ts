@@ -8,34 +8,23 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const id = Number(body.id || 0);
-    const type = String(body.type || "");
 
-    if (!id || !["item", "song"].includes(type)) {
+    if (!id) {
       return NextResponse.json(
         { success: false, message: "잘못된 요청입니다." },
         { status: 400 }
       );
     }
 
-    if (type === "song") {
-      await db.query(
-        `
-        UPDATE song_play_queue
-        SET status = 'done', played_at = NOW()
-        WHERE id = ?
-        `,
-        [id]
-      );
-    } else {
-      await db.query(
-        `
-        UPDATE item_use_alerts
-        SET status = 'done', played_at = NOW()
-        WHERE id = ?
-        `,
-        [id]
-      );
-    }
+    await db.query(
+      `
+      UPDATE item_use_alerts
+      SET status = 'done',
+          played_at = NOW()
+      WHERE id = ?
+      `,
+      [id]
+    );
 
     return NextResponse.json({
       success: true,
