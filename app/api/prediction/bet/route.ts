@@ -224,13 +224,14 @@ const deadline = parseDbDateTime(game.betting_deadline);
       success: true,
       message: "배팅 완료",
     });
-  } catch (error) {
+  } catch (error: any) {
     await connection.rollback();
-    console.error(error);
+
+    console.error("Prediction Bet Error:", error);
 
     return NextResponse.json({
       success: false,
-      message: "배팅 실패",
+      message: error?.message || "배팅 실패",
     });
   } finally {
     connection.release();
