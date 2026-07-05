@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const [users]: any = await db.query(
-    "SELECT id FROM users WHERE email = ? LIMIT 1",
+    "SELECT id, nickname FROM users WHERE email = ? LIMIT 1",
     [session.user.email]
   );
 
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   }
 
   const userId = users[0].id;
+  const actorNickname = users[0].nickname || "익명";
 
   const commentReward = 5;
   const commentDailyLimit = 5;
@@ -45,7 +46,11 @@ export async function POST(req: Request) {
 
   const [posts]: any = await db.query(
     `
-    SELECT u.role
+    SELECT
+      p.id,
+      p.title,
+      p.user_id AS post_owner_id,
+      u.role
     FROM community_posts p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -54,7 +59,15 @@ export async function POST(req: Request) {
     [postId]
   );
 
-  const isAdminPost = posts.length > 0 && posts[0].role === "admin";
+  if (!posts.length) {
+    return NextResponse.json({
+      success: false,
+      message: "게시글을 찾을 수 없습니다.",
+    });
+  }
+
+  const post = posts[0];
+  const isAdminPost = post.role === "admin";
 
   let rewardGiven = 0;
   let finalReward = 0;
@@ -93,7 +106,7 @@ export async function POST(req: Request) {
     }
   }
 
-  await db.query(
+  const [commentResult]: any = await db.query(
     `
     INSERT INTO community_comments
     (post_id, user_id, content, parent_id, reward_given)
@@ -101,6 +114,27 @@ export async function POST(req: Request) {
     `,
     [postId, userId, content, parentId, rewardGiven]
   );
+
+  const commentId = commentResult.insertId;
+
+  if (Number(post.post_owner_id) !== Number(userId)) {
+    await db.query(
+      `
+      INSERT INTO notifications
+        (user_id, type, actor_id, actor_nickname, post_id, post_title, comment_id, is_read, created_at)
+      VALUES
+        (?, 'comment', ?, ?, ?, ?, ?, 0, NOW())
+      `,
+      [
+        post.post_owner_id,
+        userId,
+        actorNickname,
+        postId,
+        post.title,
+        commentId,
+      ]
+    );
+  }
 
   if (rewardGiven) {
     await db.query(

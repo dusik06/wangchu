@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import OnlineTracker from "./online-tracker";
+import NotificationBell from "@/components/NotificationBell";
 import db from "@/lib/db";
 
 async function getSiteLogo() {
@@ -27,6 +28,7 @@ export default async function RootLayout({
       <body>
         <Providers>
           <OnlineTracker />
+          <NotificationBell />
 
           <a
             href="/"
