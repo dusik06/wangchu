@@ -12,7 +12,7 @@ type Alert = {
   created_at: string;
 };
 
-export default function AdminDonationAlertsPage() {
+export default function Page() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [donorName, setDonorName] = useState("");
   const [amount, setAmount] = useState("");
@@ -20,17 +20,14 @@ export default function AdminDonationAlertsPage() {
   const [loading, setLoading] = useState(false);
 
   async function loadAlerts() {
-    try {
-      const res = await fetch("/api/donation-alerts", {
-        cache: "no-store",
-      });
-      const data = await res.json();
+    const res = await fetch("/api/donation-alerts", {
+      cache: "no-store",
+    });
 
-      if (data.success) {
-        setAlerts(data.alerts || []);
-      }
-    } catch (error) {
-      console.error(error);
+    const data = await res.json();
+
+    if (data.success) {
+      setAlerts(data.alerts || []);
     }
   }
 
@@ -66,43 +63,38 @@ export default function AdminDonationAlertsPage() {
       setAmount("");
       setMessage("");
       await loadAlerts();
-    } catch (error) {
-      console.error(error);
-      alert("추가 중 오류가 났어.");
     } finally {
       setLoading(false);
     }
   }
 
   async function sendCommand(command: string, targetAlertId?: number) {
-    try {
-      const res = await fetch("/api/admin/donation-alerts/control", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          command,
-          targetAlertId: targetAlertId || null,
-        }),
-      });
+    const res = await fetch("/api/admin/donation-alerts/control", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        command,
+        targetAlertId: targetAlertId || null,
+      }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!data.success) {
-        alert(data.message || "명령 실패");
-      }
-
-      await loadAlerts();
-    } catch (error) {
-      console.error(error);
-      alert("명령 처리 중 오류가 났어.");
+    if (!data.success) {
+      alert(data.message || "명령 실패");
     }
+
+    await loadAlerts();
   }
 
   useEffect(() => {
     loadAlerts();
-    const interval = setInterval(loadAlerts, 2000);
+
+    const interval = setInterval(() => {
+      loadAlerts();
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -116,7 +108,7 @@ export default function AdminDonationAlertsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-black">후원알림 관리</h1>
           <p className="mt-2 text-sm text-white/60">
-            OBS 후원알림이 꼬이지 않도록 큐 방식으로 순서대로 재생됩니다.
+            OBS 후원알림을 순서대로 재생하고 관리합니다.
           </p>
         </div>
 
@@ -134,7 +126,7 @@ export default function AdminDonationAlertsPage() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-[#151027] p-5">
-            <div className="text-sm text-white/50">전체 표시</div>
+            <div className="text-sm text-white/50">최근 목록</div>
             <div className="mt-2 text-xl font-black">{alerts.length}개</div>
           </div>
         </section>
@@ -153,7 +145,7 @@ export default function AdminDonationAlertsPage() {
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="금액"
+              placeholder="후원 수량 / 금액"
               type="number"
               className="rounded-xl border border-white/10 bg-[#09090f] px-4 py-3 text-white outline-none"
             />
@@ -204,7 +196,7 @@ export default function AdminDonationAlertsPage() {
                 <tr>
                   <th className="px-4 py-3">번호</th>
                   <th className="px-4 py-3">후원자</th>
-                  <th className="px-4 py-3">금액</th>
+                  <th className="px-4 py-3">수량/금액</th>
                   <th className="px-4 py-3">메시지</th>
                   <th className="px-4 py-3">상태</th>
                   <th className="px-4 py-3">재생</th>
@@ -217,16 +209,12 @@ export default function AdminDonationAlertsPage() {
                     <td className="px-4 py-3">{alert.id}</td>
                     <td className="px-4 py-3 font-bold">{alert.donor_name}</td>
                     <td className="px-4 py-3">
-                      {Number(alert.amount || 0).toLocaleString()}원
+                      {Number(alert.amount || 0).toLocaleString()}
                     </td>
                     <td className="max-w-[360px] truncate px-4 py-3 text-white/70">
                       {alert.message || "-"}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                        {alert.status}
-                      </span>
-                    </td>
+                    <td className="px-4 py-3">{alert.status}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => sendCommand("replay", alert.id)}
