@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
     const [userRows]: any = await conn.query(
       `
-      SELECT email, nickname, dotori
+      SELECT id, email, nickname, dotori
       FROM users
       WHERE email = ?
       LIMIT 1
@@ -102,15 +102,11 @@ export async function POST(req: Request) {
     await conn.query(
       `
       INSERT INTO dotori_logs
-        (user_email, amount, reason, created_at)
+        (user_id, amount, reason, created_at)
       VALUES
         (?, ?, ?, NOW())
       `,
-      [
-        session.user.email,
-        -amount,
-        `방송 미션 지원: ${mission.title}`,
-      ]
+      [user.id, -amount, `방송 미션 지원: ${mission.title}`]
     );
 
     const nextCurrent = Number(mission.current_dotori || 0) + amount;

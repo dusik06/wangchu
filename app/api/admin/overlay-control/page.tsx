@@ -122,7 +122,7 @@ export default function Page() {
         <section className="mb-6 rounded-2xl border border-white/10 bg-[#151027] p-5">
           <div className="text-sm text-white/50">OBS 통합 주소</div>
           <div className="mt-2 rounded-xl bg-[#09090f] px-4 py-3 font-bold text-purple-200">
-            https://왕츄.com/overlay/live
+          https://www.xn--9l5bo4l.com/overlay/live
           </div>
         </section>
 

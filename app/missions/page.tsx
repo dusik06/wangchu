@@ -74,12 +74,6 @@ export default function Page() {
 
   useEffect(() => {
     loadMissions();
-
-    const timer = setInterval(() => {
-      loadMissions();
-    }, 3000);
-
-    return () => clearInterval(timer);
   }, []);
 
   return (

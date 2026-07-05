@@ -36,10 +36,6 @@ export default function BroadcastMissionCard({ isAdmin }: { isAdmin: boolean }) 
 
   useEffect(() => {
     loadMission();
-
-    const timer = setInterval(loadMission, 3000);
-
-    return () => clearInterval(timer);
   }, []);
 
   const goal = Math.max(Number(mission?.goal_dotori || 0), 1);
