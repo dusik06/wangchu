@@ -81,20 +81,22 @@ export default function NotificationBell() {
   return () => {};
 }, []);
 
-    function handleClickOutside(e: MouseEvent) {
-      if (!boxRef.current) return;
-      if (!boxRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+useEffect(() => {
+  loadNotifications();
+
+  function handleClickOutside(e: MouseEvent) {
+    if (!boxRef.current) return;
+    if (!boxRef.current.contains(e.target as Node)) {
+      setOpen(false);
     }
+  }
 
-    document.addEventListener("mousedown", handleClickOutside);
+  document.addEventListener("mousedown", handleClickOutside);
 
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
