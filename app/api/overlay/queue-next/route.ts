@@ -3,18 +3,25 @@ import db from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+type OverlayType = "item" | "mission";
+
 async function getItem(id: number) {
   const [rows]: any = await db.query(
     `
     SELECT
       id,
       'item' AS type,
+      NULL AS alert_type,
       nickname,
       item_name AS title,
       item_image,
       item_audio,
       message,
       overlay_text,
+      0 AS dotori_amount,
+      status,
+      locked_by,
+      started_at,
       created_at
     FROM item_use_alerts
     WHERE id = ?
@@ -40,6 +47,9 @@ async function getMissionAlert(id: number) {
       '' AS message,
       NULL AS overlay_text,
       dotori_amount,
+      status,
+      locked_by,
+      started_at,
       created_at
     FROM mission_overlay_alerts
     WHERE id = ?
@@ -51,7 +61,175 @@ async function getMissionAlert(id: number) {
   return rows[0] || null;
 }
 
-export async function GET() {
+async function getPlaying(conn: any) {
+  const [itemRows]: any = await conn.query(`
+    SELECT
+      id,
+      'item' AS type,
+      NULL AS alert_type,
+      nickname,
+      item_name AS title,
+      item_image,
+      item_audio,
+      message,
+      overlay_text,
+      0 AS dotori_amount,
+      status,
+      locked_by,
+      started_at,
+      created_at
+    FROM item_use_alerts
+    WHERE status = 'playing'
+    ORDER BY started_at ASC, created_at ASC, id ASC
+    LIMIT 1
+  `);
+
+  const [missionRows]: any = await conn.query(`
+    SELECT
+      id,
+      'mission' AS type,
+      alert_type,
+      nickname,
+      mission_title AS title,
+      NULL AS item_image,
+      NULL AS item_audio,
+      '' AS message,
+      NULL AS overlay_text,
+      dotori_amount,
+      status,
+      locked_by,
+      started_at,
+      created_at
+    FROM mission_overlay_alerts
+    WHERE status = 'playing'
+    ORDER BY started_at ASC, created_at ASC, id ASC
+    LIMIT 1
+  `);
+
+  const candidates = [...itemRows, ...missionRows];
+
+  candidates.sort((a, b) => {
+    const aTime = new Date(a.started_at || a.created_at || 0).getTime();
+    const bTime = new Date(b.started_at || b.created_at || 0).getTime();
+
+    if (aTime !== bTime) return aTime - bTime;
+    return Number(a.id) - Number(b.id);
+  });
+
+  return candidates[0] || null;
+}
+
+async function getNextPending(conn: any) {
+  const [itemRows]: any = await conn.query(`
+    SELECT
+      id,
+      'item' AS type,
+      NULL AS alert_type,
+      nickname,
+      item_name AS title,
+      item_image,
+      item_audio,
+      message,
+      overlay_text,
+      0 AS dotori_amount,
+      status,
+      locked_by,
+      started_at,
+      created_at
+    FROM item_use_alerts
+    WHERE status = 'pending'
+    ORDER BY created_at ASC, id ASC
+    LIMIT 1
+    FOR UPDATE
+  `);
+
+  const [missionRows]: any = await conn.query(`
+    SELECT
+      id,
+      'mission' AS type,
+      alert_type,
+      nickname,
+      mission_title AS title,
+      NULL AS item_image,
+      NULL AS item_audio,
+      '' AS message,
+      NULL AS overlay_text,
+      dotori_amount,
+      status,
+      locked_by,
+      started_at,
+      created_at
+    FROM mission_overlay_alerts
+    WHERE status = 'pending'
+    ORDER BY created_at ASC, id ASC
+    LIMIT 1
+    FOR UPDATE
+  `);
+
+  const candidates = [...itemRows, ...missionRows];
+
+  candidates.sort((a, b) => {
+    const aTime = new Date(a.created_at || 0).getTime();
+    const bTime = new Date(b.created_at || 0).getTime();
+
+    if (aTime !== bTime) return aTime - bTime;
+    return Number(a.id) - Number(b.id);
+  });
+
+  return candidates[0] || null;
+}
+
+async function setPlaying(
+  conn: any,
+  type: OverlayType,
+  id: number,
+  clientId: string
+) {
+  if (type === "mission") {
+    await conn.query(
+      `
+      UPDATE mission_overlay_alerts
+      SET status = 'playing',
+          locked_by = ?,
+          started_at = NOW()
+      WHERE id = ?
+        AND status = 'pending'
+      `,
+      [clientId, id]
+    );
+
+    return;
+  }
+
+  await conn.query(
+    `
+    UPDATE item_use_alerts
+    SET status = 'playing',
+        locked_by = ?,
+        started_at = NOW()
+    WHERE id = ?
+      AND status = 'pending'
+    `,
+    [clientId, id]
+  );
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const clientId = (url.searchParams.get("clientId") || "").trim();
+
+  if (!clientId) {
+    return NextResponse.json(
+      {
+        success: false,
+        command: "missing-client",
+        item: null,
+        isOwner: false,
+      },
+      { status: 400 }
+    );
+  }
+
   const conn = await (db as any).getConnection();
 
   try {
@@ -64,10 +242,54 @@ export async function GET() {
         success: true,
         command: "locked",
         item: null,
+        isOwner: false,
       });
     }
 
     await conn.beginTransaction();
+
+    await conn.query(`
+      INSERT IGNORE INTO overlay_runtime_state
+      (id, owner_client_id, owner_seen_at, updated_at)
+      VALUES
+      (1, NULL, NULL, NOW())
+    `);
+
+    const [stateRows]: any = await conn.query(`
+      SELECT
+        id,
+        owner_client_id,
+        owner_seen_at,
+        TIMESTAMPDIFF(SECOND, owner_seen_at, NOW()) AS owner_age
+      FROM overlay_runtime_state
+      WHERE id = 1
+      LIMIT 1
+      FOR UPDATE
+    `);
+
+    const state = stateRows[0] || null;
+    const ownerClientId = state?.owner_client_id || null;
+    const ownerAge = Number(state?.owner_age || 9999);
+
+    const shouldTakeOwner =
+      !ownerClientId || ownerClientId === clientId || ownerAge >= 10;
+
+    let isOwner = false;
+
+    if (shouldTakeOwner) {
+      await conn.query(
+        `
+        UPDATE overlay_runtime_state
+        SET owner_client_id = ?,
+            owner_seen_at = NOW(),
+            updated_at = NOW()
+        WHERE id = 1
+        `,
+        [clientId]
+      );
+
+      isOwner = true;
+    }
 
     const [controlRows]: any = await conn.query(`
       SELECT command, target_type, target_id
@@ -83,7 +305,7 @@ export async function GET() {
       target_id: null,
     };
 
-    if (control.command === "refresh") {
+    if (control.command === "refresh" && isOwner) {
       await conn.query(`
         UPDATE overlay_queue_control
         SET command = 'none',
@@ -99,10 +321,11 @@ export async function GET() {
         success: true,
         command: "refresh",
         item: null,
+        isOwner,
       });
     }
 
-    if (control.command === "skip") {
+    if (control.command === "skip" && isOwner) {
       await conn.query(`
         UPDATE item_use_alerts
         SET status = 'skipped',
@@ -132,10 +355,11 @@ export async function GET() {
         success: true,
         command: "skip",
         item: null,
+        isOwner,
       });
     }
 
-    if (control.command === "replay" && control.target_id) {
+    if (control.command === "replay" && control.target_id && isOwner) {
       await conn.query(`
         UPDATE overlay_queue_control
         SET command = 'none',
@@ -156,99 +380,35 @@ export async function GET() {
         success: true,
         command: "replay",
         item,
+        isOwner,
       });
     }
 
-    const [playingRows]: any = await conn.query(`
-      SELECT *
-      FROM (
-        SELECT
-          id,
-          'item' AS type,
-          NULL AS alert_type,
-          nickname,
-          item_name AS title,
-          item_image,
-          item_audio,
-          message,
-          overlay_text,
-          0 AS dotori_amount,
-          created_at
-        FROM item_use_alerts
-        WHERE status = 'playing'
+    const playing = await getPlaying(conn);
 
-        UNION ALL
-
-        SELECT
-          id,
-          'mission' AS type,
-          alert_type,
-          nickname,
-          mission_title AS title,
-          NULL AS item_image,
-          NULL AS item_audio,
-          '' AS message,
-          NULL AS overlay_text,
-          dotori_amount,
-          created_at
-        FROM mission_overlay_alerts
-        WHERE status = 'playing'
-      ) q
-      ORDER BY created_at ASC, id ASC
-      LIMIT 1
-    `);
-
-    if (playingRows[0]) {
+    if (playing) {
       await conn.commit();
 
       return NextResponse.json({
         success: true,
-        command: "playing",
-        item: playingRows[0],
+        command: isOwner ? "playing" : "observe",
+        item: playing,
+        isOwner,
       });
     }
 
-    const [nextRows]: any = await conn.query(`
-      SELECT *
-      FROM (
-        SELECT
-          id,
-          'item' AS type,
-          NULL AS alert_type,
-          nickname,
-          item_name AS title,
-          item_image,
-          item_audio,
-          message,
-          overlay_text,
-          0 AS dotori_amount,
-          created_at
-        FROM item_use_alerts
-        WHERE status = 'pending'
+    if (!isOwner) {
+      await conn.commit();
 
-        UNION ALL
+      return NextResponse.json({
+        success: true,
+        command: "none",
+        item: null,
+        isOwner,
+      });
+    }
 
-        SELECT
-          id,
-          'mission' AS type,
-          alert_type,
-          nickname,
-          mission_title AS title,
-          NULL AS item_image,
-          NULL AS item_audio,
-          '' AS message,
-          NULL AS overlay_text,
-          dotori_amount,
-          created_at
-        FROM mission_overlay_alerts
-        WHERE status = 'pending'
-      ) q
-      ORDER BY created_at ASC, id ASC
-      LIMIT 1
-      FOR UPDATE
-    `);
-
-    const nextItem = nextRows[0];
+    const nextItem = await getNextPending(conn);
 
     if (!nextItem) {
       await conn.commit();
@@ -257,37 +417,24 @@ export async function GET() {
         success: true,
         command: "none",
         item: null,
+        isOwner,
       });
     }
 
-    if (nextItem.type === "mission") {
-      await conn.query(
-        `
-        UPDATE mission_overlay_alerts
-        SET status = 'playing'
-        WHERE id = ?
-          AND status = 'pending'
-        `,
-        [nextItem.id]
-      );
-    } else {
-      await conn.query(
-        `
-        UPDATE item_use_alerts
-        SET status = 'playing'
-        WHERE id = ?
-          AND status = 'pending'
-        `,
-        [nextItem.id]
-      );
-    }
+    await setPlaying(conn, nextItem.type, Number(nextItem.id), clientId);
+
+    const lockedItem =
+      nextItem.type === "mission"
+        ? await getMissionAlert(Number(nextItem.id))
+        : await getItem(Number(nextItem.id));
 
     await conn.commit();
 
     return NextResponse.json({
       success: true,
       command: "play",
-      item: nextItem,
+      item: lockedItem || nextItem,
+      isOwner,
     });
   } catch (error) {
     try {
@@ -301,6 +448,7 @@ export async function GET() {
         success: false,
         command: "error",
         item: null,
+        isOwner: false,
       },
       { status: 500 }
     );

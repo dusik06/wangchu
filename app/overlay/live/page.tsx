@@ -23,6 +23,23 @@ type OverlayQueueItem = {
   dotori_amount?: number;
 };
 
+type QueueResponse = {
+  success: boolean;
+  command:
+    | "play"
+    | "playing"
+    | "observe"
+    | "none"
+    | "skip"
+    | "refresh"
+    | "replay"
+    | "locked"
+    | "error"
+    | "missing-client";
+  item: OverlayQueueItem | null;
+  isOwner?: boolean;
+};
+
 export default function Page() {
   const [mission, setMission] = useState<Mission | null>(null);
   const [currentItem, setCurrentItem] = useState<OverlayQueueItem | null>(null);
@@ -31,17 +48,62 @@ export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const playingKeyRef = useRef<string | null>(null);
+  const currentItemRef = useRef<OverlayQueueItem | null>(null);
+  const clientIdRef = useRef<string>("");
+  const isOwnerRef = useRef(false);
 
   const outlineStyle = {
     WebkitTextStroke: "9px #000000",
     paintOrder: "stroke fill",
   } as React.CSSProperties;
 
+  function makeClientId() {
+    if (typeof window === "undefined") return "";
+
+    const saved = window.localStorage.getItem("wangchu_overlay_client_id");
+
+    if (saved) return saved;
+
+    const next = `overlay-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 12)}`;
+
+    window.localStorage.setItem("wangchu_overlay_client_id", next);
+
+    return next;
+  }
+
   function clearPlayTimer() {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+  }
+
+  function getItemKey(item: OverlayQueueItem) {
+    return `${item.type}-${item.id}`;
+  }
+
+  function stopAudio() {
+    if (!audioRef.current) return;
+
+    audioRef.current.pause();
+    audioRef.current.src = "";
+    audioRef.current.currentTime = 0;
+  }
+
+  function clearCurrentItem() {
+    clearPlayTimer();
+    stopAudio();
+
+    playingKeyRef.current = null;
+    currentItemRef.current = null;
+    setVisible(false);
+
+    setTimeout(() => {
+      setCurrentItem(null);
+      loadMission();
+    }, 350);
   }
 
   async function loadMission() {
@@ -63,6 +125,11 @@ export default function Page() {
   async function markDone(item: OverlayQueueItem) {
     clearPlayTimer();
 
+    if (!isOwnerRef.current) {
+      clearCurrentItem();
+      return;
+    }
+
     try {
       await fetch("/api/overlay/queue-done", {
         method: "POST",
@@ -72,23 +139,14 @@ export default function Page() {
         body: JSON.stringify({
           id: item.id,
           type: item.type,
+          clientId: clientIdRef.current,
         }),
       });
     } catch (error) {
       console.error(error);
     }
 
-    playingKeyRef.current = null;
-    setVisible(false);
-
-    setTimeout(() => {
-      setCurrentItem(null);
-      loadMission();
-    }, 400);
-  }
-
-  function getItemKey(item: OverlayQueueItem) {
-    return `${item.type}-${item.id}`;
+    clearCurrentItem();
   }
 
   function finishAfterAudio(item: OverlayQueueItem) {
@@ -105,14 +163,10 @@ export default function Page() {
     if (!replay && playingKeyRef.current === key) return;
 
     clearPlayTimer();
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current.currentTime = 0;
-    }
+    stopAudio();
 
     playingKeyRef.current = key;
+    currentItemRef.current = item;
     setCurrentItem(item);
 
     setTimeout(() => {
@@ -156,14 +210,23 @@ export default function Page() {
   }
 
   async function fetchNextQueue() {
-    try {
-      const res = await fetch("/api/overlay/queue-next", {
-        cache: "no-store",
-      });
+    if (!clientIdRef.current) return;
 
-      const data = await res.json();
+    try {
+      const res = await fetch(
+        `/api/overlay/queue-next?clientId=${encodeURIComponent(
+          clientIdRef.current
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data: QueueResponse = await res.json();
 
       if (!data.success) return;
+
+      isOwnerRef.current = Boolean(data.isOwner);
 
       if (data.command === "refresh") {
         window.location.reload();
@@ -171,19 +234,14 @@ export default function Page() {
       }
 
       if (data.command === "skip") {
-        clearPlayTimer();
+        clearCurrentItem();
+        return;
+      }
 
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = "";
+      if (data.command === "none") {
+        if (currentItemRef.current) {
+          clearCurrentItem();
         }
-
-        playingKeyRef.current = null;
-        setVisible(false);
-
-        setTimeout(() => {
-          setCurrentItem(null);
-        }, 400);
 
         return;
       }
@@ -193,7 +251,12 @@ export default function Page() {
         return;
       }
 
-      if ((data.command === "play" || data.command === "playing") && data.item) {
+      if (
+        (data.command === "play" ||
+          data.command === "playing" ||
+          data.command === "observe") &&
+        data.item
+      ) {
         playQueueItem(data.item, false);
       }
     } catch (error) {
@@ -203,14 +266,15 @@ export default function Page() {
 
   function getOverlayText(item: OverlayQueueItem) {
     if (item.type === "mission") {
-        if (item.alert_type === "complete") {
-          return `미션 달성!\n${item.title}\n도토리 목표를 달성했습니다!`;
-        }
-      
-        return `${item.nickname}님이 미션에 도토리 ${Number(
-          item.dotori_amount || 0
-        ).toLocaleString()}개를 지원했습니다.`;
+      if (item.alert_type === "complete") {
+        return `미션 달성!\n${item.title}\n도토리 목표를 달성했습니다!`;
       }
+
+      return `${item.nickname}님이 미션에 도토리 ${Number(
+        item.dotori_amount || 0
+      ).toLocaleString()}개를 지원했습니다.`;
+    }
+
     if (item.overlay_text && item.overlay_text.trim()) {
       return item.overlay_text.replace(/\{nickname\}/g, item.nickname);
     }
@@ -236,7 +300,8 @@ export default function Page() {
 
   function renderColoredText(text: string) {
     const nickname = currentItem?.nickname || "";
-    const regex = new RegExp(`(${nickname})|(도토리\\s*[0-9,]+개)`, "g");
+    const safeNickname = nickname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${safeNickname})|(도토리\\s*[0-9,]+개)`, "g");
     const parts = text.split(regex).filter(Boolean);
 
     return parts.map((part, index) => {
@@ -265,21 +330,19 @@ export default function Page() {
   }
 
   useEffect(() => {
+    clientIdRef.current = makeClientId();
+
     loadMission();
     fetchNextQueue();
 
-    const missionTimer = setInterval(loadMission, 8000);
-    const queueTimer = setInterval(fetchNextQueue, 1500);
+    const missionTimer = setInterval(loadMission, 15000);
+    const queueTimer = setInterval(fetchNextQueue, 1800);
 
     return () => {
       clearInterval(missionTimer);
       clearInterval(queueTimer);
       clearPlayTimer();
-
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-      }
+      stopAudio();
     };
   }, []);
 
@@ -349,86 +412,89 @@ export default function Page() {
             >
               {currentItem.alert_type === "complete" ? (
                 <>
-                <div
-                  className="mb-5 text-[54px] font-black"
-                  style={{
-                    color: "#facc15",
-                    WebkitTextStroke: "8px #000000",
-                    paintOrder: "stroke fill",
-                  }}
-                >
-                  미션 달성!
-                </div>
-              
-                <div
-                  className="mb-5 text-[42px] font-black"
-                  style={{
-                    color: "#ffffff",
-                    WebkitTextStroke: "8px #000000",
-                    paintOrder: "stroke fill",
-                  }}
-                >
-                  {currentItem.title}
-                </div>
-              
-                <div
-                  className="text-[42px] font-black"
-                  style={{
-                    color: "#8dff8d",
-                    WebkitTextStroke: "8px #000000",
-                    paintOrder: "stroke fill",
-                  }}
-                >
-                  도토리 목표를 달성했습니다!
-                </div>
-              </>
-             ) : (
+                  <div
+                    className="mb-5 text-[54px] font-black"
+                    style={{
+                      color: "#facc15",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    미션 달성!
+                  </div>
+
+                  <div
+                    className="mb-5 text-[42px] font-black"
+                    style={{
+                      color: "#ffffff",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    {currentItem.title}
+                  </div>
+
+                  <div
+                    className="text-[42px] font-black"
+                    style={{
+                      color: "#8dff8d",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    도토리 목표를 달성했습니다!
+                  </div>
+                </>
+              ) : (
                 <>
-  <div
-    className="mb-4 text-[46px] font-black"
-    style={{
-      color: "#ffffff",
-      WebkitTextStroke: "8px #000000",
-      paintOrder: "stroke fill",
-    }}
-  >
-    <span style={{ color: "#8dff8d" }}>{currentItem.nickname}</span>
-    님이
-  </div>
+                  <div
+                    className="mb-4 text-[46px] font-black"
+                    style={{
+                      color: "#ffffff",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    <span style={{ color: "#8dff8d" }}>
+                      {currentItem.nickname}
+                    </span>
+                    님이
+                  </div>
 
-  <div
-    className="mb-4 text-[42px] font-black"
-    style={{
-      color: "#ffffff",
-      WebkitTextStroke: "8px #000000",
-      paintOrder: "stroke fill",
-    }}
-  >
-    미션에
-  </div>
+                  <div
+                    className="mb-4 text-[42px] font-black"
+                    style={{
+                      color: "#ffffff",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    미션에
+                  </div>
 
-  <div
-    className="mb-4 text-[52px] font-black"
-    style={{
-      color: "#ff2d2d",
-      WebkitTextStroke: "8px #000000",
-      paintOrder: "stroke fill",
-    }}
-  >
-    도토리 {Number(currentItem.dotori_amount || 0).toLocaleString()}개를
-  </div>
+                  <div
+                    className="mb-4 text-[52px] font-black"
+                    style={{
+                      color: "#ff2d2d",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    도토리{" "}
+                    {Number(currentItem.dotori_amount || 0).toLocaleString()}개를
+                  </div>
 
-  <div
-    className="text-[42px] font-black"
-    style={{
-      color: "#ffffff",
-      WebkitTextStroke: "8px #000000",
-      paintOrder: "stroke fill",
-    }}
-  >
-    지원했습니다.
-  </div>
-</>
+                  <div
+                    className="text-[42px] font-black"
+                    style={{
+                      color: "#ffffff",
+                      WebkitTextStroke: "8px #000000",
+                      paintOrder: "stroke fill",
+                    }}
+                  >
+                    지원했습니다.
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -513,8 +579,8 @@ export default function Page() {
           ref={audioRef}
           preload="auto"
           onEnded={() => {
-            if (!currentItem) return;
-            finishAfterAudio(currentItem);
+            if (!currentItemRef.current) return;
+            finishAfterAudio(currentItemRef.current);
           }}
         />
       </main>
