@@ -134,33 +134,47 @@ async function getMainData() {
     `),
 
     safeQuery(`
-      SELECT
-        s.*,
-        (
-          SELECT price
-          FROM stock_price_logs
-          WHERE stock_id = s.id
-          ORDER BY id DESC
-          LIMIT 1 OFFSET 1
-        ) AS prev_price
-      FROM stock_items s
-      ORDER BY s.is_listed DESC, s.current_price DESC
-      LIMIT 5
-    `),
+  SELECT
+    s.*,
+    p2.price AS prev_price
+  FROM stock_items s
+  LEFT JOIN stock_price_logs p1
+    ON p1.stock_id = s.id
+    AND p1.id = (
+      SELECT MAX(id)
+      FROM stock_price_logs
+      WHERE stock_id = s.id
+    )
+  LEFT JOIN stock_price_logs p2
+    ON p2.stock_id = s.id
+    AND p2.id = (
+      SELECT MAX(id)
+      FROM stock_price_logs
+      WHERE stock_id = s.id
+        AND id < IFNULL(p1.id, 0)
+    )
+  ORDER BY s.is_listed DESC, s.current_price DESC
+  LIMIT 5
+`),
 
     safeQuery(`
-      SELECT
-        r.*,
-        (
-          SELECT COUNT(*)
-          FROM lottery_entries
-          WHERE round_id = r.id
-        ) AS participant_count
-      FROM lottery_rounds r
-      WHERE r.status = 'OPEN'
-      ORDER BY r.id DESC
-      LIMIT 1
-    `),
+  SELECT
+      r.*,
+      COUNT(e.id) AS participant_count
+
+  FROM lottery_rounds r
+
+  LEFT JOIN lottery_entries e
+    ON e.round_id = r.id
+
+  WHERE r.status='OPEN'
+
+  GROUP BY r.id
+
+  ORDER BY r.id DESC
+
+  LIMIT 1
+`),
 
     safeQuery(`
       SELECT nickname, rank_position, reward_amount
