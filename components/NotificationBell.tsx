@@ -77,7 +77,9 @@ export default function NotificationBell() {
 
     const timer = setInterval(() => {
       loadNotifications();
-    }, 20000);
+    
+  return () => {};
+}, []);
 
     function handleClickOutside(e: MouseEvent) {
       if (!boxRef.current) return;
@@ -97,7 +99,7 @@ export default function NotificationBell() {
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <div ref={boxRef} className="fixed right-5 top-5 z-[10000]">
+    <div ref={boxRef} className="relative">
       <button
         onClick={() => {
           setOpen((prev) => !prev);
