@@ -11,11 +11,23 @@ import DailyQuestCard from "@/components/home/DailyQuestCard";
 import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
 import NotificationBell from "@/components/NotificationBell";
 
+async function safeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
+  try {
+    const [rows]: any = await db.query(query, params);
+    return rows || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
 async function getYoutubeVideo() {
   try {
     const baseUrl = process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
     const res = await fetch(`${baseUrl}/api/youtube`, { cache: "no-store" });
+
     if (!res.ok) throw new Error("youtube api failed");
+
     return res.json();
   } catch {
     return {
@@ -32,141 +44,96 @@ async function getYoutubeVideo() {
 async function getCurrentUser(email?: string | null) {
   if (!email) return null;
 
-  try {
-    const [rows]: any = await db.query(
-      "SELECT id, email, nickname, role, dotori FROM users WHERE email = ? LIMIT 1",
-      [email]
-    );
+  const rows = await safeQuery(
+    `
+    SELECT id, email, nickname, role, dotori
+    FROM users
+    WHERE email = ?
+    LIMIT 1
+    `,
+    [email]
+  );
 
-    return rows[0] || null;
-  } catch {
-    return null;
-  }
+  return rows[0] || null;
 }
 
 async function getSiteSettings() {
-  try {
-    const [rows]: any = await db.query(`
-      SELECT site_logo, live_status, live_force
-      FROM site_settings
-      LIMIT 1
-    `);
+  const rows = await safeQuery(`
+    SELECT site_logo, live_status, live_force
+    FROM site_settings
+    LIMIT 1
+  `);
 
-    return {
-      siteLogo: rows[0]?.site_logo || null,
-      liveStatus: rows[0]?.live_status || "off",
-      liveForce: rows[0]?.live_force || "auto",
-    };
-  } catch {
-    return {
-      siteLogo: null,
-      liveStatus: "off",
-      liveForce: "auto",
-    };
-  }
+  return {
+    siteLogo: rows[0]?.site_logo || null,
+    liveStatus: rows[0]?.live_status || "off",
+    liveForce: rows[0]?.live_force || "auto",
+  };
 }
 
-async function getNoticePosts() {
-  try {
-    const [rows]: any = await db.query(`
+async function getMainData() {
+  const [
+    noticePosts,
+    recentPosts,
+    bestPosts,
+    recentComments,
+    shopItems,
+    dotoriRanking,
+    stockPreview,
+    lotteryRoundRows,
+    lotteryWinners,
+  ] = await Promise.all([
+    safeQuery(`
       SELECT id, title
       FROM community_posts
       WHERE is_notice = 1
         AND is_blind = 0
       ORDER BY id DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getRecentPosts() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT id, title
       FROM community_posts
       WHERE is_blind = 0
       ORDER BY id DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getBestPosts() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT id, title, likes
       FROM community_posts
       WHERE is_best = 1
         AND is_blind = 0
       ORDER BY likes DESC, id DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getRecentComments() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT c.id, c.content, c.post_id, u.nickname
       FROM community_comments c
       LEFT JOIN users u ON c.user_id = u.id
       ORDER BY c.id DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getShopItems() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT id, item_name, item_image, price, item_type
       FROM shop_items
       WHERE is_active = 1
       ORDER BY id DESC
       LIMIT 6
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getDotoriRanking() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT id, nickname, dotori
       FROM users
       WHERE role != 'admin'
       ORDER BY dotori DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getStockPreview() {
-  try {
-    const [rows]: any = await db.query(`
+    safeQuery(`
       SELECT
         s.*,
         (
@@ -179,17 +146,9 @@ async function getStockPreview() {
       FROM stock_items s
       ORDER BY s.is_listed DESC, s.current_price DESC
       LIMIT 5
-    `);
+    `),
 
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getLotteryPreview() {
-  try {
-    const [roundRows]: any = await db.query(`
+    safeQuery(`
       SELECT
         r.*,
         (
@@ -201,34 +160,50 @@ async function getLotteryPreview() {
       WHERE r.status = 'OPEN'
       ORDER BY r.id DESC
       LIMIT 1
-    `);
+    `),
 
-    const [winnerRows]: any = await db.query(`
+    safeQuery(`
       SELECT nickname, rank_position, reward_amount
       FROM lottery_winners
       ORDER BY id DESC
       LIMIT 5
-    `);
+    `),
+  ]);
 
-    return {
-      current: roundRows[0] || null,
-      winners: winnerRows || [],
-    };
-  } catch {
-    return {
-      current: null,
-      winners: [],
-    };
-  }
+  return {
+    noticePosts,
+    recentPosts,
+    bestPosts,
+    recentComments,
+    shopItems,
+    dotoriRanking,
+    stockPreview,
+    lotteryPreview: {
+      current: lotteryRoundRows[0] || null,
+      winners: lotteryWinners,
+    },
+  };
 }
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
-  const [
-    currentUser,
-    video,
-    siteSettings,
+  const [currentUser, video, siteSettings, mainData] = await Promise.all([
+    getCurrentUser(session?.user?.email),
+    getYoutubeVideo(),
+    getSiteSettings(),
+    getMainData(),
+  ]);
+
+  const isAdmin = currentUser?.role === "admin";
+  const siteLogo = siteSettings.siteLogo;
+  const isLiveOn = video?.isLive === true;
+  const videos = Array.isArray(video?.videos) ? video.videos : [];
+  const shorts = Array.isArray(video?.shorts)
+    ? video.shorts.slice(0, 10)
+    : videos.slice(0, 10);
+
+  const {
     noticePosts,
     recentPosts,
     bestPosts,
@@ -237,27 +212,7 @@ export default async function Home() {
     dotoriRanking,
     stockPreview,
     lotteryPreview,
-  ] = await Promise.all([
-    getCurrentUser(session?.user?.email),
-    getYoutubeVideo(),
-    getSiteSettings(),
-    getNoticePosts(),
-    getRecentPosts(),
-    getBestPosts(),
-    getRecentComments(),
-    getShopItems(),
-    getDotoriRanking(),
-    getStockPreview(),
-    getLotteryPreview(),
-  ]);
-
-  const siteLogo = siteSettings.siteLogo;
-  const isAdmin = currentUser?.role === "admin";
-  const isLiveOn = video?.isLive === true;
-  const videos = Array.isArray(video?.videos) ? video.videos : [];
-  const shorts = Array.isArray(video?.shorts)
-    ? video.shorts.slice(0, 10)
-    : videos.slice(0, 10);
+  } = mainData;
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
@@ -270,6 +225,8 @@ export default async function Home() {
               <img
                 src={siteLogo}
                 alt="왕츄 로고"
+                loading="eager"
+                decoding="async"
                 className="h-12 max-w-[170px] object-contain"
               />
             ) : (
@@ -638,6 +595,8 @@ export default async function Home() {
                         <img
                           src={item.item_image}
                           alt={item.item_name}
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-contain"
                         />
                       ) : (
