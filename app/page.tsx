@@ -11,8 +11,6 @@ import DailyQuestCard from "@/components/home/DailyQuestCard";
 import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
 import NotificationBell from "@/components/NotificationBell";
 
-const YOUTUBE_LIVE_URL = "https://www.youtube.com/watch?v=P9fMwfGrucU";
-
 async function getYoutubeVideo() {
   try {
     const baseUrl = process.env.NEXTAUTH_URL || "https://www.xn--9l5bo4l.com";
@@ -24,6 +22,7 @@ async function getYoutubeVideo() {
       isLive: false,
       title: "유튜브 영상을 불러오는 중 문제가 발생했습니다.",
       videos: [],
+      shorts: [],
       liveStatus: "off",
       liveForce: "auto",
     };
@@ -45,30 +44,22 @@ async function getCurrentUser(email?: string | null) {
   }
 }
 
-async function getSiteLogo() {
+async function getSiteSettings() {
   try {
-    const [rows]: any = await db.query(
-      "SELECT site_logo FROM site_settings LIMIT 1"
-    );
-
-    return rows[0]?.site_logo || null;
-  } catch {
-    return null;
-  }
-}
-
-async function getLiveSettings() {
-  try {
-    const [rows]: any = await db.query(
-      "SELECT live_status, live_force FROM site_settings LIMIT 1"
-    );
+    const [rows]: any = await db.query(`
+      SELECT site_logo, live_status, live_force
+      FROM site_settings
+      LIMIT 1
+    `);
 
     return {
+      siteLogo: rows[0]?.site_logo || null,
       liveStatus: rows[0]?.live_status || "off",
       liveForce: rows[0]?.live_force || "auto",
     };
   } catch {
     return {
+      siteLogo: null,
       liveStatus: "off",
       liveForce: "auto",
     };
@@ -81,7 +72,7 @@ async function getNoticePosts() {
       SELECT id, title
       FROM community_posts
       WHERE is_notice = 1
-      AND is_blind = 0
+        AND is_blind = 0
       ORDER BY id DESC
       LIMIT 5
     `);
@@ -114,7 +105,7 @@ async function getBestPosts() {
       SELECT id, title, likes
       FROM community_posts
       WHERE is_best = 1
-      AND is_blind = 0
+        AND is_blind = 0
       ORDER BY likes DESC, id DESC
       LIMIT 5
     `);
@@ -130,7 +121,7 @@ async function getRecentComments() {
     const [rows]: any = await db.query(`
       SELECT c.id, c.content, c.post_id, u.nickname
       FROM community_comments c
-      LEFT JOIN users u ON c.user_email = u.email
+      LEFT JOIN users u ON c.user_id = u.id
       ORDER BY c.id DESC
       LIMIT 5
     `);
@@ -237,8 +228,7 @@ export default async function Home() {
   const [
     currentUser,
     video,
-    liveSettings,
-    siteLogo,
+    siteSettings,
     noticePosts,
     recentPosts,
     bestPosts,
@@ -250,8 +240,7 @@ export default async function Home() {
   ] = await Promise.all([
     getCurrentUser(session?.user?.email),
     getYoutubeVideo(),
-    getLiveSettings(),
-    getSiteLogo(),
+    getSiteSettings(),
     getNoticePosts(),
     getRecentPosts(),
     getBestPosts(),
@@ -262,6 +251,7 @@ export default async function Home() {
     getLotteryPreview(),
   ]);
 
+  const siteLogo = siteSettings.siteLogo;
   const isAdmin = currentUser?.role === "admin";
   const isLiveOn = video?.isLive === true;
   const videos = Array.isArray(video?.videos) ? video.videos : [];
@@ -364,7 +354,7 @@ export default async function Home() {
               <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:flex">
                 <span className="text-lg">🌰</span>
                 <span className="whitespace-nowrap text-sm font-black text-white">
-                  {currentUser.dotori?.toLocaleString() || 0}개
+                  {Number(currentUser.dotori || 0).toLocaleString()}개
                 </span>
               </div>
             )}
@@ -406,67 +396,41 @@ export default async function Home() {
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
               <h2 className="mb-4 text-xl font-black text-[#f7d36b]">바로가기</h2>
               <div className="grid grid-cols-6 gap-3">
-              <a
-  href="/schedule"
-  className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
->
-    <div className="text-3xl">📅</div>
-    <div className="mt-2 text-xs font-black">방송일정</div>
-  </a>
-  <a
-  href="/missions"
-  className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
->
-  <div className="text-3xl">📢</div>
-  <div className="mt-2 text-xs font-black">방송미션</div>
-</a>
+                <a href="/schedule" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">📅</div>
+                  <div className="mt-2 text-xs font-black">방송일정</div>
+                </a>
 
-  <a
-    href="https://www.instagram.com/parkwangchu/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
-  >
-    <div className="text-3xl">📸</div>
-    <div className="mt-2 text-xs font-black">인스타</div>
-  </a>
+                <a href="/missions" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">📢</div>
+                  <div className="mt-2 text-xs font-black">방송미션</div>
+                </a>
 
-  <a
-    href="https://www.tiktok.com/@parkwangchu"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
-  >
-    <div className="text-3xl">🎵</div>
-    <div className="mt-2 text-xs font-black">틱톡</div>
-  </a>
+                <a href="https://www.instagram.com/parkwangchu/" target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">📸</div>
+                  <div className="mt-2 text-xs font-black">인스타</div>
+                </a>
 
-  <a
-    href="https://toon.at/donate/wonywangchu"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
-  >
-    <div className="text-3xl">💰</div>
-    <div className="mt-2 text-xs font-black">투네이션</div>
-  </a>
+                <a href="https://www.tiktok.com/@parkwangchu" target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">🎵</div>
+                  <div className="mt-2 text-xs font-black">틱톡</div>
+                </a>
 
-  <a
-    href="/shop"
-    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
-  >
-    <div className="text-3xl">🛒</div>
-    <div className="mt-2 text-xs font-black">상점</div>
-  </a>
+                <a href="https://toon.at/donate/wonywangchu" target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">💰</div>
+                  <div className="mt-2 text-xs font-black">투네이션</div>
+                </a>
 
-  <a
-    href="/board/free"
-    className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]"
-  >
-    <div className="text-3xl">💬</div>
-    <div className="mt-2 text-xs font-black">게시판</div>
-  </a>
-</div>
+                <a href="/shop" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">🛒</div>
+                  <div className="mt-2 text-xs font-black">상점</div>
+                </a>
+
+                <a href="/board/free" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">💬</div>
+                  <div className="mt-2 text-xs font-black">게시판</div>
+                </a>
+              </div>
             </div>
 
             <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
@@ -598,8 +562,8 @@ export default async function Home() {
                 <div className="space-y-3">
                   {stockPreview.map((stock: any) => {
                     const prev = Number(stock.prev_price || 0);
-                    const current = Number(stock.current_price || 0);
-                    const diff = current - prev;
+                    const stockCurrent = Number(stock.current_price || 0);
+                    const diff = stockCurrent - prev;
                     const rate = prev > 0 ? Math.floor((diff / prev) * 100) : 0;
 
                     return (
@@ -619,7 +583,7 @@ export default async function Home() {
                         </div>
 
                         <p className="mt-2 text-lg font-black text-[#f7d36b]">
-                          {current.toLocaleString()} 도토리
+                          {stockCurrent.toLocaleString()} 도토리
                         </p>
 
                         <p
