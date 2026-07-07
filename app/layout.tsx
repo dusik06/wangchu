@@ -2,6 +2,7 @@ import "./globals.css";
 import Providers from "./providers";
 import OnlineTracker from "./online-tracker";
 import db from "@/lib/db";
+import GlobalHomeLogo from "@/components/GlobalHomeLogo";
 
 async function getSiteLogo() {
   try {
@@ -20,13 +21,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await getSiteLogo();
+  const siteLogo = await getSiteLogo();
 
   return (
     <html lang="ko">
       <body>
         <Providers>
           <OnlineTracker />
+          <GlobalHomeLogo siteLogo={siteLogo} />
 
           {children}
 
