@@ -44,34 +44,64 @@ export default function GameRanking({
 }) {
   const [tab, setTab] = useState<MainTab>("dotori");
   const [stockTab, setStockTab] = useState<StockTab>("realtime");
+
   const [gameRanking, setGameRanking] = useState<GameRank[]>([]);
-  const [stockRealtimeRanking, setStockRealtimeRanking] = useState<StockRank[]>(
-    []
-  );
+  const [stockRealtimeRanking, setStockRealtimeRanking] = useState<StockRank[]>([]);
   const [stockProfitRanking, setStockProfitRanking] = useState<StockRank[]>([]);
 
+  const [gameLoaded, setGameLoaded] = useState(false);
+  const [stockLoaded, setStockLoaded] = useState(false);
+
   useEffect(() => {
-    fetch("/api/game/dice/ranking")
+    if (tab !== "game" || gameLoaded) return;
+
+    let alive = true;
+
+    fetch("/api/game/dice/ranking", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
+        if (!alive) return;
+
         if (data.success) {
           setGameRanking((data.ranking || []).slice(0, 5));
         }
+
+        setGameLoaded(true);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (alive) setGameLoaded(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [tab, gameLoaded]);
 
   useEffect(() => {
-    fetch("/api/stock/ranking")
+    if (tab !== "stock" || stockLoaded) return;
+
+    let alive = true;
+
+    fetch("/api/stock/ranking", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
+        if (!alive) return;
+
         if (data.success) {
           setStockRealtimeRanking((data.realtime || []).slice(0, 5));
           setStockProfitRanking((data.profit || []).slice(0, 5));
         }
+
+        setStockLoaded(true);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (alive) setStockLoaded(true);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [tab, stockLoaded]);
 
   const normalCurrent =
     tab === "dotori"
@@ -157,7 +187,9 @@ export default function GameRanking({
         <div className="space-y-2">
           {normalCurrent.length === 0 ? (
             <p className="rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 text-sm text-zinc-400">
-              랭킹 데이터가 없습니다.
+              {tab === "game" && !gameLoaded
+                ? "게임 랭킹을 불러오는 중입니다."
+                : "랭킹 데이터가 없습니다."}
             </p>
           ) : (
             normalCurrent.map((user, index) => (
@@ -183,7 +215,9 @@ export default function GameRanking({
         <div className="space-y-2">
           {stockCurrent.length === 0 ? (
             <p className="rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 text-sm text-zinc-400">
-              주식 랭킹 데이터가 없습니다.
+              {!stockLoaded
+                ? "주식 랭킹을 불러오는 중입니다."
+                : "주식 랭킹 데이터가 없습니다."}
             </p>
           ) : (
             stockCurrent.map((user, index) => (
@@ -198,11 +232,11 @@ export default function GameRanking({
 
                   <p
                     className={`text-right font-black ${profitClass(
-                      user.profit_amount
+                      Number(user.profit_amount || 0)
                     )}`}
                   >
-                    {user.profit_amount > 0 ? "+" : ""}
-                    {Number(user.profit_amount).toLocaleString()}개
+                    {Number(user.profit_amount || 0) > 0 ? "+" : ""}
+                    {Number(user.profit_amount || 0).toLocaleString()}개
                   </p>
                 </div>
 
@@ -214,9 +248,7 @@ export default function GameRanking({
                   </span>
 
                   {stockTab === "realtime" && (
-                    <span
-                      className={profitClass(Number(user.profit_amount || 0))}
-                    >
+                    <span className={profitClass(Number(user.profit_amount || 0))}>
                       {Number(user.profit_rate || 0) > 0 ? "+" : ""}
                       {Number(user.profit_rate || 0)}%
                     </span>

@@ -11,15 +11,29 @@ type Highlight = {
 
 export default function GameHighlights() {
   const [logs, setLogs] = useState<Highlight[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch("/api/game/dice/highlights")
+    let alive = true;
+
+    fetch("/api/game/dice/highlights", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
+        if (!alive) return;
+
         if (data.success) {
           setLogs(data.logs || []);
         }
+
+        setLoaded(true);
+      })
+      .catch(() => {
+        if (alive) setLoaded(true);
       });
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const best = logs[0];
@@ -28,14 +42,17 @@ export default function GameHighlights() {
     <div className="rounded-3xl border border-[#3b321f] bg-[#0d1018] p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-black text-[#f7d36b]">게임 하이라이트</h2>
-        <a href="/game" className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]">
+        <a
+          href="/game"
+          className="text-xs font-bold text-zinc-400 hover:text-[#f7d36b]"
+        >
           전체 보기 〉
         </a>
       </div>
 
       {!best ? (
         <p className="rounded-2xl border border-[#2c2f3a] bg-[#151925] p-5 text-sm text-zinc-400">
-          아직 4.5배 성공 기록이 없어요.
+          {!loaded ? "게임 하이라이트를 불러오는 중입니다." : "아직 4.5배 성공 기록이 없어요."}
         </p>
       ) : (
         <div className="rounded-2xl border border-[#6f5520] bg-gradient-to-br from-[#1b1720] to-[#10131b] p-5">
@@ -47,9 +64,7 @@ export default function GameHighlights() {
             </div>
 
             <div>
-              <p className="text-xl font-black text-white">
-                {best.nickname}
-              </p>
+              <p className="text-xl font-black text-white">{best.nickname}</p>
               <p className="mt-1 text-sm text-zinc-300">
                 {Number(best.bet_amount).toLocaleString()}개 배팅 성공
               </p>
