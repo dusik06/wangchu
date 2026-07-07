@@ -75,28 +75,20 @@ export default function NotificationBell() {
   useEffect(() => {
     loadNotifications();
 
-    const timer = setInterval(() => {
-      loadNotifications();
-    
-  return () => {};
-}, []);
+    function handleClickOutside(e: MouseEvent) {
+      if (!boxRef.current) return;
 
-useEffect(() => {
-  loadNotifications();
-
-  function handleClickOutside(e: MouseEvent) {
-    if (!boxRef.current) return;
-    if (!boxRef.current.contains(e.target as Node)) {
-      setOpen(false);
+      if (!boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
-  }
 
-  document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
@@ -120,9 +112,10 @@ useEffect(() => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-3 w-[360px] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1018] shadow-2xl">
+        <div className="absolute left-0 mt-3 w-[360px] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1018] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div className="text-lg font-black text-white">🔔 알림</div>
+
             <button
               onClick={loadNotifications}
               className="text-xs font-bold text-zinc-400 hover:text-white"
@@ -150,16 +143,19 @@ useEffect(() => {
                 >
                   <div className="mb-2 flex items-center gap-2">
                     <span className="text-lg">💬</span>
+
                     <span className="font-black text-[#8dff8d]">
                       {item.actor_nickname || "익명"}
                     </span>
+
                     <span className="text-sm text-zinc-300">님이</span>
                   </div>
 
                   <div className="leading-6">
                     <span className="font-black text-white">
-                      "{shorten(item.post_title || "게시글")}"
+                      &quot;{shorten(item.post_title || "게시글")}&quot;
                     </span>
+
                     <span className="text-sm font-bold text-zinc-300">
                       에 댓글을 남겼습니다.
                     </span>
