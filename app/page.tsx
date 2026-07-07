@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import DailyQuestCard from "@/components/home/DailyQuestCard";
 import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
+import NotificationBell from "@/components/NotificationBell";
 
 const YOUTUBE_LIVE_URL = "https://www.youtube.com/watch?v=P9fMwfGrucU";
 
@@ -288,6 +289,8 @@ export default async function Home() {
               </div>
             )}
           </a>
+
+          <NotificationBell />
 
           <nav className="hidden items-center gap-7 text-sm font-black text-zinc-300 lg:flex">
             <a href="/" className="hover:text-[#f7d36b]">홈</a>

@@ -1,9 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import OnlineTracker from "./online-tracker";
-import NotificationBell from "@/components/NotificationBell";
 import db from "@/lib/db";
-import FloatingHeaderButtons from "@/components/FloatingHeaderButtons";
 
 async function getSiteLogo() {
   try {
@@ -22,16 +20,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const siteLogo = await getSiteLogo();
+  await getSiteLogo();
 
   return (
     <html lang="ko">
       <body>
         <Providers>
           <OnlineTracker />
-          <NotificationBell />
-
-          <FloatingHeaderButtons siteLogo={siteLogo} />
 
           {children}
 
