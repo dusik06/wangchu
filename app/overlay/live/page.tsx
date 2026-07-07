@@ -23,7 +23,7 @@ type OverlayQueueItem = {
   dotori_amount?: number;
 };
 
-type QueueResponse = {
+type EngineResponse = {
   success: boolean;
   command:
     | "play"
@@ -37,6 +37,7 @@ type QueueResponse = {
     | "error"
     | "missing-client";
   item: OverlayQueueItem | null;
+  mission: Mission | null;
   isOwner?: boolean;
 };
 
@@ -46,11 +47,16 @@ export default function Page() {
   const [visible, setVisible] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const playingKeyRef = useRef<string | null>(null);
-  const currentItemRef = useRef<OverlayQueueItem | null>(null);
-  const clientIdRef = useRef<string>("");
+  const playTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const engineTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clientIdRef = useRef("");
   const isOwnerRef = useRef(false);
+  const currentItemRef = useRef<OverlayQueueItem | null>(null);
+  const playingKeyRef = useRef<string | null>(null);
+  const doneKeyRef = useRef<string | null>(null);
+  const engineBusyRef = useRef(false);
+  const mountedRef = useRef(false);
 
   const outlineStyle = {
     WebkitTextStroke: "9px #000000",
@@ -60,36 +66,40 @@ export default function Page() {
   function makeClientId() {
     if (typeof window === "undefined") return "";
 
-    const saved = window.localStorage.getItem("wangchu_overlay_client_id");
+    const saved = window.localStorage.getItem("wangchu_overlay_engine_client_id");
 
     if (saved) return saved;
 
-    const next = `overlay-${Date.now()}-${Math.random()
+    const next = `engine-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 12)}`;
 
-    window.localStorage.setItem("wangchu_overlay_client_id", next);
+    window.localStorage.setItem("wangchu_overlay_engine_client_id", next);
 
     return next;
-  }
-
-  function clearPlayTimer() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
   }
 
   function getItemKey(item: OverlayQueueItem) {
     return `${item.type}-${item.id}`;
   }
 
-  function stopAudio() {
-    if (!audioRef.current) return;
+  function clearPlayTimer() {
+    if (playTimerRef.current) {
+      clearTimeout(playTimerRef.current);
+      playTimerRef.current = null;
+    }
+  }
 
-    audioRef.current.pause();
-    audioRef.current.src = "";
-    audioRef.current.currentTime = 0;
+  function stopAudio() {
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
+    try {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    } catch {}
   }
 
   function clearCurrentItem() {
@@ -98,31 +108,22 @@ export default function Page() {
 
     playingKeyRef.current = null;
     currentItemRef.current = null;
+    doneKeyRef.current = null;
+
     setVisible(false);
 
     setTimeout(() => {
+      if (!mountedRef.current) return;
       setCurrentItem(null);
-      loadMission();
     }, 350);
   }
 
-  async function loadMission() {
-    try {
-      const res = await fetch("/api/overlay/live-state", {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (!data.success) return;
-
-      setMission(data.mission || null);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
   async function markDone(item: OverlayQueueItem) {
+    const key = getItemKey(item);
+
+    if (doneKeyRef.current === key) return;
+
+    doneKeyRef.current = key;
     clearPlayTimer();
 
     if (!isOwnerRef.current) {
@@ -131,11 +132,12 @@ export default function Page() {
     }
 
     try {
-      await fetch("/api/overlay/queue-done", {
+      await fetch("/api/overlay/engine-done", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        cache: "no-store",
         body: JSON.stringify({
           id: item.id,
           type: item.type,
@@ -150,11 +152,15 @@ export default function Page() {
   }
 
   function finishAfterAudio(item: OverlayQueueItem) {
+    const key = getItemKey(item);
+
+    if (doneKeyRef.current === key) return;
+
     clearPlayTimer();
 
-    timerRef.current = setTimeout(() => {
+    playTimerRef.current = setTimeout(() => {
       markDone(item);
-    }, 2500);
+    }, 1800);
   }
 
   function playQueueItem(item: OverlayQueueItem, replay: boolean) {
@@ -166,15 +172,18 @@ export default function Page() {
     stopAudio();
 
     playingKeyRef.current = key;
+    doneKeyRef.current = null;
     currentItemRef.current = item;
+
     setCurrentItem(item);
 
     setTimeout(() => {
+      if (!mountedRef.current) return;
       setVisible(true);
     }, 50);
 
     if (item.type === "mission") {
-      timerRef.current = setTimeout(() => {
+      playTimerRef.current = setTimeout(() => {
         markDone(item);
       }, item.alert_type === "complete" ? 6500 : 4500);
 
@@ -189,7 +198,7 @@ export default function Page() {
       audio.loop = false;
 
       setTimeout(() => {
-        if (!audioRef.current) return;
+        if (!mountedRef.current || !audioRef.current) return;
 
         audioRef.current.src = item.item_audio || "";
         audioRef.current.load();
@@ -197,36 +206,46 @@ export default function Page() {
         audioRef.current.play().catch((error) => {
           console.error("오디오 재생 실패:", error);
 
-          timerRef.current = setTimeout(() => {
+          playTimerRef.current = setTimeout(() => {
             markDone(item);
           }, 10000);
         });
-      }, 300);
-    } else {
-      timerRef.current = setTimeout(() => {
-        markDone(item);
-      }, 10000);
+      }, 250);
+
+      return;
     }
+
+    playTimerRef.current = setTimeout(() => {
+      markDone(item);
+    }, 10000);
   }
 
-  async function fetchNextQueue() {
+  async function fetchEngine() {
     if (!clientIdRef.current) return;
+    if (engineBusyRef.current) return;
+
+    engineBusyRef.current = true;
 
     try {
       const res = await fetch(
-        `/api/overlay/queue-next?clientId=${encodeURIComponent(
+        `/api/overlay/engine?clientId=${encodeURIComponent(
           clientIdRef.current
         )}`,
-        {
-          cache: "no-store",
-        }
+        { cache: "no-store" }
       );
 
-      const data: QueueResponse = await res.json();
+      const data: EngineResponse = await res.json();
 
+      if (!mountedRef.current) return;
       if (!data.success) return;
 
       isOwnerRef.current = Boolean(data.isOwner);
+
+      if (data.mission) {
+        setMission(data.mission);
+      } else {
+        setMission(null);
+      }
 
       if (data.command === "refresh") {
         window.location.reload();
@@ -235,6 +254,10 @@ export default function Page() {
 
       if (data.command === "skip") {
         clearCurrentItem();
+        return;
+      }
+
+      if (data.command === "locked") {
         return;
       }
 
@@ -261,7 +284,22 @@ export default function Page() {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      engineBusyRef.current = false;
     }
+  }
+
+  function startEngineLoop() {
+    if (engineTimerRef.current) {
+      clearInterval(engineTimerRef.current);
+      engineTimerRef.current = null;
+    }
+
+    fetchEngine();
+
+    engineTimerRef.current = setInterval(() => {
+      fetchEngine();
+    }, 2200);
   }
 
   function getOverlayText(item: OverlayQueueItem) {
@@ -330,17 +368,19 @@ export default function Page() {
   }
 
   useEffect(() => {
+    mountedRef.current = true;
     clientIdRef.current = makeClientId();
 
-    loadMission();
-    fetchNextQueue();
-
-    const missionTimer = setInterval(loadMission, 15000);
-    const queueTimer = setInterval(fetchNextQueue, 1800);
+    startEngineLoop();
 
     return () => {
-      clearInterval(missionTimer);
-      clearInterval(queueTimer);
+      mountedRef.current = false;
+
+      if (engineTimerRef.current) {
+        clearInterval(engineTimerRef.current);
+        engineTimerRef.current = null;
+      }
+
       clearPlayTimer();
       stopAudio();
     };
@@ -516,6 +556,8 @@ export default function Page() {
                 <img
                   src={currentItem.item_image}
                   alt={currentItem.title}
+                  loading="eager"
+                  decoding="async"
                   className="mb-6 max-h-[300px] w-[300px] rounded-2xl object-contain"
                 />
               )}
@@ -551,6 +593,8 @@ export default function Page() {
               <img
                 src={mission.image_url}
                 alt={mission.title}
+                loading="eager"
+                decoding="async"
                 className="h-[58px] w-[58px] rounded-md object-cover"
               />
             )}
