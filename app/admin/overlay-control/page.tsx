@@ -15,7 +15,7 @@ type Mission = {
 
 type QueueItem = {
   id: number;
-  type: "item" | "song";
+  type: "item" | "song" | "mission";
   nickname: string;
   title: string;
   status: string;
@@ -273,6 +273,7 @@ export default function Page() {
 
   function typeLabel(type: string) {
     if (type === "song") return "시그";
+    if (type === "mission") return "미션";
     return "아이템";
   }
 
