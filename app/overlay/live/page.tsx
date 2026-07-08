@@ -24,6 +24,9 @@ type OverlayQueueItem = {
   dotori_amount?: number;
 };
 
+const MISSION_SUPPORT_AUDIO = "/sounds/mission-support.mp3";
+const MISSION_COMPLETE_AUDIO = "/sounds/mission-complete.mp3";
+
 type EngineResponse = {
   success: boolean;
   command:
@@ -210,12 +213,44 @@ export default function Page() {
     }, 50);
 
     if (item.type === "mission") {
-      playTimerRef.current = setTimeout(() => {
-        markDone(item);
-      }, item.alert_type === "complete" ? 6500 : 4500);
-
-      return;
-    }
+      if (item.alert_type === "complete" && audioRef.current) {
+        const audio = audioRef.current;
+    
+        audio.volume = 0.7;
+        audio.muted = false;
+        audio.loop = false;
+        audio.src = MISSION_COMPLETE_AUDIO;
+        audio.load();
+    
+        audio.play().catch((error) => {
+          console.error("미션 완료 오디오 재생 실패:", error);
+        });
+      }
+    
+      if (item.type === "mission") {
+        if (audioRef.current) {
+          const audio = audioRef.current;
+      
+          audio.volume = item.alert_type === "complete" ? 0.75 : 0.55;
+          audio.muted = false;
+          audio.loop = false;
+          audio.src =
+            item.alert_type === "complete"
+              ? MISSION_COMPLETE_AUDIO
+              : MISSION_SUPPORT_AUDIO;
+          audio.load();
+      
+          audio.play().catch((error) => {
+            console.error("미션 효과음 재생 실패:", error);
+          });
+        }
+      
+        playTimerRef.current = setTimeout(() => {
+          markDone(item);
+        }, item.alert_type === "complete" ? 6500 : 4500);
+      
+        return;
+      }
 
     if (item.item_audio && audioRef.current) {
       const audio = audioRef.current;
