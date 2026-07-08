@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 
 type Mission = {
   id: number;
@@ -47,10 +48,11 @@ export default function Page() {
   const [visible, setVisible] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const playTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const engineTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clientIdRef = useRef("");
   const isOwnerRef = useRef(false);
@@ -60,15 +62,16 @@ export default function Page() {
   const engineBusyRef = useRef(false);
   const mountedRef = useRef(false);
 
-  const outlineStyle = {
+  const outlineStyle: CSSProperties = {
     WebkitTextStroke: "9px #000000",
     paintOrder: "stroke fill",
-  } as React.CSSProperties;
+  };
 
   function makeClientId() {
     if (typeof window === "undefined") return "";
 
     const saved = window.localStorage.getItem("wangchu_overlay_engine_client_id");
+
     if (saved) return saved;
 
     const next = `engine-${Date.now()}-${Math.random()
@@ -76,6 +79,7 @@ export default function Page() {
       .slice(2, 12)}`;
 
     window.localStorage.setItem("wangchu_overlay_engine_client_id", next);
+
     return next;
   }
 
@@ -97,8 +101,16 @@ export default function Page() {
     }
   }
 
+  function clearReconnectTimer() {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }
+
   function stopAudio() {
     const audio = audioRef.current;
+
     if (!audio) return;
 
     try {
@@ -106,6 +118,13 @@ export default function Page() {
       audio.removeAttribute("src");
       audio.load();
     } catch {}
+  }
+
+  function closeStream() {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
   }
 
   function clearCurrentItem() {
@@ -129,8 +148,8 @@ export default function Page() {
     const key = getItemKey(item);
 
     if (doneKeyRef.current === key) return;
-    doneKeyRef.current = key;
 
+    doneKeyRef.current = key;
     clearPlayTimer();
 
     if (!isOwnerRef.current) {
@@ -260,10 +279,15 @@ export default function Page() {
         return;
       }
 
-      if (data.command === "locked") return;
+      if (data.command === "locked") {
+        return;
+      }
 
       if (data.command === "none") {
-        if (currentItemRef.current) clearCurrentItem();
+        if (currentItemRef.current) {
+          clearCurrentItem();
+        }
+
         return;
       }
 
@@ -287,50 +311,51 @@ export default function Page() {
     }
   }
 
-  function startEngineLoop() {
-    if (engineTimerRef.current) {
-      clearInterval(engineTimerRef.current);
-      engineTimerRef.current = null;
-    }
-
-    function startStream() {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-    
-      if (!clientIdRef.current) return;
-    
-      try {
-        const source = new EventSource(
-          `/api/overlay/stream?clientId=${encodeURIComponent(clientIdRef.current)}`
-        );
-    
-        source.onmessage = () => {
-          fetchEngine();
-        };
-    
-        source.onerror = () => {
-          source.close();
-          eventSourceRef.current = null;
-    
-          setTimeout(() => {
-            if (!mountedRef.current) return;
-            startStream();
-          }, 3000);
-        };
-    
-        eventSourceRef.current = source;
-      } catch (error) {
-        console.error(error);
-      }
+  function startBackupLoop() {
+    if (backupTimerRef.current) {
+      clearInterval(backupTimerRef.current);
+      backupTimerRef.current = null;
     }
 
     fetchEngine();
 
-    engineTimerRef.current = setInterval(() => {
+    backupTimerRef.current = setInterval(() => {
       fetchEngine();
-    }, 2200);
+    }, 8000);
+  }
+
+  function startStream() {
+    closeStream();
+    clearReconnectTimer();
+
+    if (!clientIdRef.current) return;
+
+    try {
+      const source = new EventSource(
+        `/api/overlay/stream?clientId=${encodeURIComponent(clientIdRef.current)}`
+      );
+
+      source.onopen = () => {
+        fetchEngine();
+      };
+
+      source.onmessage = () => {
+        fetchEngine();
+      };
+
+      source.onerror = () => {
+        closeStream();
+
+        reconnectTimerRef.current = setTimeout(() => {
+          if (!mountedRef.current) return;
+          startStream();
+        }, 3000);
+      };
+
+      eventSourceRef.current = source;
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   function getOverlayText(item: OverlayQueueItem) {
@@ -402,21 +427,19 @@ export default function Page() {
     mountedRef.current = true;
     clientIdRef.current = makeClientId();
 
-    startEngineLoop();
+    startBackupLoop();
+    startStream();
 
     return () => {
       mountedRef.current = false;
 
-      if (engineTimerRef.current) {
-        clearInterval(engineTimerRef.current);
-        engineTimerRef.current = null;
+      if (backupTimerRef.current) {
+        clearInterval(backupTimerRef.current);
+        backupTimerRef.current = null;
       }
 
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-
+      closeStream();
+      clearReconnectTimer();
       clearPlayTimer();
       clearHideTimer();
       stopAudio();
@@ -624,30 +647,30 @@ export default function Page() {
           </div>
         )}
 
-        {!currentItem && mission && (
-          <div className="absolute bottom-10 left-1/2 flex -translate-x-1/2 items-center gap-3">
+{!currentItem && mission && (
+  <div className="absolute top-10 left-1/2 flex -translate-x-1/2 items-center gap-4">
             {mission.image_url && mission.image_url.trim() && (
               <img
-                src={mission.image_url}
-                alt={mission.title}
-                loading="eager"
-                decoding="async"
-                className="h-[58px] w-[58px] rounded-md object-cover"
-              />
+              src={mission.image_url}
+              alt={mission.title}
+              loading="eager"
+              decoding="async"
+              className="h-[76px] w-[76px] rounded-lg object-cover"
+            />
             )}
 
             <div className="flex flex-col gap-2">
-              <div className="text-[24px] font-black text-white [text-shadow:2px_2px_3px_rgba(0,0,0,0.9)]">
+            <div className="text-[34px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
                 {mission.title}
               </div>
 
-              <div className="relative h-[42px] w-[760px] overflow-hidden border-2 border-[#9ca3af] bg-[#1f2937] shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
+              <div className="relative h-[58px] w-[900px] overflow-hidden border-4 border-[#d1d5db] bg-[#111827] shadow-[0_4px_14px_rgba(0,0,0,0.75)]">
                 <div
                   className="absolute left-0 top-0 h-full bg-[#5b8fee] transition-all duration-700"
                   style={{ width: `${percent}%` }}
                 />
 
-                <div className="relative z-10 grid h-full grid-cols-2 items-center px-5 text-[25px] font-black text-white [text-shadow:2px_2px_2px_rgba(0,0,0,0.8)]">
+<div className="relative z-10 grid h-full grid-cols-2 items-center px-7 text-[34px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
                   <div className="text-left">{current.toLocaleString()}</div>
                   <div className="text-right">{goal.toLocaleString()}</div>
                 </div>

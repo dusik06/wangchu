@@ -10,7 +10,6 @@ function send(data: any) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const clientId = (url.searchParams.get("clientId") || "").trim();
-
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -33,8 +32,6 @@ export async function GET(req: Request) {
             LIMIT 1
           `);
 
-          const state = stateRows[0] || {};
-
           const [missionRows]: any = await db.query(`
             SELECT
               id,
@@ -52,9 +49,8 @@ export async function GET(req: Request) {
           const payload = {
             success: true,
             clientId,
-            state: state || null,
+            state: stateRows[0] || null,
             mission: missionRows[0] || null,
-            now: Date.now(),
           };
 
           const text = JSON.stringify(payload);
@@ -63,7 +59,7 @@ export async function GET(req: Request) {
             lastPayload = text;
             controller.enqueue(encoder.encode(send(payload)));
           }
-        } catch (error) {
+        } catch {
           controller.enqueue(
             encoder.encode(
               send({
@@ -79,8 +75,9 @@ export async function GET(req: Request) {
 
       const timer = setInterval(push, 1000);
       const heartbeat = setInterval(() => {
-        if (closed) return;
-        controller.enqueue(encoder.encode(`: heartbeat ${Date.now()}\n\n`));
+        if (!closed) {
+          controller.enqueue(encoder.encode(`: heartbeat\n\n`));
+        }
       }, 15000);
 
       req.signal.addEventListener("abort", () => {

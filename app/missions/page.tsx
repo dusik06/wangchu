@@ -13,9 +13,17 @@ type Mission = {
   is_selected?: number;
 };
 
+type Support = {
+  nickname: string;
+  dotori_amount: number;
+  created_at: string;
+};
+
 export default function Page() {
   const [activeMissions, setActiveMissions] = useState<Mission[]>([]);
   const [pastMissions, setPastMissions] = useState<Mission[]>([]);
+  const [supportsByMission, setSupportsByMission] = useState<Record<number, Support[]>>({});
+  const [openedPastId, setOpenedPastId] = useState<number | null>(null);
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
@@ -29,6 +37,7 @@ export default function Page() {
     if (data.success) {
       setActiveMissions(data.activeMissions || []);
       setPastMissions(data.pastMissions || []);
+      setSupportsByMission(data.supportsByMission || {});
     }
   }
 
@@ -70,6 +79,19 @@ export default function Page() {
     } finally {
       setLoadingId(null);
     }
+  }
+
+  function formatDate(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hour = String(date.getHours()).padStart(2, "0");
+    const minute = String(date.getMinutes()).padStart(2, "0");
+
+    return `${month}/${day} ${hour}:${minute}`;
   }
 
   useEffect(() => {
@@ -117,9 +139,7 @@ export default function Page() {
                           </span>
                         )}
 
-                        <h3 className="text-2xl font-black">
-                          {mission.title}
-                        </h3>
+                        <h3 className="text-2xl font-black">{mission.title}</h3>
                       </div>
 
                       {mission.description && (
@@ -183,13 +203,18 @@ export default function Page() {
             {pastMissions.map((mission) => {
               const goal = Math.max(Number(mission.goal_dotori || 0), 1);
               const current = Math.max(Number(mission.current_dotori || 0), 0);
+              const supports = supportsByMission[mission.id] || [];
+              const opened = openedPastId === mission.id;
 
               return (
                 <div
                   key={mission.id}
-                  className="rounded-2xl border border-white/10 bg-[#151027] p-4"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#151027]"
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <button
+                    onClick={() => setOpenedPastId(opened ? null : mission.id)}
+                    className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-white/5"
+                  >
                     <div>
                       <div className="font-black">{mission.title}</div>
                       <div className="mt-1 text-sm text-white/50">
@@ -197,10 +222,49 @@ export default function Page() {
                       </div>
                     </div>
 
-                    <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-black">
-                      완료
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-black">
+                        완료
+                      </div>
+                      <div className="text-sm text-white/50">
+                        {opened ? "접기" : "지원 내역"}
+                      </div>
                     </div>
-                  </div>
+                  </button>
+
+                  {opened && (
+                    <div className="border-t border-white/10 bg-[#09090f] p-4">
+                      <div className="mb-3 text-sm font-black text-purple-200">
+                        지원한 사람
+                      </div>
+
+                      {supports.length > 0 ? (
+                        <div className="space-y-2">
+                          {supports.map((support, index) => (
+                            <div
+                              key={`${mission.id}-${index}`}
+                              className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-sm"
+                            >
+                              <div>
+                                <span className="font-black">{support.nickname}</span>
+                                <span className="ml-2 text-white/40">
+                                  {formatDate(support.created_at)}
+                                </span>
+                              </div>
+
+                              <div className="font-black text-yellow-300">
+                                {Number(support.dotori_amount || 0).toLocaleString()}개
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl bg-white/5 p-4 text-sm text-white/50">
+                          지원 내역이 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
