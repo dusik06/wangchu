@@ -144,6 +144,28 @@ export async function POST(req: Request) {
       ]
     );
 
+    await connection.query(`
+      INSERT IGNORE INTO overlay_engine_state
+      (
+        id,
+        owner_client_id,
+        owner_seen_at,
+        current_type,
+        current_id,
+        current_started_at,
+        current_key,
+        updated_at
+      )
+      VALUES
+      (1, NULL, NULL, NULL, NULL, NULL, NULL, NOW())
+    `);
+
+    await connection.query(`
+      UPDATE overlay_engine_state
+      SET updated_at = NOW()
+      WHERE id = 1
+    `);
+
     await connection.commit();
 
     return NextResponse.json({

@@ -279,6 +279,14 @@ export default function Page() {
 
   useEffect(() => {
     refreshAll();
+  
+    const timer = setInterval(() => {
+      loadQueue();
+    }, 2000);
+  
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   const activeMissions = missions.filter((mission) => mission.status === "active");

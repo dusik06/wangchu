@@ -50,6 +50,7 @@ export default function Page() {
   const playTimerRef = useRef<NodeJS.Timeout | null>(null);
   const engineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const clientIdRef = useRef("");
   const isOwnerRef = useRef(false);
@@ -292,6 +293,39 @@ export default function Page() {
       engineTimerRef.current = null;
     }
 
+    function startStream() {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    
+      if (!clientIdRef.current) return;
+    
+      try {
+        const source = new EventSource(
+          `/api/overlay/stream?clientId=${encodeURIComponent(clientIdRef.current)}`
+        );
+    
+        source.onmessage = () => {
+          fetchEngine();
+        };
+    
+        source.onerror = () => {
+          source.close();
+          eventSourceRef.current = null;
+    
+          setTimeout(() => {
+            if (!mountedRef.current) return;
+            startStream();
+          }, 3000);
+        };
+    
+        eventSourceRef.current = source;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     fetchEngine();
 
     engineTimerRef.current = setInterval(() => {
@@ -369,6 +403,7 @@ export default function Page() {
     clientIdRef.current = makeClientId();
 
     startEngineLoop();
+    startStream();
 
     return () => {
       mountedRef.current = false;
@@ -376,6 +411,11 @@ export default function Page() {
       if (engineTimerRef.current) {
         clearInterval(engineTimerRef.current);
         engineTimerRef.current = null;
+      }
+
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
 
       clearPlayTimer();
