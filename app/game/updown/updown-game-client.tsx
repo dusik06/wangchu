@@ -41,6 +41,10 @@ function choiceLabel(choice: Choice) {
   return "다운";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function UpDownGameClient() {
   const [betAmount, setBetAmount] = useState("10");
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -62,30 +66,55 @@ export default function UpDownGameClient() {
     };
   }, [currentNumber]);
 
-  async function animateToResult(start: number, result: number) {
+  function getNextBounceNumber(now: number, direction: 1 | -1) {
+    if (now >= 9) return { next: 8, direction: -1 as const };
+    if (now <= 1) return { next: 2, direction: 1 as const };
+    return { next: now + direction, direction };
+  }
+
+  function buildSmoothPath(start: number, result: number) {
     const path: number[] = [];
     let cursor = start;
-    let direction = Math.random() > 0.5 ? 1 : -1;
+    let direction: 1 | -1 = start >= 9 ? -1 : 1;
 
-    for (let i = 0; i < 18; i++) {
-      if (cursor >= 9) direction = -1;
-      if (cursor <= 1) direction = 1;
+    const minMoves = 22;
+    const extraMoves = Math.floor(Math.random() * 8);
+    const totalFastMoves = minMoves + extraMoves;
 
-      cursor += direction;
+    for (let i = 0; i < totalFastMoves; i++) {
+      const moved = getNextBounceNumber(cursor, direction);
+      cursor = moved.next;
+      direction = moved.direction;
       path.push(cursor);
-
-      if (Math.random() > 0.65) direction *= -1;
     }
 
-    path.push(result);
+    let guard = 0;
+
+    while (cursor !== result && guard < 30) {
+      const moved = getNextBounceNumber(cursor, direction);
+      cursor = moved.next;
+      direction = moved.direction;
+      path.push(cursor);
+      guard += 1;
+    }
+
+    return path;
+  }
+
+  async function animateToResult(start: number, result: number) {
+    const path = buildSmoothPath(start, result);
 
     for (let i = 0; i < path.length; i++) {
       setHighlightNumber(path[i]);
-      const delay = Math.min(60 + i * 12, 180);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      const progress = i / Math.max(path.length - 1, 1);
+      const delay = 45 + Math.floor(progress * progress * 150);
+
+      await sleep(delay);
     }
 
     setHighlightNumber(result);
+    await sleep(220);
   }
 
   async function play(choice: Choice) {
@@ -127,7 +156,10 @@ export default function UpDownGameClient() {
 
       setLastResult(data);
 
-      await animateToResult(data.startNumber || currentNumber, data.resultNumber || currentNumber);
+      await animateToResult(
+        Number(data.startNumber || currentNumber),
+        Number(data.resultNumber || currentNumber)
+      );
 
       setCurrentNumber(data.currentNumber || data.resultNumber || currentNumber);
       setHighlightNumber(data.resultNumber || currentNumber);
@@ -229,7 +261,7 @@ export default function UpDownGameClient() {
                 <div
                   key={num}
                   className={[
-                    "flex aspect-square items-center justify-center rounded-2xl border text-xl font-black transition-all duration-200",
+                    "flex aspect-square items-center justify-center rounded-2xl border text-xl font-black transition-all duration-150",
                     isHighlight
                       ? "scale-110 border-fuchsia-300 bg-fuchsia-500 text-white shadow-[0_0_30px_rgba(217,70,239,0.75)]"
                       : isCurrent
