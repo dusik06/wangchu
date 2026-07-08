@@ -403,7 +403,6 @@ export default function Page() {
     clientIdRef.current = makeClientId();
 
     startEngineLoop();
-    startStream();
 
     return () => {
       mountedRef.current = false;
