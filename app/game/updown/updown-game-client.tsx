@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Choice = "up" | "same" | "down";
 
@@ -54,8 +54,10 @@ export default function UpDownGameClient() {
   const [step, setStep] = useState(1);
   const [status, setStatus] = useState<"ready" | "active" | "lost" | "cashed_out">("ready");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [highlightNumber, setHighlightNumber] = useState(5);
   const [message, setMessage] = useState("도토리를 걸고 업 / 같음 / 다운을 선택하세요.");
+  const [myDotori, setMyDotori] = useState(0);
   const [lastResult, setLastResult] = useState<RoundResult | null>(null);
 
   const multipliers = useMemo(() => {
@@ -66,6 +68,49 @@ export default function UpDownGameClient() {
     };
   }, [currentNumber]);
 
+  useEffect(() => {
+    let alive = true;
+  
+    async function loadActiveGame() {
+      try {
+        const res = await fetch("/api/game/updown/status", {
+          method: "GET",
+          cache: "no-store",
+        });
+  
+        const data = await res.json();
+  
+        if (!alive || !data.success || !data.hasActiveGame) return;
+  
+        setSessionId(Number(data.sessionId));
+        setCurrentNumber(Number(data.currentNumber));
+        setHighlightNumber(Number(data.currentNumber));
+        setAccumulatedPayout(Number(data.accumulatedPayout));
+        setStep(Number(data.step));
+        setStatus("active");
+        setMessage(
+          `진행 중인 게임을 불러왔습니다. 현재 누적 당첨금 ${Number(
+            data.accumulatedPayout || 0
+          ).toLocaleString()} 도토리`
+        );
+      } catch {}
+    }
+  
+    loadActiveGame();
+
+    fetch("/api/user/me")
+  .then((r) => r.json())
+  .then((d) => {
+    if (d.success) {
+      setMyDotori(d.dotori);
+    }
+  });
+  
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   function getNextBounceNumber(now: number, direction: 1 | -1) {
     if (now >= 9) return { next: 8, direction: -1 as const };
     if (now <= 1) return { next: 2, direction: 1 as const };
@@ -74,30 +119,52 @@ export default function UpDownGameClient() {
 
   function buildSmoothPath(start: number, result: number) {
     const path: number[] = [];
-    let cursor = start;
-    let direction: 1 | -1 = start >= 9 ? -1 : 1;
-
-    const minMoves = 22;
-    const extraMoves = Math.floor(Math.random() * 8);
-    const totalFastMoves = minMoves + extraMoves;
-
-    for (let i = 0; i < totalFastMoves; i++) {
-      const moved = getNextBounceNumber(cursor, direction);
-      cursor = moved.next;
-      direction = moved.direction;
-      path.push(cursor);
+  
+    let current = start;
+    let direction: 1 | -1 = 1;
+  
+    if (current === 9) direction = -1;
+  
+    while (path.length < 35) {
+      if (direction === 1) {
+        if (current === 9) {
+          direction = -1;
+          current--;
+        } else {
+          current++;
+        }
+      } else {
+        if (current === 1) {
+          direction = 1;
+          current++;
+        } else {
+          current--;
+        }
+      }
+  
+      path.push(current);
     }
-
-    let guard = 0;
-
-    while (cursor !== result && guard < 30) {
-      const moved = getNextBounceNumber(cursor, direction);
-      cursor = moved.next;
-      direction = moved.direction;
-      path.push(cursor);
-      guard += 1;
+  
+    while (current !== result) {
+      if (direction === 1) {
+        if (current === 9) {
+          direction = -1;
+          current--;
+        } else {
+          current++;
+        }
+      } else {
+        if (current === 1) {
+          direction = 1;
+          current++;
+        } else {
+          current--;
+        }
+      }
+  
+      path.push(current);
     }
-
+  
     return path;
   }
 
@@ -108,17 +175,30 @@ export default function UpDownGameClient() {
       setHighlightNumber(path[i]);
 
       const progress = i / Math.max(path.length - 1, 1);
-      const delay = 45 + Math.floor(progress * progress * 150);
+      const delay =
+35 +
+Math.floor(progress * progress * progress * 220);
 
       await sleep(delay);
     }
 
     setHighlightNumber(result);
-    await sleep(220);
+
+await sleep(120);
+
+setHighlightNumber(0);
+
+await sleep(60);
+
+setHighlightNumber(result);
+
+await sleep(220);
   }
 
   async function play(choice: Choice) {
-    if (isPlaying) return;
+    if (isPlaying || isLoading) return;
+
+setIsLoading(true);
 
     const amount = Number(betAmount);
 
@@ -129,6 +209,9 @@ export default function UpDownGameClient() {
 
     setIsPlaying(true);
     setSelectedChoice(choice);
+    if (status === "ready") {
+        setMyDotori((v) => v - amount);
+      }
     setMessage(`${choiceLabel(choice)} 결과 확인 중...`);
 
     try {
@@ -202,13 +285,14 @@ export default function UpDownGameClient() {
         setIsPlaying(false);
         return;
       }
-
+      setMyDotori((v) => v + Number(data.payout));
       setStatus("cashed_out");
       setMessage(`${Number(data.payout || 0).toLocaleString()} 도토리를 받았습니다.`);
     } catch {
       setMessage("서버 오류가 발생했습니다.");
     } finally {
-      setIsPlaying(false);
+        setIsPlaying(false);
+        setIsLoading(false);
     }
   }
 
@@ -245,6 +329,16 @@ export default function UpDownGameClient() {
               <p className="text-sm text-gray-400">현재 기준 숫자</p>
               <p className="text-4xl font-black text-purple-200">{currentNumber}</p>
             </div>
+
+            <div className="rounded-xl bg-[#09090f] px-5 py-3 border border-white/10">
+  <div className="text-xs text-gray-400">
+    보유 도토리
+  </div>
+
+  <div className="text-2xl font-black text-yellow-300">
+    {myDotori.toLocaleString()}
+  </div>
+</div>
 
             <div className="text-right">
               <p className="text-sm text-gray-400">진행 단계</p>
@@ -310,7 +404,7 @@ export default function UpDownGameClient() {
             </button>
 
             <button
-              disabled={isPlaying || status === "lost" || status === "cashed_out"}
+              disabled={isPlaying || isLoading || status === "lost" || status === "cashed_out"}
               onClick={() => play("same")}
               className="rounded-2xl border border-yellow-400/20 bg-yellow-500/15 px-5 py-5 text-left transition hover:bg-yellow-500/25 disabled:cursor-not-allowed disabled:opacity-30"
             >
@@ -346,7 +440,7 @@ export default function UpDownGameClient() {
           {status === "active" && (
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <button
-                disabled={isPlaying}
+                disabled={isPlaying || isLoading}
                 onClick={cashout}
                 className="rounded-2xl bg-emerald-500 px-5 py-4 text-lg font-black text-white transition hover:bg-emerald-400 disabled:opacity-50"
               >
@@ -354,7 +448,7 @@ export default function UpDownGameClient() {
               </button>
 
               <button
-                disabled={isPlaying}
+                disabled={isPlaying || isLoading}
                 className="rounded-2xl border border-purple-400/30 bg-purple-500/20 px-5 py-4 text-lg font-black text-purple-100"
               >
                 엎어치기는 위에서 다시 선택
