@@ -49,6 +49,7 @@ export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTimerRef = useRef<NodeJS.Timeout | null>(null);
   const engineTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const clientIdRef = useRef("");
   const isOwnerRef = useRef(false);
@@ -67,7 +68,6 @@ export default function Page() {
     if (typeof window === "undefined") return "";
 
     const saved = window.localStorage.getItem("wangchu_overlay_engine_client_id");
-
     if (saved) return saved;
 
     const next = `engine-${Date.now()}-${Math.random()
@@ -75,7 +75,6 @@ export default function Page() {
       .slice(2, 12)}`;
 
     window.localStorage.setItem("wangchu_overlay_engine_client_id", next);
-
     return next;
   }
 
@@ -90,9 +89,15 @@ export default function Page() {
     }
   }
 
+  function clearHideTimer() {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }
+
   function stopAudio() {
     const audio = audioRef.current;
-
     if (!audio) return;
 
     try {
@@ -104,6 +109,7 @@ export default function Page() {
 
   function clearCurrentItem() {
     clearPlayTimer();
+    clearHideTimer();
     stopAudio();
 
     playingKeyRef.current = null;
@@ -112,7 +118,7 @@ export default function Page() {
 
     setVisible(false);
 
-    setTimeout(() => {
+    hideTimerRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
       setCurrentItem(null);
     }, 350);
@@ -122,8 +128,8 @@ export default function Page() {
     const key = getItemKey(item);
 
     if (doneKeyRef.current === key) return;
-
     doneKeyRef.current = key;
+
     clearPlayTimer();
 
     if (!isOwnerRef.current) {
@@ -169,6 +175,7 @@ export default function Page() {
     if (!replay && playingKeyRef.current === key) return;
 
     clearPlayTimer();
+    clearHideTimer();
     stopAudio();
 
     playingKeyRef.current = key;
@@ -240,12 +247,7 @@ export default function Page() {
       if (!data.success) return;
 
       isOwnerRef.current = Boolean(data.isOwner);
-
-      if (data.mission) {
-        setMission(data.mission);
-      } else {
-        setMission(null);
-      }
+      setMission(data.mission || null);
 
       if (data.command === "refresh") {
         window.location.reload();
@@ -257,15 +259,10 @@ export default function Page() {
         return;
       }
 
-      if (data.command === "locked") {
-        return;
-      }
+      if (data.command === "locked") return;
 
       if (data.command === "none") {
-        if (currentItemRef.current) {
-          clearCurrentItem();
-        }
-
+        if (currentItemRef.current) clearCurrentItem();
         return;
       }
 
@@ -382,6 +379,7 @@ export default function Page() {
       }
 
       clearPlayTimer();
+      clearHideTimer();
       stopAudio();
     };
   }, []);

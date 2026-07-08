@@ -1,139 +1,18 @@
 import { NextResponse } from "next/server";
-import db from "@/lib/db";
+import { OverlayEngine } from "@/lib/overlay-engine";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const conn = await (db as any).getConnection();
+  const body = await req.json();
 
-  try {
-    const body = await req.json();
+  const result = await OverlayEngine.done({
+    id: Number(body?.id || 0),
+    type: String(body?.type || "item") === "mission" ? "mission" : "item",
+    clientId: String(body?.clientId || "").trim(),
+  });
 
-    const id = Number(body?.id || 0);
-    const type = String(body?.type || "");
-    const clientId = String(body?.clientId || "").trim();
-
-    if (!id || !clientId || (type !== "item" && type !== "mission")) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "잘못된 요청입니다.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const [lockRows]: any = await conn.query(
-      "SELECT GET_LOCK('wangchu_overlay_engine_done_lock', 2) AS got_lock"
-    );
-
-    if (Number(lockRows[0]?.got_lock || 0) !== 1) {
-      return NextResponse.json({
-        success: true,
-        ignored: true,
-        message: "다른 완료 처리가 진행 중입니다.",
-      });
-    }
-
-    await conn.beginTransaction();
-
-    const [stateRows]: any = await conn.query(`
-      SELECT
-        owner_client_id,
-        current_type,
-        current_id
-      FROM overlay_engine_state
-      WHERE id = 1
-      LIMIT 1
-      FOR UPDATE
-    `);
-
-    const state = stateRows[0] || {};
-    const ownerClientId = state.owner_client_id || "";
-    const currentType = state.current_type || "";
-    const currentId = Number(state.current_id || 0);
-
-    if (ownerClientId !== clientId) {
-      await conn.commit();
-
-      return NextResponse.json({
-        success: true,
-        ignored: true,
-        message: "대표 재생자가 아니므로 완료 처리를 무시했습니다.",
-      });
-    }
-
-    if (currentType !== type || currentId !== id) {
-      await conn.commit();
-
-      return NextResponse.json({
-        success: true,
-        ignored: true,
-        message: "현재 재생 중인 알림과 달라 완료 처리를 무시했습니다.",
-      });
-    }
-
-    if (type === "mission") {
-      await conn.query(
-        `
-        UPDATE mission_overlay_alerts
-        SET status = 'done',
-            played_at = NOW()
-        WHERE id = ?
-          AND status = 'playing'
-        `,
-        [id]
-      );
-    } else {
-      await conn.query(
-        `
-        UPDATE item_use_alerts
-        SET status = 'done',
-            played_at = NOW()
-        WHERE id = ?
-          AND status = 'playing'
-        `,
-        [id]
-      );
-    }
-
-    await conn.query(`
-      UPDATE overlay_engine_state
-      SET current_type = NULL,
-          current_id = NULL,
-          current_started_at = NULL,
-          current_key = NULL,
-          owner_seen_at = NOW(),
-          updated_at = NOW()
-      WHERE id = 1
-    `);
-
-    await conn.commit();
-
-    return NextResponse.json({
-      success: true,
-    });
-  } catch (error) {
-    try {
-      await conn.rollback();
-    } catch {}
-
-    console.error(error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "완료 처리 중 오류가 발생했습니다.",
-      },
-      { status: 500 }
-    );
-  } finally {
-    try {
-      await conn.query(
-        "SELECT RELEASE_LOCK('wangchu_overlay_engine_done_lock')"
-      );
-    } catch {}
-
-    conn.release();
-  }
+  return NextResponse.json(result, {
+    status: result.success ? 200 : 400,
+  });
 }
