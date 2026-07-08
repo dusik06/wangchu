@@ -648,7 +648,7 @@ export default function Page() {
         )}
 
 {!currentItem && mission && (
-  <div className="absolute top-10 left-1/2 flex -translate-x-1/2 items-center gap-4">
+  <div className="absolute top-[90px] left-1/2 flex -translate-x-1/2 items-center gap-4">
             {mission.image_url && mission.image_url.trim() && (
               <img
               src={mission.image_url}
@@ -664,13 +664,13 @@ export default function Page() {
                 {mission.title}
               </div>
 
-              <div className="relative h-[58px] w-[900px] overflow-hidden border-4 border-[#d1d5db] bg-[#111827] shadow-[0_4px_14px_rgba(0,0,0,0.75)]">
+              <div className="relative h-[50px] w-[760px] overflow-hidden border-4 border-[#d1d5db] bg-[#111827] shadow-[0_4px_14px_rgba(0,0,0,0.75)]">
                 <div
                   className="absolute left-0 top-0 h-full bg-[#5b8fee] transition-all duration-700"
                   style={{ width: `${percent}%` }}
                 />
 
-<div className="relative z-10 grid h-full grid-cols-2 items-center px-7 text-[34px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
+<div className="relative z-10 grid h-full grid-cols-2 items-center px-6 text-[29px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
                   <div className="text-left">{current.toLocaleString()}</div>
                   <div className="text-right">{goal.toLocaleString()}</div>
                 </div>
