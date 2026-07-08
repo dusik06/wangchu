@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
+const MISSION_SUPPORT_AUDIO = "/sounds/mission-support.mp3";
+const MISSION_COMPLETE_AUDIO = "/sounds/mission-complete.mp3";
+
 type Mission = {
   id: number;
   title: string;
@@ -23,9 +26,6 @@ type OverlayQueueItem = {
   message: string;
   dotori_amount?: number;
 };
-
-const MISSION_SUPPORT_AUDIO = "/sounds/mission-support.mp3";
-const MISSION_COMPLETE_AUDIO = "/sounds/mission-complete.mp3";
 
 type EngineResponse = {
   success: boolean;
@@ -192,6 +192,33 @@ export default function Page() {
     }, 1800);
   }
 
+  function playMissionSound(item: OverlayQueueItem) {
+    if (!audioRef.current) return;
+
+    const audio = audioRef.current;
+
+    try {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+
+      audio.volume = item.alert_type === "complete" ? 0.75 : 0.55;
+      audio.muted = false;
+      audio.loop = false;
+      audio.src =
+        item.alert_type === "complete"
+          ? MISSION_COMPLETE_AUDIO
+          : MISSION_SUPPORT_AUDIO;
+      audio.load();
+
+      audio.play().catch((error) => {
+        console.error("미션 효과음 재생 실패:", error);
+      });
+    } catch (error) {
+      console.error("미션 효과음 처리 실패:", error);
+    }
+  }
+
   function playQueueItem(item: OverlayQueueItem, replay: boolean) {
     const key = getItemKey(item);
 
@@ -213,44 +240,14 @@ export default function Page() {
     }, 50);
 
     if (item.type === "mission") {
-      if (item.alert_type === "complete" && audioRef.current) {
-        const audio = audioRef.current;
-    
-        audio.volume = 0.7;
-        audio.muted = false;
-        audio.loop = false;
-        audio.src = MISSION_COMPLETE_AUDIO;
-        audio.load();
-    
-        audio.play().catch((error) => {
-          console.error("미션 완료 오디오 재생 실패:", error);
-        });
-      }
-    
-      if (item.type === "mission") {
-        if (audioRef.current) {
-          const audio = audioRef.current;
-      
-          audio.volume = item.alert_type === "complete" ? 0.75 : 0.55;
-          audio.muted = false;
-          audio.loop = false;
-          audio.src =
-            item.alert_type === "complete"
-              ? MISSION_COMPLETE_AUDIO
-              : MISSION_SUPPORT_AUDIO;
-          audio.load();
-      
-          audio.play().catch((error) => {
-            console.error("미션 효과음 재생 실패:", error);
-          });
-        }
-      
-        playTimerRef.current = setTimeout(() => {
-          markDone(item);
-        }, item.alert_type === "complete" ? 6500 : 4500);
-      
-        return;
-      }
+      playMissionSound(item);
+
+      playTimerRef.current = setTimeout(() => {
+        markDone(item);
+      }, item.alert_type === "complete" ? 6500 : 4500);
+
+      return;
+    }
 
     if (item.item_audio && audioRef.current) {
       const audio = audioRef.current;
@@ -682,20 +679,20 @@ export default function Page() {
           </div>
         )}
 
-{!currentItem && mission && (
-  <div className="absolute top-[90px] left-1/2 flex -translate-x-1/2 items-center gap-4">
+        {!currentItem && mission && (
+          <div className="absolute top-[90px] left-1/2 flex -translate-x-1/2 items-center gap-4">
             {mission.image_url && mission.image_url.trim() && (
               <img
-              src={mission.image_url}
-              alt={mission.title}
-              loading="eager"
-              decoding="async"
-              className="h-[76px] w-[76px] rounded-lg object-cover"
-            />
+                src={mission.image_url}
+                alt={mission.title}
+                loading="eager"
+                decoding="async"
+                className="h-[76px] w-[76px] rounded-lg object-cover"
+              />
             )}
 
             <div className="flex flex-col gap-2">
-            <div className="text-[34px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
+              <div className="text-[34px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
                 {mission.title}
               </div>
 
@@ -705,7 +702,7 @@ export default function Page() {
                   style={{ width: `${percent}%` }}
                 />
 
-<div className="relative z-10 grid h-full grid-cols-2 items-center px-6 text-[29px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
+                <div className="relative z-10 grid h-full grid-cols-2 items-center px-6 text-[29px] font-black text-white [text-shadow:3px_3px_4px_rgba(0,0,0,1)]">
                   <div className="text-left">{current.toLocaleString()}</div>
                   <div className="text-right">{goal.toLocaleString()}</div>
                 </div>
