@@ -59,6 +59,7 @@ export default function UpDownGameClient() {
   const [message, setMessage] = useState("도토리를 걸고 업 / 같음 / 다운을 선택하세요.");
   const [myDotori, setMyDotori] = useState(0);
   const [lastResult, setLastResult] = useState<RoundResult | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
   const multipliers = useMemo(() => {
     return {
@@ -237,13 +238,14 @@ setIsLoading(true);
         return;
       }
 
-      setLastResult(data);
+      setShowResult(false);
+setLastResult(data);
 
-      await animateToResult(
+await animateToResult(
         Number(data.startNumber || currentNumber),
         Number(data.resultNumber || currentNumber)
       );
-
+      setShowResult(true);
       setCurrentNumber(data.currentNumber || data.resultNumber || currentNumber);
       setHighlightNumber(data.resultNumber || currentNumber);
       setAccumulatedPayout(data.accumulatedPayout || 0);
@@ -350,13 +352,18 @@ setIsLoading(true);
             {numbers.map((num) => {
               const isCurrent = num === currentNumber;
               const isHighlight = num === highlightNumber;
+              const isResult =
+  showResult &&
+  lastResult?.resultNumber === num;
 
               return (
                 <div
                   key={num}
                   className={[
                     "flex aspect-square items-center justify-center rounded-2xl border text-xl font-black transition-all duration-150",
-                    isHighlight
+                    isResult
+                      ? "scale-125 border-green-300 bg-green-500 text-white shadow-[0_0_45px_rgba(34,197,94,0.9)]"
+                      : isHighlight
                       ? "scale-110 border-fuchsia-300 bg-fuchsia-500 text-white shadow-[0_0_30px_rgba(217,70,239,0.75)]"
                       : isCurrent
                       ? "border-purple-300 bg-purple-600/40 text-purple-100"
@@ -427,7 +434,7 @@ setIsLoading(true);
           <div className="mt-6 rounded-2xl border border-white/10 bg-[#09090f] p-4">
             <p className="text-sm text-gray-300">{message}</p>
 
-            {lastResult && (
+            {showResult && lastResult && (
               <div className="mt-3 grid gap-2 text-sm text-gray-400 md:grid-cols-4">
                 <p>선택: {lastResult.choice ? choiceLabel(lastResult.choice) : "-"}</p>
                 <p>결과: {lastResult.resultNumber || "-"}</p>
