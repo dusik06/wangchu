@@ -47,6 +47,7 @@ export default function GamePage() {
   const [showResult, setShowResult] = useState(false);
 const [diceShake, setDiceShake] = useState(false);
 const [resultType, setResultType] = useState<"win" | "lose" | null>(null);
+const [rollStage, setRollStage] = useState<"idle" | "shake" | "throw" | "settle">("idle");
 
 
 const rollDiceToResult = async (finalDice: number) => {
