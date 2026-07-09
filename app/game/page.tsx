@@ -5,14 +5,116 @@ import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
 import PolicyNotice from "@/components/PolicyNotice";
 
-const diceFaces: Record<number, string> = {
-  1: "⚀",
-  2: "⚁",
-  3: "⚂",
-  4: "⚃",
-  5: "⚄",
-  6: "⚅",
-};
+function DiceCube({
+  dice,
+  rolling,
+  showResult,
+  resultType,
+}: {
+  dice: number | null;
+  rolling: boolean;
+  showResult: boolean;
+  resultType: "win" | "lose" | null;
+}) {
+  const finalClass =
+    dice === 1
+      ? "rotate-x-0 rotate-y-0"
+      : dice === 2
+      ? "rotate-x-0 rotate-y-180"
+      : dice === 3
+      ? "rotate-x-0 rotate-y-90"
+      : dice === 4
+      ? "rotate-x-0 -rotate-y-90"
+      : dice === 5
+      ? "-rotate-x-90 rotate-y-0"
+      : dice === 6
+      ? "rotate-x-90 rotate-y-0"
+      : "rotate-x-0 rotate-y-0";
+
+  return (
+    <div className="relative flex h-56 w-56 items-center justify-center [perspective:900px]">
+      <div
+        className={[
+          "absolute inset-4 rounded-full blur-3xl transition-all duration-500",
+          rolling
+            ? "bg-yellow-400/40"
+            : showResult && resultType === "win"
+            ? "bg-emerald-400/50"
+            : showResult && resultType === "lose"
+            ? "bg-red-500/40"
+            : "bg-white/10",
+        ].join(" ")}
+      />
+
+      <div
+        className={[
+          "relative h-32 w-32 [transform-style:preserve-3d]",
+          rolling
+            ? "animate-[diceRoll3d_1.15s_linear_infinite]"
+            : `transition-transform duration-700 ease-out ${finalClass}`,
+        ].join(" ")}
+      >
+        <DiceFace className="translate-z-16" dots={[5]} />
+        <DiceFace className="rotate-y-180 translate-z-16" dots={[1, 9]} />
+        <DiceFace className="rotate-y-90 translate-z-16" dots={[1, 5, 9]} />
+        <DiceFace className="-rotate-y-90 translate-z-16" dots={[1, 3, 7, 9]} />
+        <DiceFace className="rotate-x-90 translate-z-16" dots={[1, 3, 5, 7, 9]} />
+        <DiceFace className="-rotate-x-90 translate-z-16" dots={[1, 3, 4, 6, 7, 9]} />
+      </div>
+
+      <style jsx>{`
+        @keyframes diceRoll3d {
+          0% {
+            transform: translate3d(-40px, -10px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+          }
+          20% {
+            transform: translate3d(30px, 14px, 0) rotateX(180deg) rotateY(130deg) rotateZ(40deg);
+          }
+          40% {
+            transform: translate3d(-18px, 24px, 0) rotateX(360deg) rotateY(290deg) rotateZ(90deg);
+          }
+          60% {
+            transform: translate3d(24px, -8px, 0) rotateX(540deg) rotateY(430deg) rotateZ(160deg);
+          }
+          80% {
+            transform: translate3d(-12px, 10px, 0) rotateX(720deg) rotateY(610deg) rotateZ(220deg);
+          }
+          100% {
+            transform: translate3d(0, 0, 0) rotateX(900deg) rotateY(760deg) rotateZ(360deg);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function DiceFace({
+  className,
+  dots,
+}: {
+  className: string;
+  dots: number[];
+}) {
+  return (
+    <div
+      className={[
+        "absolute inset-0 grid grid-cols-3 grid-rows-3 rounded-[26px] border border-zinc-200 bg-white p-4 shadow-[inset_0_0_18px_rgba(0,0,0,0.12)]",
+        className,
+      ].join(" ")}
+    >
+      {Array.from({ length: 9 }).map((_, index) => {
+        const position = index + 1;
+        const active = dots.includes(position);
+
+        return (
+          <div key={position} className="flex items-center justify-center">
+            {active && <span className="h-4 w-4 rounded-full bg-zinc-950 shadow-sm" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,13 +176,11 @@ const rollDiceToResult = async (finalDice: number) => {
   }
 
   setDice(finalDice);
-  setDiceShake(true);
 
-  await sleep(180);
+await sleep(900);
 
-  setDiceShake(false);
-  setRolling(false);
-  setShowResult(true);
+setRolling(false);
+setShowResult(true);
 };
 
   const loadBalance = async () => {
@@ -240,36 +340,12 @@ location.reload();
               </div>
 
               <div className="flex flex-col items-center rounded-[26px] bg-gradient-to-b from-zinc-950 to-zinc-800 px-6 py-10 text-white">
-              <div className="relative flex h-48 w-48 items-center justify-center">
-  <div
-    className={[
-      "absolute inset-0 rounded-[42px] blur-2xl transition-all duration-300",
-      resultType === "win" && showResult
-        ? "bg-emerald-400/50"
-        : resultType === "lose" && showResult
-        ? "bg-red-500/40"
-        : rolling
-        ? "bg-yellow-400/40"
-        : "bg-white/10",
-    ].join(" ")}
-  />
-
-  <div
-    className={[
-      "relative flex h-44 w-44 items-center justify-center rounded-[34px] border border-white/70 bg-white text-[104px] font-black leading-none text-zinc-950 shadow-2xl transition-all duration-150",
-      rolling ? "scale-110 rotate-6" : "scale-100 rotate-0",
-      diceShake ? "scale-125 -rotate-3" : "",
-      resultType === "win" && showResult
-        ? "border-emerald-300 shadow-[0_0_45px_rgba(52,211,153,0.75)]"
-        : "",
-      resultType === "lose" && showResult
-        ? "border-red-300 shadow-[0_0_45px_rgba(248,113,113,0.65)]"
-        : "",
-    ].join(" ")}
-  >
-    {dice ? diceFaces[dice] : "🎲"}
-  </div>
-</div>
+              <DiceCube
+  dice={dice}
+  rolling={rolling}
+  showResult={showResult}
+  resultType={resultType}
+/>
 
                 <p className="mt-5 text-sm font-bold text-yellow-300">
                 {rolling
