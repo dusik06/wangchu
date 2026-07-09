@@ -57,7 +57,7 @@ export default function UpDownGameClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [highlightNumber, setHighlightNumber] = useState(5);
   const [message, setMessage] = useState("도토리를 걸고 업 / 같음 / 다운을 선택하세요.");
-  const [myDotori, setMyDotori] = useState(0);
+  const [myDotori, setMyDotori] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<RoundResult | null>(null);
   const [showResult, setShowResult] = useState(false);
 
@@ -211,7 +211,7 @@ setIsLoading(true);
     setIsPlaying(true);
     setSelectedChoice(choice);
     if (status === "ready") {
-        setMyDotori((v) => v - amount);
+        setMyDotori((v) => (v === null ? v : v - amount));
       }
     setMessage(`${choiceLabel(choice)} 결과 확인 중...`);
 
@@ -262,8 +262,9 @@ await animateToResult(
     } catch {
       setMessage("서버 오류가 발생했습니다.");
     } finally {
-      setIsPlaying(false);
-    }
+        setIsPlaying(false);
+        setIsLoading(false);
+      }
   }
 
   async function cashout() {
@@ -287,7 +288,7 @@ await animateToResult(
         setIsPlaying(false);
         return;
       }
-      setMyDotori((v) => v + Number(data.payout));
+      setMyDotori((v) => (v === null ? v : v + Number(data.payout || 0)));
       setStatus("cashed_out");
       setMessage(`${Number(data.payout || 0).toLocaleString()} 도토리를 받았습니다.`);
     } catch {
@@ -318,7 +319,7 @@ await animateToResult(
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 rounded-3xl border border-purple-500/20 bg-[#151027] p-6 shadow-2xl">
           <p className="text-sm font-semibold text-purple-300">왕츄 게임센터</p>
-          <h1 className="mt-2 text-3xl font-black">업다운같음 게임</h1>
+          <h1 className="mt-2 text-3xl font-black">업다운 게임</h1>
           <p className="mt-3 text-sm text-gray-300">
             숫자 1~9 중 현재 숫자를 기준으로 업 / 같음 / 다운을 맞히는 게임입니다.
             성공하면 당첨금을 받거나 엎어치기로 이어갈 수 있습니다.
@@ -338,7 +339,7 @@ await animateToResult(
   </div>
 
   <div className="text-2xl font-black text-yellow-300">
-    {myDotori.toLocaleString()}
+  {myDotori === null ? "불러오는 중" : myDotori.toLocaleString()}
   </div>
 </div>
 
