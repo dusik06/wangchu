@@ -4,180 +4,8 @@ import { useEffect, useState } from "react";
 import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
 import PolicyNotice from "@/components/PolicyNotice";
+import DiceRoller3D from "@/components/game/DiceRoller3D";
 
-function DiceCube({
-  dice,
-  rolling,
-  showResult,
-  resultType,
-}: {
-  dice: number | null;
-  rolling: boolean;
-  showResult: boolean;
-  resultType: "win" | "lose" | null;
-}) {
-  const finalTransform =
-    dice === 1
-      ? "translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg)"
-      : dice === 2
-      ? "translate3d(0, 0, 0) rotateX(0deg) rotateY(180deg) rotateZ(0deg)"
-      : dice === 3
-      ? "translate3d(0, 0, 0) rotateX(0deg) rotateY(-90deg) rotateZ(0deg)"
-      : dice === 4
-      ? "translate3d(0, 0, 0) rotateX(0deg) rotateY(90deg) rotateZ(0deg)"
-      : dice === 5
-      ? "translate3d(0, 0, 0) rotateX(-90deg) rotateY(0deg) rotateZ(0deg)"
-      : dice === 6
-      ? "translate3d(0, 0, 0) rotateX(90deg) rotateY(0deg) rotateZ(0deg)"
-      : "translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg)";
-
-  return (
-    <div className="relative flex h-[260px] w-full items-center justify-center overflow-hidden rounded-[26px] bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 [perspective:1100px]">
-      <div className="absolute bottom-12 h-10 w-[420px] rounded-full bg-black/50 blur-xl" />
-
-      <div className="absolute bottom-[72px] h-[2px] w-[520px] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-
-      <div
-        className={[
-          "absolute bottom-[70px] h-24 w-24",
-          rolling ? "animate-[diceFloorRoll_1.35s_cubic-bezier(.18,.8,.25,1)_forwards]" : "",
-        ].join(" ")}
-        style={{
-          transformStyle: "preserve-3d",
-          transform: rolling ? undefined : finalTransform,
-          transition: rolling ? undefined : "transform 750ms cubic-bezier(.16,1,.3,1)",
-        }}
-      >
-        <DiceFace value={1} transform="translateZ(48px)" />
-        <DiceFace value={2} transform="rotateY(180deg) translateZ(48px)" />
-        <DiceFace value={3} transform="rotateY(90deg) translateZ(48px)" />
-        <DiceFace value={4} transform="rotateY(-90deg) translateZ(48px)" />
-        <DiceFace value={5} transform="rotateX(90deg) translateZ(48px)" />
-        <DiceFace value={6} transform="rotateX(-90deg) translateZ(48px)" />
-      </div>
-
-      <div
-        className={[
-          "absolute bottom-[58px] h-7 rounded-full bg-black/60 blur-md transition-all duration-200",
-          rolling ? "w-32 animate-[diceShadowRoll_1.35s_cubic-bezier(.18,.8,.25,1)_forwards]" : "w-24",
-        ].join(" ")}
-      />
-
-      {showResult && dice && (
-        <div
-          className={[
-            "absolute bottom-5 rounded-full px-4 py-2 text-sm font-black",
-            resultType === "win"
-              ? "bg-emerald-400 text-zinc-950"
-              : resultType === "lose"
-              ? "bg-red-500 text-white"
-              : "bg-white text-zinc-950",
-          ].join(" ")}
-        >
-          결과 {dice} · {dice % 2 === 0 ? "짝" : "홀"}
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes diceFloorRoll {
-          0% {
-            transform: translate3d(-210px, -55px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-          }
-          18% {
-            transform: translate3d(-140px, -8px, 0) rotateX(190deg) rotateY(110deg) rotateZ(35deg);
-          }
-          35% {
-            transform: translate3d(-70px, -32px, 0) rotateX(380deg) rotateY(230deg) rotateZ(75deg);
-          }
-          52% {
-            transform: translate3d(0px, -6px, 0) rotateX(580deg) rotateY(360deg) rotateZ(120deg);
-          }
-          68% {
-            transform: translate3d(48px, -22px, 0) rotateX(760deg) rotateY(500deg) rotateZ(170deg);
-          }
-          82% {
-            transform: translate3d(18px, -4px, 0) rotateX(900deg) rotateY(640deg) rotateZ(220deg);
-          }
-          92% {
-            transform: translate3d(6px, -10px, 0) rotateX(990deg) rotateY(720deg) rotateZ(260deg);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) rotateX(1080deg) rotateY(720deg) rotateZ(360deg);
-          }
-        }
-
-        @keyframes diceShadowRoll {
-          0% {
-            transform: translateX(-210px) scaleX(0.65);
-            opacity: 0.2;
-          }
-          18% {
-            transform: translateX(-140px) scaleX(1);
-            opacity: 0.55;
-          }
-          35% {
-            transform: translateX(-70px) scaleX(0.75);
-            opacity: 0.35;
-          }
-          52% {
-            transform: translateX(0px) scaleX(1.1);
-            opacity: 0.6;
-          }
-          68% {
-            transform: translateX(48px) scaleX(0.8);
-            opacity: 0.4;
-          }
-          82% {
-            transform: translateX(18px) scaleX(1.05);
-            opacity: 0.55;
-          }
-          100% {
-            transform: translateX(0) scaleX(1);
-            opacity: 0.6;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function DiceFace({
-  value,
-  transform,
-}: {
-  value: number;
-  transform: string;
-}) {
-  const dotsByValue: Record<number, number[]> = {
-    1: [5],
-    2: [1, 9],
-    3: [1, 5, 9],
-    4: [1, 3, 7, 9],
-    5: [1, 3, 5, 7, 9],
-    6: [1, 3, 4, 6, 7, 9],
-  };
-
-  return (
-    <div
-      className="absolute left-0 top-0 grid h-24 w-24 grid-cols-3 grid-rows-3 rounded-[20px] border border-zinc-200 bg-white p-4 shadow-[inset_-8px_-8px_18px_rgba(0,0,0,0.18),inset_7px_7px_16px_rgba(255,255,255,0.9),0_14px_28px_rgba(0,0,0,0.35)]"
-      style={{
-        transform,
-        backfaceVisibility: "hidden",
-      }}
-    >
-      {Array.from({ length: 9 }).map((_, index) => {
-        const position = index + 1;
-        const active = dotsByValue[value].includes(position);
-
-        return (
-          <div key={position} className="flex items-center justify-center">
-            {active && <span className="h-3.5 w-3.5 rounded-full bg-zinc-950" />}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -240,11 +68,11 @@ const rollDiceToResult = async (finalDice: number) => {
 
   setDice(finalDice);
 
-await sleep(1350);
+await sleep(1650);
 
 setRolling(false);
 
-await sleep(750);
+await sleep(900);
 
 setShowResult(true);
 };
@@ -406,9 +234,10 @@ location.reload();
               </div>
 
               <div className="flex flex-col items-center rounded-[26px] bg-gradient-to-b from-zinc-950 to-zinc-800 px-6 py-10 text-white">
-              <DiceCube
+              <DiceRoller3D
   dice={dice}
   rolling={rolling}
+  rollStage={rollStage}
   showResult={showResult}
   resultType={resultType}
 />
