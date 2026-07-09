@@ -5,6 +5,41 @@ import GameHighlights from "@/components/game/GameHighlights";
 import GameRanking from "@/components/game/GameRanking";
 import PolicyNotice from "@/components/PolicyNotice";
 
+const diceFaces: Record<number, string> = {
+  1: "⚀",
+  2: "⚁",
+  3: "⚂",
+  4: "⚃",
+  5: "⚄",
+  6: "⚅",
+};
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildDicePath(finalDice: number) {
+  const path: number[] = [];
+  let last = 0;
+
+  for (let i = 0; i < 22; i++) {
+    let next = Math.floor(Math.random() * 6) + 1;
+
+    if (next === last) {
+      next = next >= 6 ? 1 : next + 1;
+    }
+
+    path.push(next);
+    last = next;
+  }
+
+  if (path[path.length - 1] !== finalDice) {
+    path.push(finalDice);
+  }
+
+  return path;
+}
+
 export default function GamePage() {
   const [dotori, setDotori] = useState<number | null>(null);
   const [betAmount, setBetAmount] = useState("");
@@ -16,6 +51,37 @@ export default function GamePage() {
   const [dice, setDice] = useState<number | null>(null);
   const [firstWin, setFirstWin] = useState<boolean | null>(null);
   const [doubleMode, setDoubleMode] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+const [diceShake, setDiceShake] = useState(false);
+const [resultType, setResultType] = useState<"win" | "lose" | null>(null);
+
+
+const rollDiceToResult = async (finalDice: number) => {
+  setRolling(true);
+  setShowResult(false);
+  setDiceShake(false);
+  setResultType(null);
+
+  const path = buildDicePath(finalDice);
+
+  for (let i = 0; i < path.length; i++) {
+    setDice(path[i]);
+
+    const progress = i / Math.max(path.length - 1, 1);
+    const delay = 45 + Math.floor(progress * progress * progress * 210);
+
+    await sleep(delay);
+  }
+
+  setDice(finalDice);
+  setDiceShake(true);
+
+  await sleep(180);
+
+  setDiceShake(false);
+  setRolling(false);
+  setShowResult(true);
+};
 
   const loadBalance = async () => {
     const res = await fetch("/api/game/dice/balance");
@@ -35,15 +101,13 @@ export default function GamePage() {
 
     setLoading(true);
     setRolling(true);
-    setDice(null);
-    setFirstWin(null);
-    setGameId(null);
-    setDoubleMode(false);
-    setDoubleChoice(null);
-
-    const fakeRoll = setInterval(() => {
-      setDice(Math.floor(Math.random() * 6) + 1);
-    }, 120);
+setDice(null);
+setFirstWin(null);
+setGameId(null);
+setDoubleMode(false);
+setDoubleChoice(null);
+setShowResult(false);
+setResultType(null);
 
     const res = await fetch("/api/game/dice/start", {
       method: "POST",
@@ -55,21 +119,20 @@ export default function GamePage() {
 
     const data = await res.json();
 
-    setTimeout(() => {
-      clearInterval(fakeRoll);
-      setRolling(false);
-
-      if (data.success) {
-        setGameId(data.gameId);
-        setDice(data.dice);
-        setFirstWin(data.firstWin);
-        loadBalance();
-      } else {
-        alert(data.message || "게임을 시작할 수 없습니다.");
-      }
-
-      setLoading(false);
-    }, 2300);
+    if (data.success) {
+      await rollDiceToResult(Number(data.dice));
+    
+      setGameId(data.gameId);
+      setDice(data.dice);
+      setFirstWin(data.firstWin);
+      setResultType(data.firstWin ? "win" : "lose");
+    
+      await loadBalance();
+    } else {
+      alert(data.message || "게임을 시작할 수 없습니다.");
+    }
+    
+    setLoading(false);
   };
 
   const cashout = async () => {
@@ -98,11 +161,9 @@ export default function GamePage() {
     }
 
     setDoubleMode(true);
-    setRolling(true);
-
-    const fakeRoll = setInterval(() => {
-      setDice(Math.floor(Math.random() * 6) + 1);
-    }, 120);
+setRolling(true);
+setShowResult(false);
+setResultType(null);
 
     const res = await fetch("/api/game/dice/double", {
       method: "POST",
@@ -111,22 +172,21 @@ export default function GamePage() {
 
     const data = await res.json();
 
-    setTimeout(async () => {
-      clearInterval(fakeRoll);
-      setRolling(false);
-      setDice(data.dice);
+    await rollDiceToResult(Number(data.dice));
 
-      if (data.doubleWin) {
-        alert(
-          `🎉 성공! ${Number(betAmount).toLocaleString()}개 배팅 → ${data.payoutAmount.toLocaleString()} 도토리 획득!`
-        );
-      } else {
-        alert("아쉽네요... 엎기에 실패했어요.");
-      }
+setDice(data.dice);
+setResultType(data.doubleWin ? "win" : "lose");
 
-      await loadBalance();
-      location.reload();
-    }, 2300);
+if (data.doubleWin) {
+  alert(
+    `🎉 성공! ${Number(betAmount).toLocaleString()}개 배팅 → ${data.payoutAmount.toLocaleString()} 도토리 획득!`
+  );
+} else {
+  alert("아쉽네요... 엎기에 실패했어요.");
+}
+
+await loadBalance();
+location.reload();
   };
 
   const expectedCashout = betAmount ? Math.floor(Number(betAmount) * 1.9) : 0;
@@ -180,23 +240,46 @@ export default function GamePage() {
               </div>
 
               <div className="flex flex-col items-center rounded-[26px] bg-gradient-to-b from-zinc-950 to-zinc-800 px-6 py-10 text-white">
-                <div
-                  className={`flex h-44 w-44 items-center justify-center rounded-[34px] bg-white text-7xl font-black text-zinc-950 shadow-2xl ${
-                    rolling ? "animate-bounce" : ""
-                  }`}
-                >
-                  {dice ?? "🎲"}
-                </div>
+              <div className="relative flex h-48 w-48 items-center justify-center">
+  <div
+    className={[
+      "absolute inset-0 rounded-[42px] blur-2xl transition-all duration-300",
+      resultType === "win" && showResult
+        ? "bg-emerald-400/50"
+        : resultType === "lose" && showResult
+        ? "bg-red-500/40"
+        : rolling
+        ? "bg-yellow-400/40"
+        : "bg-white/10",
+    ].join(" ")}
+  />
+
+  <div
+    className={[
+      "relative flex h-44 w-44 items-center justify-center rounded-[34px] border border-white/70 bg-white text-[104px] font-black leading-none text-zinc-950 shadow-2xl transition-all duration-150",
+      rolling ? "scale-110 rotate-6" : "scale-100 rotate-0",
+      diceShake ? "scale-125 -rotate-3" : "",
+      resultType === "win" && showResult
+        ? "border-emerald-300 shadow-[0_0_45px_rgba(52,211,153,0.75)]"
+        : "",
+      resultType === "lose" && showResult
+        ? "border-red-300 shadow-[0_0_45px_rgba(248,113,113,0.65)]"
+        : "",
+    ].join(" ")}
+  >
+    {dice ? diceFaces[dice] : "🎲"}
+  </div>
+</div>
 
                 <p className="mt-5 text-sm font-bold text-yellow-300">
-                  {rolling
-                    ? "데굴데굴... 주사위가 굴러가는 중!"
-                    : dice
-                    ? `주사위 눈: ${dice} · ${dice % 2 === 0 ? "짝" : "홀"}`
-                    : "홀/짝을 선택하고 주사위를 던져보세요"}
+                {rolling
+  ? "주사위가 굴러가는 중..."
+  : showResult && dice
+  ? `주사위 눈: ${dice} · ${dice % 2 === 0 ? "짝" : "홀"}`
+  : "홀/짝을 선택하고 주사위를 던져보세요"}
                 </p>
 
-                {firstWin === false && !rolling && (
+                {showResult && firstWin === false && !rolling && (
                   <div className="mt-5 rounded-2xl bg-white/10 px-5 py-3 text-center">
                     <p className="font-black text-red-200">아쉽네요...</p>
                     <p className="text-sm text-zinc-300">
@@ -205,7 +288,7 @@ export default function GamePage() {
                   </div>
                 )}
 
-                {firstWin === true && !doubleMode && (
+{showResult && firstWin === true && !doubleMode && (
                   <div className="mt-6 w-full max-w-xl rounded-3xl bg-white p-5 text-zinc-900">
                     <p className="text-center text-xl font-black">🎉 1차 성공!</p>
                     <p className="mt-2 text-center text-sm text-zinc-500">
