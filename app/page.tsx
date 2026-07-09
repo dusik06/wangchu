@@ -286,6 +286,7 @@ export default async function Home() {
                 <a href="/prediction" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">승패 예측</a>
                 <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">사다리게임</a>
                 <a href="/game/pinball" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">핀볼게임</a>
+                <a href="/game/updown" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">업다운게임</a>
                 <a href="/lottery" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 로또</a>
               </div>
             </div>
@@ -314,6 +315,7 @@ export default async function Home() {
                   <a href="/admin/shop" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">아이템 생성</a>
                   <a href="/admin/dotori" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 지급</a>
                   <a href="/admin/board" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">게시판 관리</a>
+                  <a href="/admin/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">게임 관리</a>
                   <a href="/admin/lottery" className="block rounded-xl px-4 py-3 text-[#f7d36b] hover:bg-[#2b2415]">로또 관리</a>
                 </div>
               </div>
@@ -445,6 +447,12 @@ export default async function Home() {
                   <p className="mt-3 font-black">핀볼</p>
                   <p className="text-xs text-zinc-500">게임하기</p>
                 </a>
+
+                <a href="/game/updown" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
+  <div className="text-4xl">🔼</div>
+  <p className="mt-3 font-black">업다운게임</p>
+  <p className="text-xs text-zinc-500">게임하기</p>
+</a>
 
                 <a href="/lottery" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">🎟️</div>

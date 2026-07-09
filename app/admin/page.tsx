@@ -158,7 +158,7 @@ export default async function AdminPage() {
             className="cursor-pointer rounded-xl bg-yellow-500 p-6 font-bold text-slate-950 hover:bg-yellow-400"
             href="/admin/game"
           >
-            🎲 게임 기록 관리
+            🎮 게임 관리
           </a>
 
           <a

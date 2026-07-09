@@ -3,8 +3,7 @@ import db from "@/lib/db";
 
 export async function GET() {
   try {
-    const [ranking]: any = await db.query(
-      `
+    const [ranking]: any = await db.query(`
       SELECT
         u.id AS user_id,
         u.nickname,
@@ -12,7 +11,8 @@ export async function GET() {
           IFNULL(d.total_dice, 0) +
           IFNULL(l.total_ladder, 0) +
           IFNULL(p.total_pinball, 0) +
-          IFNULL(pr.total_prediction, 0)
+          IFNULL(pr.total_prediction, 0) +
+          IFNULL(ud.total_updown, 0)
         ) AS total_bet
       FROM users u
 
@@ -40,11 +40,16 @@ export async function GET() {
         GROUP BY user_id
       ) pr ON pr.user_id = u.id
 
+      LEFT JOIN (
+        SELECT user_id, SUM(bet_amount) AS total_updown
+        FROM updown_game_rounds
+        GROUP BY user_id
+      ) ud ON ud.user_id = u.id
+
       WHERE u.role != 'admin'
       ORDER BY total_bet DESC
       LIMIT 10
-      `
-    );
+    `);
 
     return NextResponse.json({
       success: true,
