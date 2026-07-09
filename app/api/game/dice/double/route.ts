@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     const { dice, result } = getDiceResult(doubleChoice);
 
     const doubleWin = doubleChoice === result;
-    const payoutAmount = doubleWin ? Math.floor(game.bet_amount * 4.5) : 0;
+    const payoutAmount = doubleWin ? Math.floor(game.bet_amount * 3.8) : 0;
 
     if (doubleWin) {
       await connection.query(

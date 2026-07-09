@@ -52,11 +52,11 @@ export default function GameHighlights() {
 
       {!best ? (
         <p className="rounded-2xl border border-[#2c2f3a] bg-[#151925] p-5 text-sm text-zinc-400">
-          {!loaded ? "게임 하이라이트를 불러오는 중입니다." : "아직 4.5배 성공 기록이 없어요."}
+          {!loaded ? "게임 하이라이트를 불러오는 중입니다." : "아직 3.8배 성공 기록이 없어요."}
         </p>
       ) : (
         <div className="rounded-2xl border border-[#6f5520] bg-gradient-to-br from-[#1b1720] to-[#10131b] p-5">
-          <p className="text-sm font-bold text-zinc-400">오늘의 4.5배 성공</p>
+          <p className="text-sm font-bold text-zinc-400">오늘의 3.8배 성공</p>
 
           <div className="mt-3 flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[#f7d36b]/50 bg-[#2a2112] text-3xl">

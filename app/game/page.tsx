@@ -170,7 +170,7 @@ export default function GamePage() {
 
                 <div className="rounded-2xl bg-yellow-50 p-4">
                   <p className="text-xs font-bold text-yellow-600">엎기 성공</p>
-                  <p className="mt-1 text-2xl font-black text-yellow-700">4.5배</p>
+                  <p className="mt-1 text-2xl font-black text-yellow-700">3.8배</p>
                 </div>
 
                 <div className="rounded-2xl bg-red-50 p-4">
@@ -255,7 +255,7 @@ export default function GamePage() {
                         onClick={doubleGame}
                         className="cursor-pointer rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-5 py-4 font-black text-white shadow-lg"
                       >
-                        엎어서 4.5배 도전
+                        엎어서 3.8배 도전
                       </button>
                     </div>
                   </div>
