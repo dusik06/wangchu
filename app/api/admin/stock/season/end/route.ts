@@ -2,26 +2,16 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { getKstMysqlNow } from "@/lib/stock-time";
+import { getSeasonNowText } from "@/lib/stock-market";
 
-function numberValue(value: any) {
-  const parsed = Number(value || 0);
-
+function int(value: unknown) {
+  const parsed = Math.floor(Number(value));
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function roundRate(value: number) {
-  return Number(value.toFixed(4));
-}
-
-async function releaseLock(connection: any) {
-  try {
-    await connection.query(
-      "SELECT RELEASE_LOCK('wangchu_stock_season_end')"
-    );
-  } catch {
-    // 잠금 해제 실패 무시
-  }
+function num(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export async function POST(req: Request) {
@@ -29,10 +19,7 @@ export async function POST(req: Request) {
 
   if (!session?.user?.email) {
     return NextResponse.json(
-      {
-        success: false,
-        message: "로그인이 필요합니다.",
-      },
+      { success: false, message: "로그인이 필요합니다." },
       { status: 401 }
     );
   }
@@ -41,29 +28,21 @@ export async function POST(req: Request) {
 
   try {
     body = await req.json();
-  } catch {
-    body = {};
-  }
+  } catch {}
 
-  const requestedSeasonId = Number(body.seasonId || 0);
-
+  const requestedSeasonId = int(body.seasonId);
   const connection = await db.getConnection();
-  let lockAcquired = false;
+  let locked = false;
 
   try {
     const [lockRows]: any = await connection.query(
       "SELECT GET_LOCK('wangchu_stock_season_end', 10) AS locked"
     );
+    locked = Number(lockRows?.[0]?.locked || 0) === 1;
 
-    lockAcquired = Number(lockRows?.[0]?.locked || 0) === 1;
-
-    if (!lockAcquired) {
+    if (!locked) {
       return NextResponse.json(
-        {
-          success: false,
-          message:
-            "다른 시즌 정산이 진행 중입니다. 잠시 후 다시 시도해주세요.",
-        },
+        { success: false, message: "다른 시즌 정산이 진행 중입니다." },
         { status: 409 }
       );
     }
@@ -85,124 +64,180 @@ export async function POST(req: Request) {
 
     if (!admin || admin.role !== "admin") {
       await connection.rollback();
-
       return NextResponse.json(
-        {
-          success: false,
-          message: "관리자만 시즌을 종료할 수 있습니다.",
-        },
+        { success: false, message: "관리자만 가능합니다." },
         { status: 403 }
       );
     }
 
-    const seasonSql = requestedSeasonId
-      ? `
-        SELECT *
-        FROM stock_seasons
-        WHERE id = ?
-          AND status IN ('ready', 'active')
-        LIMIT 1
-        FOR UPDATE
-      `
-      : `
-        SELECT *
-        FROM stock_seasons
-        WHERE status IN ('ready', 'active')
-        ORDER BY id DESC
-        LIMIT 1
-        FOR UPDATE
-      `;
-
-    const seasonParams = requestedSeasonId
-      ? [requestedSeasonId]
-      : [];
-
     const [seasonRows]: any = await connection.query(
-      seasonSql,
-      seasonParams
+      requestedSeasonId > 0
+        ? `
+          SELECT *
+          FROM stock_seasons
+          WHERE id = ?
+            AND status IN ('ready', 'active')
+          LIMIT 1
+          FOR UPDATE
+          `
+        : `
+          SELECT *
+          FROM stock_seasons
+          WHERE status IN ('ready', 'active')
+          ORDER BY id DESC
+          LIMIT 1
+          FOR UPDATE
+          `,
+      requestedSeasonId > 0 ? [requestedSeasonId] : []
     );
 
     const season = seasonRows[0];
 
     if (!season) {
       await connection.rollback();
-
       return NextResponse.json(
-        {
-          success: false,
-          message: "종료할 수 있는 시즌이 없습니다.",
-        },
+        { success: false, message: "종료할 시즌이 없습니다." },
         { status: 404 }
       );
     }
 
-    const seasonId = Number(season.id);
-    const now = getKstMysqlNow();
+    const [rewardCountRows]: any = await connection.query(
+      `
+      SELECT COUNT(*) AS reward_count
+      FROM stock_season_rewards
+      WHERE season_id = ?
+      `,
+      [season.id]
+    );
+
+    if (int(rewardCountRows[0]?.reward_count) > 0) {
+      await connection.rollback();
+      return NextResponse.json(
+        { success: false, message: "이미 정산된 시즌입니다." },
+        { status: 409 }
+      );
+    }
+
+    const now = getSeasonNowText();
 
     const [participantRows]: any = await connection.query(
       `
-      SELECT
-        p.*,
-        u.role,
-        IFNULL(
-          (
-            SELECT SUM(h.quantity * s.current_price)
-            FROM stock_season_holdings h
-            INNER JOIN stock_items s
-              ON s.id = h.stock_id
-            WHERE h.season_id = p.season_id
-              AND h.user_id = p.user_id
-              AND h.quantity > 0
-          ),
-          0
-        ) AS final_holding_value
+      SELECT p.*, u.nickname, u.role
       FROM stock_season_participants p
-      INNER JOIN users u
-        ON u.id = p.user_id
+      INNER JOIN users u ON u.id = p.user_id
       WHERE p.season_id = ?
+      ORDER BY p.id ASC
       FOR UPDATE
       `,
-      [seasonId]
+      [season.id]
     );
 
-    const allParticipants = participantRows.map((row: any) => {
-      const startingMoney = Math.max(
-        1,
-        numberValue(row.starting_money)
+    const calculated: any[] = [];
+
+    for (const participant of participantRows) {
+      const [holdingRows]: any = await connection.query(
+        `
+        SELECT
+          h.id,
+          h.quantity,
+          h.total_buy_amount,
+          s.current_price
+        FROM stock_season_holdings h
+        INNER JOIN stock_items s ON s.id = h.stock_id
+        WHERE h.season_id = ?
+          AND h.participant_id = ?
+          AND h.quantity > 0
+        FOR UPDATE
+        `,
+        [season.id, participant.id]
       );
 
-      const availableMoney = numberValue(row.available_money);
-      const holdingValue = numberValue(row.final_holding_value);
+      let holdingValue = 0;
+
+      for (const holding of holdingRows) {
+        const currentValue =
+          int(holding.quantity) * int(holding.current_price);
+        const holdingProfit =
+          currentValue - int(holding.total_buy_amount);
+        const holdingRate =
+          int(holding.total_buy_amount) > 0
+            ? (holdingProfit / int(holding.total_buy_amount)) * 100
+            : 0;
+
+        holdingValue += currentValue;
+
+        await connection.query(
+          `
+          UPDATE stock_season_holdings
+          SET current_value = ?,
+              profit_amount = ?,
+              profit_rate = ?,
+              updated_at = ?
+          WHERE id = ?
+          `,
+          [currentValue, holdingProfit, holdingRate, now, holding.id]
+        );
+      }
+
+      const startingMoney = Math.max(1, int(participant.starting_money));
+      const availableMoney = Math.max(0, int(participant.available_money));
       const totalAsset = availableMoney + holdingValue;
       const profitAmount = totalAsset - startingMoney;
-      const profitRate = roundRate(
-        (profitAmount / startingMoney) * 100
+      const profitRate = (profitAmount / startingMoney) * 100;
+      const tradeCount = int(participant.trade_count);
+      const qualified =
+        participant.role !== "admin" &&
+        tradeCount >= int(season.min_trade_count);
+
+      await connection.query(
+        `
+        UPDATE stock_season_participants
+        SET current_holding_value = ?,
+            current_total_asset = ?,
+            current_profit_amount = ?,
+            current_profit_rate = ?,
+            is_reward_qualified = ?,
+            final_holding_value = ?,
+            final_total_asset = ?,
+            final_profit_amount = ?,
+            final_profit_rate = ?,
+            updated_at = ?
+        WHERE id = ? AND season_id = ?
+        `,
+        [
+          holdingValue,
+          totalAsset,
+          profitAmount,
+          profitRate,
+          qualified ? 1 : 0,
+          holdingValue,
+          totalAsset,
+          profitAmount,
+          profitRate,
+          now,
+          participant.id,
+          season.id,
+        ]
       );
 
-      const qualified =
-        row.role !== "admin" &&
-        numberValue(row.trade_count) >=
-          numberValue(season.min_trade_count);
-
-      return {
-        participantId: Number(row.id),
-        userId: Number(row.user_id),
+      calculated.push({
+        participantId: Number(participant.id),
+        userId: Number(participant.user_id),
         nickname: String(
-          row.nickname_snapshot || "닉네임없음"
+          participant.nickname_snapshot ||
+            participant.nickname ||
+            "닉네임없음"
         ),
-        tradeCount: numberValue(row.trade_count),
-        availableMoney,
-        holdingValue,
+        tradeCount,
         totalAsset,
-        profitAmount,
-        profitRate,
+        profitRate: Number(profitRate.toFixed(4)),
         qualified,
-      };
-    });
+      });
+    }
 
-    const qualifiedRanking = allParticipants
-      .filter((participant: any) => participant.qualified)
-      .sort((a: any, b: any) => {
+    const ranking = calculated
+      .filter((row) => row.qualified)
+      .sort((a, b) => {
         if (b.profitRate !== a.profitRate) {
           return b.profitRate - a.profitRate;
         }
@@ -219,103 +254,80 @@ export async function POST(req: Request) {
       });
 
     const totalPrize =
-      numberValue(season.base_prize) +
-      numberValue(season.entry_fee_prize) +
-      numberValue(season.fee_prize);
-
-    const prizeRates = [
-      numberValue(season.first_prize_rate),
-      numberValue(season.second_prize_rate),
-      numberValue(season.third_prize_rate),
+      int(season.base_prize) +
+      int(season.entry_fee_prize) +
+      int(season.fee_prize);
+    const rates = [
+      num(season.first_prize_rate),
+      num(season.second_prize_rate),
+      num(season.third_prize_rate),
     ];
 
-    const winners = qualifiedRanking
-      .slice(0, 3)
-      .map((participant: any, index: number) => ({
-        ...participant,
-        rank: index + 1,
-        prizeRate: prizeRates[index],
-        prizeAmount: Math.floor(
-          (totalPrize * prizeRates[index]) / 100
-        ),
-      }));
+    const winners = ranking.slice(0, 3).map((row, index) => ({
+      ...row,
+      rank: index + 1,
+      prizeRate: rates[index] || 0,
+      prizeAmount: Math.floor(
+        (totalPrize * (rates[index] || 0)) / 100
+      ),
+    }));
 
-    const paidPrizeTotal = winners.reduce(
-      (sum: number, winner: any) =>
-        sum + winner.prizeAmount,
+    const paidBase = winners.reduce(
+      (sum, winner) => sum + winner.prizeAmount,
       0
     );
 
-    for (const participant of allParticipants) {
-      const qualifiedIndex = qualifiedRanking.findIndex(
-        (ranked: any) =>
-          ranked.participantId === participant.participantId
-      );
+    if (winners.length > 0 && totalPrize > paidBase) {
+      winners[0].prizeAmount += totalPrize - paidBase;
+    }
 
-      const finalRank =
-        qualifiedIndex >= 0 ? qualifiedIndex + 1 : null;
-
+    for (let index = 0; index < ranking.length; index++) {
+      const row = ranking[index];
       const winner = winners.find(
-        (row: any) =>
-          row.participantId === participant.participantId
+        (winnerRow) => winnerRow.participantId === row.participantId
       );
 
       await connection.query(
         `
         UPDATE stock_season_participants
-        SET current_holding_value = ?,
-            current_total_asset = ?,
-            current_profit_amount = ?,
-            current_profit_rate = ?,
-            is_reward_qualified = ?,
-            final_holding_value = ?,
-            final_total_asset = ?,
-            final_profit_amount = ?,
-            final_profit_rate = ?,
-            final_rank = ?,
+        SET final_rank = ?,
             prize_amount = ?,
             updated_at = ?
-        WHERE id = ?
-          AND season_id = ?
+        WHERE id = ? AND season_id = ?
         `,
         [
-          participant.holdingValue,
-          participant.totalAsset,
-          participant.profitAmount,
-          participant.profitRate,
-          participant.qualified ? 1 : 0,
-          participant.holdingValue,
-          participant.totalAsset,
-          participant.profitAmount,
-          participant.profitRate,
-          finalRank,
+          index + 1,
           winner ? winner.prizeAmount : 0,
           now,
-          participant.participantId,
-          seasonId,
+          row.participantId,
+          season.id,
         ]
+      );
+    }
+
+    for (const row of calculated.filter((item) => !item.qualified)) {
+      await connection.query(
+        `
+        UPDATE stock_season_participants
+        SET final_rank = NULL,
+            prize_amount = 0,
+            updated_at = ?
+        WHERE id = ? AND season_id = ?
+        `,
+        [now, row.participantId, season.id]
       );
     }
 
     for (const winner of winners) {
       if (winner.prizeAmount > 0) {
         await connection.query(
-          `
-          UPDATE users
-          SET dotori = dotori + ?
-          WHERE id = ?
-          `,
+          `UPDATE users SET dotori = dotori + ? WHERE id = ?`,
           [winner.prizeAmount, winner.userId]
         );
 
         await connection.query(
           `
-          INSERT INTO dotori_logs
-          (
-            user_id,
-            amount,
-            reason
-          )
+          INSERT INTO dotori_logs (user_id, amount, reason)
           VALUES (?, ?, ?)
           `,
           [
@@ -342,7 +354,7 @@ export async function POST(req: Request) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
-          seasonId,
+          season.id,
           winner.userId,
           winner.nickname,
           winner.rank,
@@ -354,7 +366,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const firstWinner = winners[0] || null;
+    const first = winners[0] || null;
 
     await connection.query(
       `
@@ -367,16 +379,15 @@ export async function POST(req: Request) {
           winner_prize_amount = ?,
           updated_at = ?
       WHERE id = ?
-        AND status IN ('ready', 'active')
       `,
       [
         now,
-        firstWinner ? firstWinner.userId : null,
-        firstWinner ? firstWinner.nickname : null,
-        firstWinner ? firstWinner.profitRate : null,
-        firstWinner ? firstWinner.prizeAmount : 0,
+        first ? first.userId : null,
+        first ? first.nickname : null,
+        first ? first.profitRate : null,
+        first ? first.prizeAmount : 0,
         now,
-        seasonId,
+        season.id,
       ]
     );
 
@@ -387,23 +398,19 @@ export async function POST(req: Request) {
           updated_at = ?
       WHERE season_id = ?
       `,
-      [now, seasonId]
+      [now, season.id]
     );
 
     await connection.commit();
 
     return NextResponse.json({
       success: true,
-      message: `${season.title} 종료 및 보상 정산이 완료되었습니다.`,
-      seasonId,
+      message: `${season.title} 종료 및 보상 지급이 완료되었습니다.`,
+      seasonId: Number(season.id),
       totalPrize,
-      paidPrizeTotal,
-      unpaidPrizeAmount: Math.max(
-        0,
-        totalPrize - paidPrizeTotal
-      ),
-      qualifiedParticipantCount: qualifiedRanking.length,
-      winners: winners.map((winner: any) => ({
+      participantCount: calculated.length,
+      qualifiedParticipantCount: ranking.length,
+      winners: winners.map((winner) => ({
         rank: winner.rank,
         nickname: winner.nickname,
         profitRate: winner.profitRate,
@@ -413,17 +420,11 @@ export async function POST(req: Request) {
   } catch (error: any) {
     try {
       await connection.rollback();
-    } catch {
-      // rollback 오류 무시
-    }
+    } catch {}
 
     if (error?.code === "ER_DUP_ENTRY") {
       return NextResponse.json(
-        {
-          success: false,
-          message:
-            "이미 보상이 지급된 시즌입니다. 중복 지급하지 않았습니다.",
-        },
+        { success: false, message: "이미 보상이 지급된 시즌입니다." },
         { status: 409 }
       );
     }
@@ -433,13 +434,17 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: "시즌 종료 및 정산 중 오류가 발생했습니다.",
+        message: "시즌 종료 및 보상 지급 중 오류가 발생했습니다.",
       },
       { status: 500 }
     );
   } finally {
-    if (lockAcquired) {
-      await releaseLock(connection);
+    if (locked) {
+      try {
+        await connection.query(
+          "SELECT RELEASE_LOCK('wangchu_stock_season_end')"
+        );
+      } catch {}
     }
 
     connection.release();

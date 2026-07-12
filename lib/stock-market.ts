@@ -1,12 +1,11 @@
-import {
-  getKstMysqlNow,
-  kstMysqlToTimestamp,
-} from "@/lib/stock-time";
+import { getKstMysqlNow, kstMysqlToTimestamp } from "@/lib/stock-time";
 
 type SeasonTimeData = {
-  status: string;
+  status?: string | null;
   starts_at_text?: string | null;
   ends_at_text?: string | null;
+  starts_at?: string | Date | null;
+  ends_at?: string | Date | null;
   market_open_time?: string | null;
   market_close_time?: string | null;
 };
@@ -16,6 +15,24 @@ function pad(value: number) {
 }
 
 function normalizeMysqlDateTime(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const kst = new Date(value.getTime() + 9 * 60 * 60 * 1000);
+
+    return [
+      kst.getUTCFullYear(),
+      "-",
+      pad(kst.getUTCMonth() + 1),
+      "-",
+      pad(kst.getUTCDate()),
+      " ",
+      pad(kst.getUTCHours()),
+      ":",
+      pad(kst.getUTCMinutes()),
+      ":",
+      pad(kst.getUTCSeconds()),
+    ].join("");
+  }
+
   const text = String(value || "").trim();
 
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)) {
@@ -31,7 +48,6 @@ function normalizeMysqlDateTime(value: unknown) {
 
 function normalizeTime(value: unknown) {
   const text = String(value || "").trim();
-
   const match = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
 
   if (!match) {
@@ -93,8 +109,10 @@ export function getKstClock() {
 }
 
 export function isSeasonRunning(season: SeasonTimeData) {
-  const startsAt = normalizeMysqlDateTime(season.starts_at_text);
-  const endsAt = normalizeMysqlDateTime(season.ends_at_text);
+  const startsAt = normalizeMysqlDateTime(
+    season.starts_at_text ?? season.starts_at
+  );
+  const endsAt = normalizeMysqlDateTime(season.ends_at_text ?? season.ends_at);
 
   if (!startsAt || !endsAt) {
     return {
@@ -103,9 +121,9 @@ export function isSeasonRunning(season: SeasonTimeData) {
     };
   }
 
-  const nowTimestamp = Date.now();
   const startsTimestamp = kstMysqlToTimestamp(startsAt);
   const endsTimestamp = kstMysqlToTimestamp(endsAt);
+  const nowTimestamp = Date.now();
 
   if (
     Number.isNaN(startsTimestamp) ||
@@ -137,10 +155,7 @@ export function isSeasonRunning(season: SeasonTimeData) {
   };
 }
 
-export function isMarketOpen(
-  openTimeValue: unknown,
-  closeTimeValue: unknown
-) {
+export function isMarketOpen(openTimeValue: unknown, closeTimeValue: unknown) {
   const openTime = normalizeTime(openTimeValue);
   const closeTime = normalizeTime(closeTimeValue);
   const now = getKstClock();
@@ -171,27 +186,19 @@ export function isMarketOpen(
     open,
     message: open
       ? "현재 주식시장이 열려 있습니다."
-      : `현재 휴장 중입니다. 장 운영시간은 ${pad(
-          openTime.hour
-        )}:${pad(openTime.minute)} ~ ${pad(
-          closeTime.hour
-        )}:${pad(closeTime.minute)}입니다.`,
+      : `현재 휴장 중입니다. 장 운영시간은 ${pad(openTime.hour)}:${pad(
+          openTime.minute
+        )} ~ ${pad(closeTime.hour)}:${pad(closeTime.minute)}입니다.`,
     currentKstTime: now.timeText,
   };
 }
 
-export function calculateFee(
-  grossAmount: number,
-  feeRate: number
-) {
+export function calculateFee(grossAmount: number, feeRate: number) {
   if (grossAmount <= 0 || feeRate <= 0) {
     return 0;
   }
 
-  return Math.max(
-    1,
-    Math.ceil((grossAmount * feeRate) / 100)
-  );
+  return Math.max(1, Math.ceil((grossAmount * feeRate) / 100));
 }
 
 export function getSeasonNowText() {

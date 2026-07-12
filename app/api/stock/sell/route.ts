@@ -2,6 +2,22 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import {
+  calculateFee,
+  getSeasonNowText,
+  isMarketOpen,
+  isSeasonRunning,
+} from "@/lib/stock-market";
+
+function toInteger(value: unknown) {
+  const parsed = Math.floor(Number(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -13,13 +29,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = await req.json();
-  const stockId = Number(body.stockId);
-  const quantity = Math.floor(Number(body.quantity));
+  let body: any;
 
-  if (!stockId || !quantity || quantity <= 0) {
+  try {
+    body = await req.json();
+  } catch {
     return NextResponse.json(
-      { success: false, message: "판매 수량이 올바르지 않습니다." },
+      { success: false, message: "매도 요청을 읽을 수 없습니다." },
+      { status: 400 }
+    );
+  }
+
+  const stockId = toInteger(body.stockId);
+  const quantity = toInteger(body.quantity);
+
+  if (stockId <= 0 || quantity <= 0) {
+    return NextResponse.json(
+      { success: false, message: "종목과 매도 수량을 확인해주세요." },
       { status: 400 }
     );
   }
@@ -29,12 +55,18 @@ export async function POST(req: Request) {
   try {
     await connection.beginTransaction();
 
-    const [users]: any = await connection.query(
-      "SELECT id FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
+    const [userRows]: any = await connection.query(
+      `
+      SELECT id, role
+      FROM users
+      WHERE email = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
       [session.user.email]
     );
 
-    const user = users[0];
+    const user = userRows[0];
 
     if (!user) {
       await connection.rollback();
@@ -44,7 +76,90 @@ export async function POST(req: Request) {
       );
     }
 
-    const [stocks]: any = await connection.query(
+    if (user.role === "admin") {
+      await connection.rollback();
+      return NextResponse.json(
+        {
+          success: false,
+          message: "관리자 계정은 시즌 주식 거래를 할 수 없습니다.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const [seasonRows]: any = await connection.query(
+      `
+      SELECT
+        *,
+        DATE_FORMAT(starts_at, '%Y-%m-%d %H:%i:%s') AS starts_at_text,
+        DATE_FORMAT(ends_at, '%Y-%m-%d %H:%i:%s') AS ends_at_text
+      FROM stock_seasons
+      WHERE status IN ('ready', 'active')
+      ORDER BY id DESC
+      LIMIT 1
+      FOR UPDATE
+      `
+    );
+
+    const season = seasonRows[0];
+
+    if (!season) {
+      await connection.rollback();
+      return NextResponse.json(
+        { success: false, message: "현재 진행 중인 시즌이 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    const seasonState = isSeasonRunning(season);
+    const marketState = isMarketOpen(
+      season.market_open_time,
+      season.market_close_time
+    );
+
+    if (!seasonState.running) {
+      await connection.rollback();
+      return NextResponse.json(
+        { success: false, message: seasonState.message },
+        { status: 400 }
+      );
+    }
+
+    if (!marketState.open) {
+      await connection.rollback();
+      return NextResponse.json(
+        {
+          success: false,
+          message: marketState.message,
+          currentKstTime: marketState.currentKstTime,
+        },
+        { status: 400 }
+      );
+    }
+
+    const [participantRows]: any = await connection.query(
+      `
+      SELECT *
+      FROM stock_season_participants
+      WHERE season_id = ?
+        AND user_id = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [season.id, user.id]
+    );
+
+    const participant = participantRows[0];
+
+    if (!participant) {
+      await connection.rollback();
+      return NextResponse.json(
+        { success: false, message: "먼저 이번 시즌에 참가해주세요." },
+        { status: 403 }
+      );
+    }
+
+    const [stockRows]: any = await connection.query(
       `
       SELECT *
       FROM stock_items
@@ -56,125 +171,236 @@ export async function POST(req: Request) {
       [stockId]
     );
 
-    const stock = stocks[0];
+    const stock = stockRows[0];
 
     if (!stock) {
       await connection.rollback();
       return NextResponse.json(
-        { success: false, message: "거래 가능한 주식이 없습니다." },
+        { success: false, message: "현재 거래할 수 없는 종목입니다." },
         { status: 404 }
       );
     }
 
-    const [holdings]: any = await connection.query(
+    const [holdingRows]: any = await connection.query(
       `
       SELECT *
-      FROM stock_holdings
-      WHERE user_id = ?
+      FROM stock_season_holdings
+      WHERE season_id = ?
+        AND participant_id = ?
+        AND user_id = ?
         AND stock_id = ?
       LIMIT 1
       FOR UPDATE
       `,
-      [user.id, stock.id]
+      [season.id, participant.id, user.id, stock.id]
     );
 
-    const holding = holdings[0];
+    const holding = holdingRows[0];
+    const currentQuantity = toInteger(holding?.quantity);
 
-    if (!holding || Number(holding.quantity) < quantity) {
+    if (!holding || currentQuantity < quantity) {
       await connection.rollback();
       return NextResponse.json(
-        { success: false, message: "보유 수량이 부족합니다." },
+        { success: false, message: "보유한 주식 수량이 부족합니다." },
         { status: 400 }
       );
     }
 
-    const price = Number(stock.current_price);
-    const totalAmount = price * quantity;
+    const unitPrice = toInteger(stock.current_price);
+    const grossAmount = unitPrice * quantity;
+    const feeRate = toNumber(season.trade_fee_rate);
+    const feeAmount = calculateFee(grossAmount, feeRate);
+    const receiveAmount = grossAmount - feeAmount;
 
-    if (price <= 0 || totalAmount <= 0) {
+    if (
+      unitPrice <= 0 ||
+      grossAmount <= 0 ||
+      receiveAmount < 0 ||
+      !Number.isSafeInteger(grossAmount)
+    ) {
       await connection.rollback();
       return NextResponse.json(
-        { success: false, message: "현재 거래할 수 없는 가격입니다." },
+        { success: false, message: "거래 금액이 올바르지 않습니다." },
         { status: 400 }
       );
     }
 
-    const currentQuantity = Number(holding.quantity);
-    const currentTotalBuy = Number(holding.total_buy_amount);
-    const sellBuyAmount = Math.floor(
-      (currentTotalBuy * quantity) / currentQuantity
+    const currentBuyAmount = toInteger(holding.total_buy_amount);
+    const soldBuyCost = Math.floor(
+      (currentBuyAmount * quantity) / currentQuantity
     );
-    const profitAmount = totalAmount - sellBuyAmount;
-
+    const realizedProfitAmount = receiveAmount - soldBuyCost;
     const nextQuantity = currentQuantity - quantity;
-    const nextTotalBuyAmount = Math.max(0, currentTotalBuy - sellBuyAmount);
+    const nextBuyAmount = Math.max(0, currentBuyAmount - soldBuyCost);
+    const now = getSeasonNowText();
 
     await connection.query(
       `
-      UPDATE users
-      SET dotori = dotori + ?
+      UPDATE stock_season_participants
+      SET available_money = available_money + ?,
+          trade_count = trade_count + 1,
+          sell_count = sell_count + 1,
+          total_sell_amount = total_sell_amount + ?,
+          total_fee_amount = total_fee_amount + ?,
+          last_trade_at = ?,
+          updated_at = ?
       WHERE id = ?
+        AND season_id = ?
       `,
-      [totalAmount, user.id]
+      [
+        receiveAmount,
+        grossAmount,
+        feeAmount,
+        now,
+        now,
+        participant.id,
+        season.id,
+      ]
     );
 
     if (nextQuantity <= 0) {
       await connection.query(
-        `
-        DELETE FROM stock_holdings
-        WHERE id = ?
-        `,
+        `DELETE FROM stock_season_holdings WHERE id = ?`,
         [holding.id]
       );
     } else {
+      const nextCurrentValue = nextQuantity * unitPrice;
+      const nextProfitAmount = nextCurrentValue - nextBuyAmount;
+      const nextProfitRate =
+        nextBuyAmount > 0 ? (nextProfitAmount / nextBuyAmount) * 100 : 0;
+
       await connection.query(
         `
-        UPDATE stock_holdings
+        UPDATE stock_season_holdings
         SET quantity = ?,
             total_buy_amount = ?,
-            updated_at = NOW()
+            average_price = ?,
+            current_value = ?,
+            profit_amount = ?,
+            profit_rate = ?,
+            updated_at = ?
         WHERE id = ?
         `,
-        [nextQuantity, nextTotalBuyAmount, holding.id]
+        [
+          nextQuantity,
+          nextBuyAmount,
+          nextBuyAmount / nextQuantity,
+          nextCurrentValue,
+          nextProfitAmount,
+          nextProfitRate,
+          now,
+          holding.id,
+        ]
       );
     }
 
     await connection.query(
       `
-      INSERT INTO stock_trades
+      INSERT INTO stock_season_trades
       (
+        season_id,
+        participant_id,
         user_id,
         stock_id,
         trade_type,
         quantity,
-        price,
-        total_amount,
+        unit_price,
+        gross_amount,
+        fee_rate,
+        fee_amount,
+        net_amount,
         buy_cost_amount,
-        profit_amount,
+        realized_profit_amount,
+        price_before,
+        market_round_id,
         created_at
       )
-      VALUES (?, ?, 'SELL', ?, ?, ?, ?, ?, NOW())
+      VALUES
+      (?, ?, ?, ?, 'SELL', ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
       `,
       [
+        season.id,
+        participant.id,
         user.id,
         stock.id,
         quantity,
-        price,
-        totalAmount,
-        sellBuyAmount,
-        profitAmount,
+        unitPrice,
+        grossAmount,
+        feeRate,
+        feeAmount,
+        receiveAmount,
+        soldBuyCost,
+        realizedProfitAmount,
+        unitPrice,
+        now,
       ]
     );
 
     await connection.query(
       `
-      INSERT INTO dotori_logs (user_id, amount, reason)
-      VALUES (?, ?, ?)
+      UPDATE stock_seasons
+      SET fee_prize = fee_prize + ?,
+          updated_at = ?
+      WHERE id = ?
+      `,
+      [feeAmount, now, season.id]
+    );
+
+    const [assetRows]: any = await connection.query(
+      `
+      SELECT
+        p.available_money,
+        p.starting_money,
+        p.trade_count,
+        IFNULL(SUM(h.quantity * s.current_price), 0) AS holding_value
+      FROM stock_season_participants p
+      LEFT JOIN stock_season_holdings h
+        ON h.participant_id = p.id
+       AND h.season_id = p.season_id
+       AND h.quantity > 0
+      LEFT JOIN stock_items s
+        ON s.id = h.stock_id
+      WHERE p.id = ?
+        AND p.season_id = ?
+      GROUP BY p.id, p.available_money, p.starting_money, p.trade_count
+      `,
+      [participant.id, season.id]
+    );
+
+    const asset = assetRows[0];
+    const nextAvailableMoney = toInteger(asset?.available_money);
+    const startingMoney = Math.max(1, toInteger(asset?.starting_money));
+    const holdingValue = toInteger(asset?.holding_value);
+    const totalAsset = nextAvailableMoney + holdingValue;
+    const profitAmount = totalAsset - startingMoney;
+    const profitRate = (profitAmount / startingMoney) * 100;
+    const tradeCount = toInteger(asset?.trade_count);
+    const minimumTradeCount = Math.max(
+      0,
+      toInteger(season.min_trade_count)
+    );
+
+    await connection.query(
+      `
+      UPDATE stock_season_participants
+      SET current_holding_value = ?,
+          current_total_asset = ?,
+          current_profit_amount = ?,
+          current_profit_rate = ?,
+          is_reward_qualified = ?,
+          updated_at = ?
+      WHERE id = ?
+        AND season_id = ?
       `,
       [
-        user.id,
-        totalAmount,
-        `주식 매도 - ${stock.stock_name} ${quantity}주 판매`,
+        holdingValue,
+        totalAsset,
+        profitAmount,
+        profitRate,
+        tradeCount >= minimumTradeCount ? 1 : 0,
+        now,
+        participant.id,
+        season.id,
       ]
     );
 
@@ -182,18 +408,33 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "주식 매도 완료",
-      price,
+      message: `${stock.stock_name} ${quantity.toLocaleString()}주 매도가 완료되었습니다.`,
+      stockName: stock.stock_name,
       quantity,
-      totalAmount,
+      unitPrice,
+      grossAmount,
+      feeRate,
+      feeAmount,
+      receiveAmount,
+      realizedProfitAmount,
+      currencyName: season.currency_name,
+      availableMoney: nextAvailableMoney,
+      holdingValue,
+      totalAsset,
       profitAmount,
+      profitRate: Number(profitRate.toFixed(4)),
+      tradeCount,
+      minimumTradeCount,
     });
   } catch (error) {
-    await connection.rollback();
-    console.error(error);
+    try {
+      await connection.rollback();
+    } catch {}
+
+    console.error("Stock season sell error:", error);
 
     return NextResponse.json(
-      { success: false, message: "주식 매도 실패" },
+      { success: false, message: "주식 매도 처리 중 오류가 발생했습니다." },
       { status: 500 }
     );
   } finally {
