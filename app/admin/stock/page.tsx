@@ -2,10 +2,10 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import StockCreateForm from "./stock-create-form";
-import StockAdminActions from "./stock-admin-actions";
-import StockEventForm from "./stock-event-form";
-import StockEventDeleteButton from "./stock-event-delete-button";
+import StockCreateForm from "../stocks/stock-create-form";
+import StockAdminActions from "../stocks/stock-admin-actions";
+import StockEventForm from "../stocks/stock-event-form";
+import StockEventDeleteButton from "../stocks/stock-event-delete-button";
 import StockSeasonManager from "./stock-season-manager";
 
 export const dynamic = "force-dynamic";
