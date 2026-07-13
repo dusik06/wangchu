@@ -294,6 +294,78 @@ export default async function StockDetailPage({
 
   const trades = tradeRows || [];
 
+  const [activeEventRows]: any = await db.query(
+    `
+    SELECT
+      id,
+      event_title,
+      event_type,
+      event_rate,
+      starts_at,
+      ends_at
+    FROM stock_events
+    WHERE stock_id = ?
+      AND is_active = 1
+      AND starts_at <= NOW()
+      AND ends_at >= NOW()
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [id]
+  );
+
+  const activeEvent = activeEventRows[0] || null;
+
+  const [recentEventRows]: any = await db.query(
+    `
+    SELECT
+      event_title,
+      event_type,
+      event_rate,
+      starts_at,
+      ends_at,
+      is_active
+    FROM stock_events
+    WHERE stock_id = ?
+    ORDER BY id DESC
+    LIMIT 8
+    `,
+    [id]
+  );
+
+  const [marketRoundRows]: any = season
+    ? await db.query(
+        `
+        SELECT
+          id,
+          round_ended_at,
+          old_price,
+          new_price,
+          random_rate,
+          real_user_pressure_rate,
+          virtual_pressure_rate,
+          event_rate,
+          final_day_bonus_rate,
+          final_change_rate,
+          real_buy_amount,
+          real_sell_amount,
+          virtual_buy_amount,
+          virtual_sell_amount,
+          special_event_triggered,
+          final_day_applied,
+          calculation_note
+        FROM stock_market_rounds
+        WHERE season_id = ?
+          AND stock_id = ?
+        ORDER BY id DESC
+        LIMIT 12
+        `,
+        [season.id, id]
+      )
+    : [[]];
+
+  const marketRounds = marketRoundRows || [];
+
   const [stockList]: any = await db.query(`
     SELECT
       s.id,
@@ -745,6 +817,46 @@ export default async function StockDetailPage({
           </div>
         </section>
 
+        {activeEvent && (
+          <section
+            className={`mb-5 rounded-3xl border p-5 ${
+              String(activeEvent.event_type).toLowerCase() === "down"
+                ? "border-blue-400/20 bg-blue-400/10"
+                : "border-red-400/20 bg-red-400/10"
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black tracking-[0.18em] text-zinc-400">
+                  ACTIVE STOCK EVENT
+                </p>
+
+                <h2 className="mt-2 text-xl font-black">
+                  {activeEvent.event_title}
+                </h2>
+
+                <p className="mt-2 text-sm text-zinc-300">
+                  {String(activeEvent.event_type).toLowerCase() === "down"
+                    ? "악재"
+                    : "호재"}{" "}
+                  이벤트 · 변동 효과{" "}
+                  {String(activeEvent.event_type).toLowerCase() === "down"
+                    ? "-"
+                    : "+"}
+                  {Number(activeEvent.event_rate || 0).toFixed(2)}%
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-right">
+                <p className="text-xs text-zinc-500">이벤트 종료</p>
+                <p className="mt-1 font-black">
+                  {formatDate(activeEvent.ends_at)}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {season && (
           <section className="mb-5 rounded-3xl border border-yellow-300/15 bg-yellow-300/5 p-5">
             <div className="grid gap-3 md:grid-cols-4">
@@ -1027,6 +1139,157 @@ export default async function StockDetailPage({
             </div>
 
             <section className="rounded-3xl border border-white/10 bg-[#101321] p-6">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black">
+                    최근 가격 변동 분석
+                  </h2>
+
+                  <p className="mt-1 text-xs text-zinc-500">
+                    랜덤 변동, 실제 유저, 가상 참가자, 뉴스 이벤트가 가격에 반영된 기록입니다.
+                  </p>
+                </div>
+
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-bold text-zinc-400">
+                  최근 {marketRounds.length}회
+                </span>
+              </div>
+
+              {marketRounds.length === 0 ? (
+                <p className="rounded-2xl bg-black/20 p-6 text-zinc-400">
+                  아직 가격 변동 분석 기록이 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {marketRounds.map((round: any) => {
+                    const changeRate = Number(round.final_change_rate || 0);
+                    const changeAmount =
+                      Number(round.new_price || 0) -
+                      Number(round.old_price || 0);
+
+                    return (
+                      <details
+                        key={round.id}
+                        className="group overflow-hidden rounded-2xl border border-white/10 bg-black/20"
+                      >
+                        <summary className="cursor-pointer list-none p-4">
+                          <div className="grid items-center gap-3 sm:grid-cols-[1fr_140px_140px]">
+                            <div>
+                              <p className="font-black">
+                                {formatDate(round.round_ended_at)}
+                              </p>
+
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {round.calculation_note || "일반 가격 갱신"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-zinc-500">
+                                가격 변화
+                              </p>
+
+                              <p
+                                className={`mt-1 font-black ${
+                                  changeAmount > 0
+                                    ? "text-red-400"
+                                    : changeAmount < 0
+                                    ? "text-blue-400"
+                                    : "text-zinc-400"
+                                }`}
+                              >
+                                {formatNumber(round.old_price)} →{" "}
+                                {formatNumber(round.new_price)}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-zinc-500">
+                                최종 변동률
+                              </p>
+
+                              <p
+                                className={`mt-1 text-lg font-black ${
+                                  changeRate > 0
+                                    ? "text-red-400"
+                                    : changeRate < 0
+                                    ? "text-blue-400"
+                                    : "text-zinc-400"
+                                }`}
+                              >
+                                {changeRate > 0 ? "+" : ""}
+                                {changeRate.toFixed(2)}%
+                              </p>
+                            </div>
+                          </div>
+                        </summary>
+
+                        <div className="grid gap-3 border-t border-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <RoundValue
+                            label="랜덤 변동"
+                            value={Number(round.random_rate || 0)}
+                          />
+
+                          <RoundValue
+                            label="실제 유저 영향"
+                            value={Number(
+                              round.real_user_pressure_rate || 0
+                            )}
+                          />
+
+                          <RoundValue
+                            label="가상 참가자 영향"
+                            value={Number(
+                              round.virtual_pressure_rate || 0
+                            )}
+                          />
+
+                          <RoundValue
+                            label="뉴스 이벤트"
+                            value={Number(round.event_rate || 0)}
+                          />
+
+                          <RoundValue
+                            label="막판 보너스"
+                            value={Number(
+                              round.final_day_bonus_rate || 0
+                            )}
+                          />
+
+                          <RoundAmount
+                            label="실제 매수/매도"
+                            buy={Number(round.real_buy_amount || 0)}
+                            sell={Number(round.real_sell_amount || 0)}
+                            currencyName={currencyName}
+                          />
+
+                          <RoundAmount
+                            label="가상 매수/매도"
+                            buy={Number(round.virtual_buy_amount || 0)}
+                            sell={Number(round.virtual_sell_amount || 0)}
+                            currencyName={currencyName}
+                          />
+
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                            <p className="text-xs text-zinc-500">특수 상태</p>
+                            <p className="mt-2 text-sm font-black">
+                              {Number(round.special_event_triggered || 0) === 1
+                                ? "특수 변동 발생"
+                                : "일반 변동"}
+                              {Number(round.final_day_applied || 0) === 1
+                                ? " · 막판 배율 적용"
+                                : ""}
+                            </p>
+                          </div>
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-[#101321] p-6">
               <div className="mb-4">
                 <h2 className="text-xl font-black">
                   최근 실제 유저 거래
@@ -1178,6 +1441,72 @@ export default async function StockDetailPage({
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-[#101321] p-6">
+              <div className="mb-4">
+                <h2 className="text-xl font-black">
+                  종목 이벤트 기록
+                </h2>
+
+                <p className="mt-1 text-xs text-zinc-500">
+                  최근 등록된 호재·악재 이벤트입니다.
+                </p>
+              </div>
+
+              {recentEventRows.length === 0 ? (
+                <p className="rounded-2xl bg-black/20 p-4 text-sm text-zinc-500">
+                  등록된 이벤트가 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {recentEventRows.map((event: any, index: number) => {
+                    const isDown =
+                      String(event.event_type).toLowerCase() === "down";
+                    const currentlyActive =
+                      Number(event.is_active || 0) === 1 &&
+                      (!activeEvent || Number(activeEvent.id) === Number(event.id));
+
+                    return (
+                      <div
+                        key={`${event.event_title}-${index}`}
+                        className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-black">
+                              {event.event_title}
+                            </p>
+
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {formatDate(event.starts_at)} ~{" "}
+                              {formatDate(event.ends_at)}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                              isDown
+                                ? "bg-blue-400/10 text-blue-300"
+                                : "bg-red-400/10 text-red-300"
+                            }`}
+                          >
+                            {isDown ? "악재" : "호재"}{" "}
+                            {isDown ? "-" : "+"}
+                            {Number(event.event_rate || 0).toFixed(2)}%
+                          </span>
+                        </div>
+
+                        {currentlyActive && (
+                          <p className="mt-3 text-xs font-black text-emerald-300">
+                            현재 적용 중
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-[#101321] p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black">
                   주식 목록
@@ -1293,6 +1622,56 @@ export default async function StockDetailPage({
         </section>
       </div>
     </main>
+  );
+}
+
+function RoundValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p
+        className={`mt-2 font-black ${
+          value > 0
+            ? "text-red-400"
+            : value < 0
+            ? "text-blue-400"
+            : "text-zinc-400"
+        }`}
+      >
+        {value > 0 ? "+" : ""}
+        {value.toFixed(3)}%
+      </p>
+    </div>
+  );
+}
+
+function RoundAmount({
+  label,
+  buy,
+  sell,
+  currencyName,
+}: {
+  label: string;
+  buy: number;
+  sell: number;
+  currencyName: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="mt-2 text-xs font-black text-red-400">
+        매수 {formatNumber(buy)} {currencyName}
+      </p>
+      <p className="mt-1 text-xs font-black text-blue-400">
+        매도 {formatNumber(sell)} {currencyName}
+      </p>
+    </div>
   );
 }
 

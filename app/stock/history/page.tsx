@@ -111,10 +111,6 @@ export default async function StockHistoryPage() {
                   <div className="border-b border-white/10 p-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <p className="text-xs font-black text-yellow-300">
-                          SEASON {season.season_no}
-                        </p>
-
                         <h2 className="mt-2 text-2xl font-black">
                           {season.title}
                         </h2>

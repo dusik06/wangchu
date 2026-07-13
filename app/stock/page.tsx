@@ -566,9 +566,6 @@ export default async function StockPage() {
                       {marketState.open ? "장 운영 중" : "휴장 중"}
                     </span>
 
-                    <span className="text-xs font-bold text-zinc-500">
-                      SEASON {season.season_no}
-                    </span>
                   </div>
 
                   <h2 className="mt-4 text-3xl font-black md:text-4xl">

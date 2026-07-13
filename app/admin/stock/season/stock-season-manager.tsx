@@ -238,7 +238,7 @@ export default function StockSeasonManager({
 
         {currentSeason && (
           <div className="mb-5 grid gap-3 md:grid-cols-4">
-            <Summary label="현재 시즌" value={`시즌 ${form.seasonNo} · ${form.status}`} />
+            <Summary label="현재 상태" value={String(form.status || "ready")} />
             <Summary label="총상금" value={`${n(totalPrize)} 도토리`} accent />
             <Summary label="수수료 누적" value={`${n(form.feePrize)} 도토리`} />
             <Summary label="상금 비율 합계" value={`${totalRate}%`} danger={totalRate !== 100} />
@@ -340,7 +340,6 @@ export default function StockSeasonManager({
                 <div className="space-y-3">
                   {endedSeasons.slice(0, 8).map((season) => (
                     <div key={season.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <p className="text-xs font-black text-yellow-300">시즌 {season.seasonNo}</p>
                       <p className="mt-1 font-black">{season.title}</p>
                       <div className="mt-3 flex justify-between text-xs">
                         <span className="text-zinc-500">우승자</span>
