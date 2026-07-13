@@ -144,9 +144,10 @@ export default function StockEventForm({
 
     try {
       const response = await fetch(
-        "/api/admin/stocks/event",
+        "/api/admin/stocks/event/create",
         {
           method: "POST",
+          cache: "no-store",
           headers: {
             "Content-Type":
               "application/json",
@@ -171,8 +172,7 @@ export default function StockEventForm({
       } catch {
         data = {
           success: false,
-          message:
-            "서버 응답을 읽을 수 없습니다.",
+          message: `서버 오류가 발생했습니다. (${response.status})`,
         };
       }
 
