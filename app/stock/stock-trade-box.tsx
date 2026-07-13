@@ -116,6 +116,7 @@ export default function StockTradeBox({
     try {
       const response = await fetch(`/api/stock/${type}`, {
         method: "POST",
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
         },
@@ -125,7 +126,10 @@ export default function StockTradeBox({
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({
+        success: false,
+        message: "서버 응답을 읽을 수 없습니다.",
+      }));
 
       if (!response.ok || !data.success) {
         alert(data.message || "거래에 실패했습니다.");

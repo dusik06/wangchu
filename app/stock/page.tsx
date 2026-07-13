@@ -413,25 +413,37 @@ export default async function StockPage() {
       Number(season.fee_prize || 0)
     : 0;
 
-  const expectedPrizes = season
+  const configuredPrizeRates = season
     ? [
-        Math.floor(
-          (totalPrize *
-            Number(season.first_prize_rate || 0)) /
-            100
-        ),
-        Math.floor(
-          (totalPrize *
-            Number(season.second_prize_rate || 0)) /
-            100
-        ),
-        Math.floor(
-          (totalPrize *
-            Number(season.third_prize_rate || 0)) /
-            100
-        ),
+        Number(season.first_prize_rate || 0),
+        Number(season.second_prize_rate || 0),
+        Number(season.third_prize_rate || 0),
       ]
     : [0, 0, 0];
+
+  const expectedPrizes = [0, 0, 0];
+
+  if (season && qualifiedRanking.length > 0) {
+    const rewardedCount = Math.min(
+      3,
+      qualifiedRanking.length
+    );
+
+    for (let index = 0; index < rewardedCount; index++) {
+      expectedPrizes[index] = Math.floor(
+        (totalPrize * configuredPrizeRates[index]) / 100
+      );
+    }
+
+    const distributedPrize = expectedPrizes.reduce(
+      (sum, amount) => sum + amount,
+      0
+    );
+
+    if (totalPrize > distributedPrize) {
+      expectedPrizes[0] += totalPrize - distributedPrize;
+    }
+  }
 
   const isLoggedIn = Boolean(currentUser);
   const isAdmin = currentUser?.role === "admin";
@@ -487,12 +499,30 @@ export default async function StockPage() {
             </p>
           </div>
 
-          <a
-            href="/"
-            className="rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm font-black transition hover:bg-slate-700"
-          >
-            메인으로
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/stock/history"
+              className="rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm font-black transition hover:bg-slate-700"
+            >
+              지난 시즌
+            </a>
+
+            {isAdmin && (
+              <a
+                href="/admin/stock/season"
+                className="rounded-xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm font-black text-yellow-200 transition hover:bg-yellow-300/20"
+              >
+                시즌 관리
+              </a>
+            )}
+
+            <a
+              href="/"
+              className="rounded-xl border border-white/10 bg-slate-800 px-4 py-3 text-sm font-black transition hover:bg-slate-700"
+            >
+              메인으로
+            </a>
+          </div>
         </header>
 
         {!season ? (
@@ -632,6 +662,9 @@ export default async function StockPage() {
                     startingMoney={Number(season.starting_money)}
                     currencyName={season.currency_name}
                     seasonStateMessage={seasonState.message}
+                    priceIntervalMinutes={Number(
+                      season.price_interval_minutes || 10
+                    )}
                   />
                 </div>
               </div>
@@ -715,7 +748,7 @@ export default async function StockPage() {
                         className="group overflow-hidden rounded-2xl border border-white/10 bg-black/20"
                       >
                         <summary className="cursor-pointer list-none p-4">
-                          <div className="grid items-center gap-3 md:grid-cols-[70px_1fr_140px_120px_160px]">
+                          <div className="grid items-center gap-4 sm:grid-cols-[80px_1fr] lg:grid-cols-[70px_1fr_140px_120px_160px]">
                             <div>
                               {rewardRank && rewardRank <= 3 ? (
                                 <span className="text-xl font-black text-yellow-300">

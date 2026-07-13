@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
+import { settleStockSeason } from "@/lib/stock-season-settlement";
 import {
   getKstClock,
   getSeasonNowText,
@@ -736,6 +737,34 @@ export async function POST() {
         success: true,
         updatedCount: 0,
         message: "진행 중인 시즌이 없습니다.",
+      });
+    }
+
+    const seasonEndsAt = new Date(
+      `${String(season.ends_at_text).replace(" ", "T")}+09:00`
+    ).getTime();
+
+    if (
+      !Number.isNaN(seasonEndsAt) &&
+      Date.now() >= seasonEndsAt
+    ) {
+      const settlement = await settleStockSeason(
+        connection,
+        season,
+        now
+      );
+
+      await connection.commit();
+
+      return NextResponse.json({
+        success: true,
+        updatedCount: 0,
+        marketOpen: false,
+        autoSettled: settlement.settled,
+        settlement,
+        message: settlement.settled
+          ? `${season.title} 시즌 자동 정산이 완료되었습니다.`
+          : `${season.title} 시즌은 이미 정산되었습니다.`,
       });
     }
 

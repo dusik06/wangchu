@@ -14,6 +14,7 @@ type Props = {
   startingMoney: number;
   currencyName: string;
   seasonStateMessage: string;
+  priceIntervalMinutes: number;
 };
 
 function formatNumber(value: any) {
@@ -70,6 +71,7 @@ export default function StockSeasonActions({
   startingMoney,
   currencyName,
   seasonStateMessage,
+  priceIntervalMinutes,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [remainingText, setRemainingText] = useState("");
@@ -111,9 +113,13 @@ export default function StockSeasonActions({
     try {
       const response = await fetch("/api/stock/join", {
         method: "POST",
+        cache: "no-store",
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({
+        success: false,
+        message: "서버 응답을 읽을 수 없습니다.",
+      }));
 
       alert(data.message || "시즌 참가 요청이 처리되었습니다.");
 
@@ -141,6 +147,13 @@ export default function StockSeasonActions({
         <p className="mt-2 text-xs text-zinc-500">
           모든 시간은 한국시간 기준입니다.
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-4 text-xs leading-6 text-zinc-400">
+        시즌 종료시간이 지나면 기존 자동 가격 갱신 작업이 다음으로
+        실행될 때 자동 정산됩니다. 최대 약 {formatNumber(
+          priceIntervalMinutes
+        )}분 정도 걸릴 수 있습니다.
       </div>
 
       {alreadyJoined ? (
