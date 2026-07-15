@@ -416,6 +416,32 @@ export const OverlayEngine = {
         const replayItem = await getCurrentItem(conn, type, id);
 
         if (replayItem) {
+          if (type === "mission") {
+            await conn.query(
+              `
+              UPDATE mission_overlay_alerts
+              SET status = 'playing',
+                  locked_by = ?,
+                  started_at = NOW()
+              WHERE id = ?
+              `,
+              [clientId, id]
+            );
+          } else {
+            await conn.query(
+              `
+              UPDATE item_use_alerts
+              SET status = 'playing',
+                  locked_by = ?,
+                  started_at = NOW()
+              WHERE id = ?
+              `,
+              [clientId, id]
+            );
+          }
+
+          const activeReplayItem = await getCurrentItem(conn, type, id);
+
           await conn.query(
             `
             UPDATE overlay_engine_state
@@ -428,6 +454,17 @@ export const OverlayEngine = {
             `,
             [type, id, makeCurrentKey(type, id, `replay-${Date.now()}`)]
           );
+
+          await resetControl(conn);
+          await conn.commit();
+
+          return {
+            success: true,
+            command: "replay",
+            item: activeReplayItem || replayItem,
+            mission,
+            isOwner,
+          };
         }
 
         await resetControl(conn);
