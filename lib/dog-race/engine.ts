@@ -53,6 +53,10 @@ function round(value: number, digits = 2) {
   return Math.round(value * unit) / unit;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function weightedPick<T>(items: T[], weights: number[]): T {
   const total = weights.reduce((sum, value) => sum + Math.max(0, value), 0);
   let cursor = Math.random() * total;
@@ -63,6 +67,11 @@ function weightedPick<T>(items: T[], weights: number[]): T {
   }
 
   return items[items.length - 1];
+}
+
+function smoothStep(value: number) {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 export function createRaceEntries(payoutRate = 0.92): DogRaceEntry[] {
@@ -113,20 +122,11 @@ export function createRaceEntries(payoutRate = 0.92): DogRaceEntry[] {
 
 export function simulateRace(entries: StoredDogRaceEntry[]): RaceResult {
   const durationMs = randomInt(11800, 13200);
-  const frameStep = 200;
+  const frameStep = 100;
   const winner = weightedPick(
     entries,
     entries.map((dog) => Math.max(1, dog.winProbability))
   );
-
-  const states = entries.map((dog) => ({
-    dog,
-    progress: 0,
-    velocity: 0,
-    mistakeUntil: 0,
-    surgeUntil: 0,
-    finishedAt: 0,
-  }));
 
   const events: RaceEvent[] = entries.map((dog) => ({
     at: 350,
@@ -136,17 +136,18 @@ export function simulateRace(entries: StoredDogRaceEntry[]): RaceResult {
     intensity: 1,
   }));
 
-  const eventWindows = [2600, 4300, 6100, 7900, 9650];
+  const eventWindows = [2300, 3900, 5550, 7200, 8850];
   for (const at of eventWindows) {
     const candidate = entries[randomInt(0, entries.length - 1)];
     const mistakeChance = candidate.mistakeRate / 100;
+
     if (Math.random() < mistakeChance * 1.55) {
       events.push({
         at,
         lane: candidate.lane,
         type: "mistake",
         message: `😱 ${candidate.lane}번 ${candidate.name}가 휘청거립니다!`,
-        intensity: 0.7 + Math.random() * 0.5,
+        intensity: 0.8 + Math.random() * 0.45,
       });
       events.push({
         at: at + 900,
@@ -161,7 +162,7 @@ export function simulateRace(entries: StoredDogRaceEntry[]): RaceResult {
         lane: candidate.lane,
         type: "surge",
         message: `🔥 ${candidate.lane}번 ${candidate.name}가 치고 나옵니다!`,
-        intensity: 0.8 + Math.random() * 0.6,
+        intensity: 0.9 + Math.random() * 0.45,
       });
     }
   }
@@ -181,82 +182,108 @@ export function simulateRace(entries: StoredDogRaceEntry[]): RaceResult {
     });
   });
 
-  const progressFrames: Array<{ at: number; progress: Record<number, number> }> = [];
-
-  for (let at = 0; at <= durationMs; at += frameStep) {
-    const phase = at / durationMs;
-
-    for (const state of states) {
-      if (state.finishedAt) continue;
-
-      const dog = state.dog;
-      const activeEvents = events.filter(
-        (event) => event.lane === dog.lane && event.at <= at && event.at > at - frameStep
-      );
-
-      for (const event of activeEvents) {
-        if (event.type === "mistake") state.mistakeUntil = at + 1100;
-        if (event.type === "surge") state.surgeUntil = at + 1300;
-        if (event.type === "sprint") state.surgeUntil = at + 1800;
-      }
-
-      const speedBase = dog.speed * 0.00000105;
-      const staminaFactor = phase < 0.55 ? 1 : 0.82 + dog.stamina / 520;
-      const sprintFactor = phase > 0.78 ? 0.86 + dog.sprint / 360 : 1;
-      const composureNoise = (Math.random() - 0.5) * (105 - dog.composure) * 0.000004;
-      const mistakeFactor = at < state.mistakeUntil ? 0.48 : 1;
-      const surgeFactor = at < state.surgeUntil ? 1.26 : 1;
-      const winnerBias = dog.lane === winner.lane ? 1 + Math.max(0, phase - 0.62) * 0.24 : 1;
-
-      const targetVelocity =
-        (speedBase * staminaFactor * sprintFactor * mistakeFactor * surgeFactor * winnerBias + composureNoise) *
-        frameStep;
-
-      state.velocity += (targetVelocity - state.velocity) * 0.34;
-      state.progress += Math.max(0.0016, state.velocity);
-
-      if (state.progress >= 1) {
-        state.progress = 1;
-        state.finishedAt = at;
-      }
-    }
-
-    if (at >= durationMs - 1550) {
-      const winnerState = states.find((state) => state.dog.lane === winner.lane)!;
-      const maxOther = Math.max(
-        ...states.filter((state) => state.dog.lane !== winner.lane).map((state) => state.progress)
-      );
-      winnerState.progress = Math.max(winnerState.progress, Math.min(0.995, maxOther + 0.008));
-    }
-
-    progressFrames.push({
-      at,
-      progress: Object.fromEntries(states.map((state) => [state.dog.lane, round(state.progress, 5)])),
-    });
+  // 최종 순위는 능력치와 경기 랜덤성을 함께 반영하되, 미리 뽑힌 우승자는 1위로 고정한다.
+  const rankingScore = new Map<number, number>();
+  for (const dog of entries) {
+    const form =
+      dog.speed * 0.32 +
+      dog.stamina * 0.22 +
+      dog.sprint * 0.28 +
+      dog.composure * 0.12 -
+      dog.mistakeRate * 0.45 +
+      Math.random() * 22;
+    rankingScore.set(dog.lane, form);
   }
 
-  const winnerState = states.find((state) => state.dog.lane === winner.lane)!;
-  winnerState.progress = 1;
-  winnerState.finishedAt = Math.min(winnerState.finishedAt || durationMs - 160, durationMs - 160);
+  const ranking = [
+    winner.lane,
+    ...entries
+      .filter((dog) => dog.lane !== winner.lane)
+      .sort((a, b) => Number(rankingScore.get(b.lane)) - Number(rankingScore.get(a.lane)))
+      .map((dog) => dog.lane),
+  ];
 
-  const sorted = [...states].sort((a, b) => {
-    if (a.dog.lane === winner.lane) return -1;
-    if (b.dog.lane === winner.lane) return 1;
-    if (a.finishedAt && b.finishedAt) return a.finishedAt - b.finishedAt;
-    return b.progress - a.progress;
-  });
-
-  const ranking = sorted.map((state) => state.dog.lane);
-  const finishTimes: Record<number, number> = {};
+  const finalProgress = new Map<number, number>();
   ranking.forEach((lane, index) => {
-    finishTimes[lane] = index === 0 ? winnerState.finishedAt : durationMs - 90 + index * 70;
+    finalProgress.set(lane, index === 0 ? 1 : 0.982 - index * 0.012);
   });
+
+  const profiles = new Map(
+    entries.map((dog) => [
+      dog.lane,
+      {
+        phase: Math.random() * Math.PI * 2,
+        waveA: 0.022 + Math.random() * 0.018,
+        waveB: 0.010 + Math.random() * 0.012,
+        early: (dog.speed - 78) / 1400,
+        middle: (dog.stamina - 77) / 1700,
+        late: (dog.sprint - 76) / 1250,
+      },
+    ])
+  );
+
+  const progressFrames: Array<{ at: number; progress: Record<number, number> }> = [];
+  const previous: Record<number, number> = Object.fromEntries(entries.map((dog) => [dog.lane, 0]));
+
+  for (let at = 0; at <= durationMs; at += frameStep) {
+    const phase = clamp(at / durationMs, 0, 1);
+    const eased = smoothStep(phase);
+    const frame: Record<number, number> = {};
+
+    for (const dog of entries) {
+      const profile = profiles.get(dog.lane)!;
+      const targetFinish = Number(finalProgress.get(dog.lane));
+
+      // 각 강아지가 서로 다른 리듬으로 달려 중간 순위가 계속 바뀌도록 한다.
+      const waveFade = Math.sin(Math.PI * phase);
+      const wave =
+        Math.sin(phase * Math.PI * 4.2 + profile.phase) * profile.waveA * waveFade +
+        Math.sin(phase * Math.PI * 8.6 + profile.phase * 0.63) * profile.waveB * waveFade;
+
+      const abilityShape =
+        profile.early * Math.sin(Math.PI * clamp(phase / 0.45, 0, 1)) +
+        profile.middle * Math.sin(Math.PI * clamp((phase - 0.25) / 0.55, 0, 1)) +
+        profile.late * smoothStep(clamp((phase - 0.68) / 0.32, 0, 1));
+
+      let eventOffset = 0;
+      for (const event of events) {
+        if (event.lane !== dog.lane || event.at > at) continue;
+        const age = at - event.at;
+        if (event.type === "mistake" && age <= 1200) {
+          eventOffset -= (1 - age / 1200) * 0.035 * event.intensity;
+        }
+        if ((event.type === "surge" || event.type === "sprint") && age <= 1600) {
+          eventOffset += (1 - age / 1600) * 0.025 * event.intensity;
+        }
+      }
+
+      // 우승자는 후반에 자연스럽게 앞으로 나오고, 다른 강아지는 결승선 직전까지 경쟁한다.
+      const winnerPush = dog.lane === winner.lane
+        ? smoothStep(clamp((phase - 0.62) / 0.38, 0, 1)) * 0.032
+        : 0;
+
+      let target = eased * targetFinish + wave + abilityShape + eventOffset + winnerPush;
+      target = clamp(target, 0, targetFinish);
+
+      // 모든 프레임에서 최소 이동량을 보장해 출발선에 멈춰 있는 현상을 막는다.
+      const minAdvance = phase > 0 && phase < 0.96 ? 0.0014 : 0;
+      const next = Math.max(previous[dog.lane] + minAdvance, target);
+      frame[dog.lane] = round(clamp(next, 0, targetFinish), 5);
+      previous[dog.lane] = frame[dog.lane];
+    }
+
+    progressFrames.push({ at, progress: frame });
+  }
 
   const lastFrame = progressFrames[progressFrames.length - 1];
   ranking.forEach((lane, index) => {
-    lastFrame.progress[lane] = Math.max(0.94, 1 - index * 0.011);
+    lastFrame.progress[lane] = index === 0 ? 1 : round(0.982 - index * 0.012, 5);
   });
-  lastFrame.progress[winner.lane] = 1;
+
+  const finishTimes: Record<number, number> = {};
+  ranking.forEach((lane, index) => {
+    finishTimes[lane] = index === 0 ? durationMs - 220 : durationMs - 110 + index * 55;
+  });
 
   events.push({
     at: durationMs - 220,
