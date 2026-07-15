@@ -367,7 +367,39 @@ export default function DogRaceClient() {
     return clamp(natural, START_X, target);
   }
 
-  function getActionForDog(\n    dog: DogEntry,\n    result: RaceResult,\n    elapsedMs: number,\n    worldX: number\n  ): VisualAction {\n    const nearHurdle = HURDLE_WORLD_X.some((x) => Math.abs(worldX - x) < 145);\n    const nearMud = MUD_WORLD_X.some((x) => Math.abs(worldX - x) < 175);\n\n    const activeEvent = [...result.events].reverse().find(\n      (event) => event.lane === dog.lane && elapsedMs >= event.at && elapsedMs - event.at < 1350\n    );\n\n    if (activeEvent?.type === "mistake") {\n      const age = elapsedMs - activeEvent.at;\n      if (age < 520) return "fall";\n      if (age < 1050) return "recover";\n    }\n    if (activeEvent?.type === "sprint" || activeEvent?.type === "surge") return "sprint";\n\n    if (nearHurdle) {\n      const hurdleIndex = HURDLE_WORLD_X.findIndex((x) => Math.abs(worldX - x) < 145);\n      const key = `${dog.lane}-hurdle-${hurdleIndex}`;\n      const failChance = dog.mistakeRate + Math.max(0, 72 - dog.composure) * 0.28;\n      const deterministic = (dog.lane * 37 + hurdleIndex * 17 + Math.round(dog.speed)) % 100;\n      if (deterministic < failChance) eventMemoryRef.current[key] = true;\n      return eventMemoryRef.current[key] ? "fall" : "jump";\n    }\n    if (nearMud) return "mud";\n    return "run";\n  }\n\n  function runAnimation(data: PlayResponse) {
+  function getActionForDog(
+    dog: DogEntry,
+    result: RaceResult,
+    elapsedMs: number,
+    worldX: number
+  ): VisualAction {
+    const nearHurdle = HURDLE_WORLD_X.some((x) => Math.abs(worldX - x) < 145);
+    const nearMud = MUD_WORLD_X.some((x) => Math.abs(worldX - x) < 175);
+
+    const activeEvent = [...result.events].reverse().find(
+      (event) => event.lane === dog.lane && elapsedMs >= event.at && elapsedMs - event.at < 1350
+    );
+
+    if (activeEvent?.type === "mistake") {
+      const age = elapsedMs - activeEvent.at;
+      if (age < 520) return "fall";
+      if (age < 1050) return "recover";
+    }
+    if (activeEvent?.type === "sprint" || activeEvent?.type === "surge") return "sprint";
+
+    if (nearHurdle) {
+      const hurdleIndex = HURDLE_WORLD_X.findIndex((x) => Math.abs(worldX - x) < 145);
+      const key = `${dog.lane}-hurdle-${hurdleIndex}`;
+      const failChance = dog.mistakeRate + Math.max(0, 72 - dog.composure) * 0.28;
+      const deterministic = (dog.lane * 37 + hurdleIndex * 17 + Math.round(dog.speed)) % 100;
+      if (deterministic < failChance) eventMemoryRef.current[key] = true;
+      return eventMemoryRef.current[key] ? "fall" : "jump";
+    }
+    if (nearMud) return "mud";
+    return "run";
+  }
+
+  function runAnimation(data: PlayResponse) {
     setRaceState("running");
     setCameraMode("start");
     startRef.current = performance.now();
@@ -714,7 +746,26 @@ export default function DogRaceClient() {
                         {index * 50 + 50}M
                       </div>
                     </div>
-                  ))}\n\n                  {HURDLE_WORLD_X.map((_, index) => (\n                    <div key={`hurdle-${index}`} ref={(node) => { hurdleRefs.current[index] = node; }} className="absolute left-0 top-[43%] z-[45] h-[48%] w-16 will-change-transform">\n                      {[0,1,2,3,4,5].map((lane) => (\n                        <div key={lane} className="absolute left-0 h-8 w-14" style={{ top: `${lane * 16.6}%` }}>\n                          <div className="absolute bottom-0 left-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />\n                          <div className="absolute bottom-0 right-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />\n                          <div className="absolute left-0 right-0 top-1 h-2 rounded bg-gradient-to-b from-white to-zinc-400 shadow-md" />\n                          <div className="absolute left-1 right-1 top-3 h-1 bg-red-500" />\n                        </div>\n                      ))}\n                    </div>\n                  ))}\n\n                  {MUD_WORLD_X.map((_, index) => (\n                    <div key={`mud-${index}`} ref={(node) => { mudRefs.current[index] = node; }} className="absolute left-0 top-[42%] z-[35] h-[49%] w-[230px] will-change-transform">\n                      <div className="absolute inset-0 rounded-[45%] bg-[radial-gradient(ellipse_at_center,#3b2419_0%,#5b3928_45%,rgba(63,39,27,.1)_72%)] opacity-85" />\n                    </div>\n                  ))}
+                  ))}
+
+                  {HURDLE_WORLD_X.map((_, index) => (
+                    <div key={`hurdle-${index}`} ref={(node) => { hurdleRefs.current[index] = node; }} className="absolute left-0 top-[43%] z-[45] h-[48%] w-16 will-change-transform">
+                      {[0,1,2,3,4,5].map((lane) => (
+                        <div key={lane} className="absolute left-0 h-8 w-14" style={{ top: `${lane * 16.6}%` }}>
+                          <div className="absolute bottom-0 left-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />
+                          <div className="absolute bottom-0 right-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />
+                          <div className="absolute left-0 right-0 top-1 h-2 rounded bg-gradient-to-b from-white to-zinc-400 shadow-md" />
+                          <div className="absolute left-1 right-1 top-3 h-1 bg-red-500" />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+
+                  {MUD_WORLD_X.map((_, index) => (
+                    <div key={`mud-${index}`} ref={(node) => { mudRefs.current[index] = node; }} className="absolute left-0 top-[42%] z-[35] h-[49%] w-[230px] will-change-transform">
+                      <div className="absolute inset-0 rounded-[45%] bg-[radial-gradient(ellipse_at_center,#3b2419_0%,#5b3928_45%,rgba(63,39,27,.1)_72%)] opacity-85" />
+                    </div>
+                  ))}
 
                   <div className="speed-vignette pointer-events-none absolute inset-0 z-[100]" />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[99] h-24 bg-gradient-to-t from-black/45 to-transparent" />
@@ -1199,7 +1250,23 @@ export default function DogRaceClient() {
           will-change: transform;
         }
 
-\n        @keyframes dogJump { 0%,100%{transform:rotate(0deg) scaleY(1)} 30%{transform:rotate(-5deg) scaleY(.92)} 55%{transform:rotate(4deg) scaleY(1.06)} }\n        @keyframes dogFall { 0%{transform:rotate(0deg) translateY(0)} 35%{transform:rotate(18deg) translateY(8px)} 70%{transform:rotate(78deg) translateY(14px)} 100%{transform:rotate(88deg) translateY(16px)} }\n        @keyframes dogRecover { 0%{transform:rotate(88deg) translateY(16px)} 55%{transform:rotate(28deg) translateY(7px)} 100%{transform:rotate(0deg) translateY(0)} }\n        @keyframes mudShake { 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(2px) rotate(-2deg)} 75%{transform:translateY(2px) rotate(2deg)} }\n        @keyframes sprintPulse { 0%,100%{filter:drop-shadow(0 5px 5px rgba(0,0,0,.38)) brightness(1)} 50%{filter:drop-shadow(0 0 16px rgba(250,204,21,.7)) brightness(1.2)} }\n        .racing-dog.action-jump{animation:dogJump .55s ease-in-out infinite}\n        .racing-dog.action-fall{animation:dogFall .52s ease-out forwards}\n        .racing-dog.action-recover{animation:dogRecover .55s ease-out forwards}\n        .racing-dog.action-mud{animation:mudShake .18s linear infinite;filter:saturate(.72) brightness(.86)}\n        .racing-dog.action-sprint{animation:sprintPulse .24s ease-in-out infinite}\n        .racing-dog.action-sprint::before,.racing-dog.action-sprint::after{content:"";position:absolute;left:-74px;top:30px;width:76px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(255,224,128,.95))}\n        .racing-dog.action-sprint::after{top:43px;width:56px;left:-54px;opacity:.72}\n        .camera-close{filter:contrast(1.05) saturate(1.08)}\n        .camera-close .perspective-lane{transform:rotateX(1.2deg) scale(1.05);transform-origin:center}\n        .camera-finish{filter:contrast(1.1) saturate(1.12)}\n
+
+        @keyframes dogJump { 0%,100%{transform:rotate(0deg) scaleY(1)} 30%{transform:rotate(-5deg) scaleY(.92)} 55%{transform:rotate(4deg) scaleY(1.06)} }
+        @keyframes dogFall { 0%{transform:rotate(0deg) translateY(0)} 35%{transform:rotate(18deg) translateY(8px)} 70%{transform:rotate(78deg) translateY(14px)} 100%{transform:rotate(88deg) translateY(16px)} }
+        @keyframes dogRecover { 0%{transform:rotate(88deg) translateY(16px)} 55%{transform:rotate(28deg) translateY(7px)} 100%{transform:rotate(0deg) translateY(0)} }
+        @keyframes mudShake { 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(2px) rotate(-2deg)} 75%{transform:translateY(2px) rotate(2deg)} }
+        @keyframes sprintPulse { 0%,100%{filter:drop-shadow(0 5px 5px rgba(0,0,0,.38)) brightness(1)} 50%{filter:drop-shadow(0 0 16px rgba(250,204,21,.7)) brightness(1.2)} }
+        .racing-dog.action-jump{animation:dogJump .55s ease-in-out infinite}
+        .racing-dog.action-fall{animation:dogFall .52s ease-out forwards}
+        .racing-dog.action-recover{animation:dogRecover .55s ease-out forwards}
+        .racing-dog.action-mud{animation:mudShake .18s linear infinite;filter:saturate(.72) brightness(.86)}
+        .racing-dog.action-sprint{animation:sprintPulse .24s ease-in-out infinite}
+        .racing-dog.action-sprint::before,.racing-dog.action-sprint::after{content:"";position:absolute;left:-74px;top:30px;width:76px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(255,224,128,.95))}
+        .racing-dog.action-sprint::after{top:43px;width:56px;left:-54px;opacity:.72}
+        .camera-close{filter:contrast(1.05) saturate(1.08)}
+        .camera-close .perspective-lane{transform:rotateX(1.2deg) scale(1.05);transform-origin:center}
+        .camera-finish{filter:contrast(1.1) saturate(1.12)}
+
         @media (max-width: 768px) {
           .cinematic-track {
             min-width: 760px;
