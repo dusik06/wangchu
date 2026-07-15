@@ -62,67 +62,182 @@ function StatBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function DogRunner({ lane, running, effect }: { lane: number; running: boolean; effect?: string }) {
-  const color = DOG_COLORS[lane - 1] || DOG_COLORS[0];
+
+function DogRunner({
+  dog,
+  running,
+  effect,
+  rank,
+}: {
+  dog: DogEntry;
+  running: boolean;
+  effect?: string;
+  rank: number;
+}) {
+  const color = DOG_COLORS[dog.lane - 1] || DOG_COLORS[0];
   const stumble = effect === "mistake";
   const boost = effect === "surge" || effect === "sprint";
+  const isLeader = rank === 1;
 
   return (
-    <div
-      className="relative h-14 w-20 origin-bottom"
-      style={{
-        transform: `rotate(${stumble ? 12 : 0}deg) scale(${boost ? 1.06 : 1})`,
-        transition: "transform 180ms ease",
-        filter: boost ? "drop-shadow(0 0 12px rgba(250,204,21,.55))" : "drop-shadow(0 6px 5px rgba(0,0,0,.35))",
-      }}
-    >
-      <svg viewBox="0 0 120 80" className="h-full w-full overflow-visible" aria-hidden="true">
-        <g className={running ? "animate-[bounce_.22s_ease-in-out_infinite]" : ""}>
-          <path d="M31 39 C38 20, 77 20, 87 39 C92 49, 83 59, 69 58 L44 58 C28 58, 24 48, 31 39Z" fill={color} />
-          <circle cx="88" cy="31" r="16" fill={color} />
-          <path d="M86 17 L92 4 L101 21Z" fill={color} />
-          <path d="M75 19 L76 5 L86 20Z" fill={color} />
-          <ellipse cx="100" cy="36" rx="10" ry="7" fill="#f0d5b5" />
-          <circle cx="94" cy="27" r="2.7" fill="#17121c" />
-          <circle cx="105" cy="35" r="2.4" fill="#17121c" />
-          <path d="M29 40 C15 35, 11 24, 19 18" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />
-          <g className={running ? "animate-[pulse_.18s_ease-in-out_infinite]" : ""}>
-            <path d="M43 54 L35 72" stroke={color} strokeWidth="8" strokeLinecap="round" />
-            <path d="M62 55 L70 72" stroke={color} strokeWidth="8" strokeLinecap="round" />
-            <path d="M76 53 L86 69" stroke={color} strokeWidth="8" strokeLinecap="round" />
-            <path d="M50 54 L54 71" stroke={color} strokeWidth="8" strokeLinecap="round" />
+    <div className={`dog-runner relative h-[68px] w-[104px] origin-bottom ${running ? "is-running" : ""} ${boost ? "is-boosting" : ""} ${stumble ? "is-stumbling" : ""}`}>
+      {isLeader && running ? (
+        <div className="absolute -top-5 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-200/30 bg-amber-300/15 px-2 py-0.5 text-[9px] font-black text-amber-200 shadow-[0_0_18px_rgba(251,191,36,.3)]">
+          선두
+        </div>
+      ) : null}
+
+      <svg viewBox="0 0 150 94" className="h-full w-full overflow-visible" aria-hidden="true">
+        <defs>
+          <linearGradient id={`fur-${dog.lane}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={color} />
+            <stop offset="0.58" stopColor={color} />
+            <stop offset="1" stopColor="#3c2a2a" stopOpacity="0.42" />
+          </linearGradient>
+          <filter id={`soft-${dog.lane}`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="1.2" />
+          </filter>
+        </defs>
+
+        <g className="dog-body">
+          <ellipse cx="69" cy="50" rx="40" ry="24" fill={`url(#fur-${dog.lane})`} />
+          <ellipse cx="73" cy="57" rx="30" ry="14" fill="#fff" opacity={dog.lane === 5 ? 0.72 : 0.13} />
+
+          <g className="dog-head">
+            <circle cx="111" cy="39" r="23" fill={`url(#fur-${dog.lane})`} />
+            <path d="M97 23 L96 4 L110 20Z" fill={color} />
+            <path d="M112 19 L123 3 L126 26Z" fill={color} />
+            <path d="M100 21 L100 10 L107 20Z" fill="#f2a0a0" opacity="0.72" />
+            <path d="M116 18 L122 9 L122 23Z" fill="#f2a0a0" opacity="0.72" />
+            <ellipse cx="128" cy="45" rx="14" ry="10" fill="#efd4b6" />
+            <circle cx="115" cy="34" r="3.2" fill="#0e0b12" />
+            <circle cx="116" cy="33" r="0.9" fill="#fff" />
+            <circle cx="139" cy="43" r="3.2" fill="#111" />
+            <path d="M132 51 Q137 57 143 51" fill="none" stroke="#251b20" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M103 48 Q108 53 114 49" fill="none" stroke="#5b3030" strokeWidth="1.8" opacity=".45" />
           </g>
-          <path d="M100 42 Q104 48 109 43" fill="none" stroke="#17121c" strokeWidth="2" strokeLinecap="round" />
+
+          <g className="dog-tail">
+            <path d="M33 48 C16 44, 10 29, 22 18 C28 13, 33 19, 29 24 C23 31, 29 35, 38 36"
+              fill="none" stroke={color} strokeWidth="11" strokeLinecap="round" />
+          </g>
+
+          <g className="dog-legs dog-legs-a">
+            <path d="M48 65 L35 86" stroke={color} strokeWidth="10" strokeLinecap="round" />
+            <path d="M80 66 L92 86" stroke={color} strokeWidth="10" strokeLinecap="round" />
+          </g>
+          <g className="dog-legs dog-legs-b">
+            <path d="M61 66 L67 88" stroke={color} strokeWidth="10" strokeLinecap="round" />
+            <path d="M92 62 L108 80" stroke={color} strokeWidth="10" strokeLinecap="round" />
+          </g>
+
+          <ellipse cx="36" cy="88" rx="10" ry="3" fill="#1b1111" opacity=".42" />
+          <ellipse cx="67" cy="89" rx="10" ry="3" fill="#1b1111" opacity=".42" />
+          <ellipse cx="93" cy="88" rx="10" ry="3" fill="#1b1111" opacity=".42" />
+          <ellipse cx="109" cy="82" rx="10" ry="3" fill="#1b1111" opacity=".42" />
         </g>
       </svg>
-      {boost && <div className="absolute -left-7 top-7 h-1.5 w-10 rounded-full bg-gradient-to-r from-transparent via-amber-300 to-white opacity-90 blur-[1px]" />}
-      {stumble && <div className="absolute -right-2 -top-2 text-lg">💫</div>}
+
+      <div className="absolute -bottom-1 left-1/2 h-2.5 w-[72px] -translate-x-1/2 rounded-full bg-black/45 blur-[3px]" />
+
+      {running ? (
+        <>
+          <span className="dust dust-1" />
+          <span className="dust dust-2" />
+          <span className="dust dust-3" />
+        </>
+      ) : null}
+
+      {boost ? (
+        <>
+          <div className="absolute -left-16 top-7 h-1 w-16 rounded-full bg-gradient-to-r from-transparent via-amber-300 to-white blur-[1px]" />
+          <div className="absolute -left-12 top-10 h-0.5 w-12 rounded-full bg-gradient-to-r from-transparent to-orange-300 opacity-80" />
+        </>
+      ) : null}
+
+      {stumble ? <div className="absolute -right-2 -top-3 text-xl">💫</div> : null}
     </div>
   );
 }
 
-function interpolateProgress(result: RaceResult | null, elapsed: number) {
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function easeInOutCubic(value: number) {
+  const t = clamp01(value);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+/**
+ * 화면 이동은 서버 progressFrames에 의존하지 않는다.
+ * 최종 순위, 능력치, 이벤트와 경과시간으로 브라우저에서 직접 계산하므로
+ * 응답 프레임 일부가 누락되거나 키 형식이 달라도 6마리 모두 반드시 달린다.
+ */
+function calculateVisualProgress(
+  result: RaceResult | null,
+  entries: DogEntry[],
+  elapsed: number
+) {
   const output: Record<number, number> = {};
-  if (!result?.progressFrames.length) return output;
+  if (!result || !entries.length) return output;
 
-  const frames = result.progressFrames;
-  let rightIndex = frames.findIndex((frame) => frame.at >= elapsed);
-  if (rightIndex < 0) rightIndex = frames.length - 1;
-  const leftIndex = Math.max(0, rightIndex - 1);
-  const left = frames[leftIndex];
-  const right = frames[rightIndex];
-  const span = Math.max(1, right.at - left.at);
-  const ratio = Math.max(0, Math.min(1, (elapsed - left.at) / span));
+  const phase = clamp01(elapsed / Math.max(1, result.durationMs));
+  const base = easeInOutCubic(phase);
 
-  for (let lane = 1; lane <= 6; lane += 1) {
-    const start = Number(left.progress[lane] || 0);
-    const end = Number(right.progress[lane] || start);
-    output[lane] = start + (end - start) * ratio;
+  for (const dog of entries) {
+    const rankIndex = Math.max(0, result.ranking.indexOf(dog.lane));
+    const finishTarget = rankIndex === 0 ? 1 : 0.982 - rankIndex * 0.011;
+
+    const speedBias = (dog.speed - 78) / 650;
+    const staminaBias = (dog.stamina - 78) / 850;
+    const sprintBias = (dog.sprint - 78) / 520;
+
+    const earlyShape = Math.sin(Math.PI * clamp01(phase / 0.52)) * speedBias;
+    const midShape = Math.sin(Math.PI * clamp01((phase - 0.18) / 0.64)) * staminaBias;
+    const lateShape = easeInOutCubic(clamp01((phase - 0.66) / 0.34)) * sprintBias;
+
+    // 레인마다 다른 파형으로 초중반 추월을 만든다. 시작과 결승에서는 0으로 사라진다.
+    const raceFade = Math.sin(Math.PI * phase);
+    const wave =
+      Math.sin(phase * Math.PI * 4.4 + dog.lane * 1.17) * 0.024 * raceFade +
+      Math.sin(phase * Math.PI * 8.2 + dog.lane * 0.61) * 0.011 * raceFade;
+
+    let eventOffset = 0;
+    for (const event of result.events) {
+      if (event.lane !== dog.lane || elapsed < event.at) continue;
+      const age = elapsed - event.at;
+
+      if (event.type === "mistake" && age < 1350) {
+        eventOffset -= (1 - age / 1350) * 0.055 * event.intensity;
+      }
+      if ((event.type === "surge" || event.type === "sprint") && age < 1800) {
+        eventOffset += (1 - age / 1800) * 0.042 * event.intensity;
+      }
+    }
+
+    // 최종 순위는 마지막 30% 구간에서만 서서히 반영한다.
+    const finalOrderPull = easeInOutCubic(clamp01((phase - 0.69) / 0.31));
+    const rankAdjustment = (0.018 - rankIndex * 0.0075) * finalOrderPull;
+
+    // 출발 후 즉시 움직이고, 98% 시점에 결승선 근처까지 도달한다.
+    const minimumRun = phase * 0.72;
+    let value =
+      base * finishTarget +
+      earlyShape +
+      midShape +
+      lateShape +
+      wave +
+      eventOffset +
+      rankAdjustment;
+
+    value = Math.max(value, minimumRun);
+    output[dog.lane] = clamp01(Math.min(finishTarget, value));
   }
 
   return output;
 }
-
 export default function DogRaceClient() {
   const [dotori, setDotori] = useState<number | null>(null);
   const [entries, setEntries] = useState<DogEntry[]>([]);
@@ -143,7 +258,7 @@ export default function DogRaceClient() {
     [entries, selectedLane]
   );
 
-  const progress = useMemo(() => interpolateProgress(playData?.result || null, elapsed), [playData, elapsed]);
+  const progress = useMemo(() => calculateVisualProgress(playData?.result || null, entries, elapsed), [playData, entries, elapsed]);
 
   const visibleEvents = useMemo(() => {
     if (!playData) return [];
@@ -327,20 +442,21 @@ export default function DogRaceClient() {
 
                   {entries.map((dog) => {
                     const laneProgress = Math.min(1, progress[dog.lane] || 0);
-                    const x = laneProgress * 84;
+                    const x = 5 + laneProgress * 82;
                     const rank = liveRanking.findIndex((item) => item.lane === dog.lane) + 1;
                     return (
-                      <div key={dog.lane} className="relative h-[78px] border-b border-white/10 last:border-b-0">
+                      <div key={dog.lane} className="race-lane relative h-[92px] border-b border-white/10 last:border-b-0">
                         <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/45 text-sm font-black ring-1 ring-white/15">{dog.lane}</div>
                         <div className="absolute right-2 top-2 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-black text-zinc-200">현재 {rank}위</div>
                         <div
-                          className="absolute bottom-1 z-20"
+                          className="absolute bottom-1 z-20 will-change-[left,transform]"
                           style={{
-                            left: `calc(${x}% - 22px)`,
-                            transition: raceState === "running" ? "left 120ms linear" : "none",
+                            left: `${x}%`,
+                            transform: "translateX(-50%)",
+                            transition: raceState === "running" ? "left 55ms linear" : "none",
                           }}
                         >
-                          <DogRunner lane={dog.lane} running={raceState === "running"} effect={currentEffects[dog.lane]} />
+                          <DogRunner dog={dog} running={raceState === "running"} effect={currentEffects[dog.lane]} rank={rank} />
                           <div className="absolute -bottom-1 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/35 blur-[2px]" />
                         </div>
                         {currentEffects[dog.lane] === "surge" || currentEffects[dog.lane] === "sprint" ? (
@@ -399,7 +515,7 @@ export default function DogRaceClient() {
                       <button key={dog.lane} onClick={() => setSelectedLane(dog.lane)} className={`group rounded-[26px] border p-5 text-left transition duration-300 ${selected ? "border-violet-400 bg-violet-500/14 shadow-[0_18px_55px_rgba(109,40,217,0.22)]" : "border-white/8 bg-[#151027] hover:-translate-y-1 hover:border-violet-400/30"}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/25"><DogRunner lane={dog.lane} running={false} /></div>
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/25"><DogRunner dog={dog} running={false} rank={0} /></div>
                             <div><p className="text-[11px] font-black tracking-widest text-violet-300">LANE {dog.lane}</p><h3 className="mt-1 text-xl font-black">{dog.name}</h3><p className="text-xs text-zinc-500">{dog.breed}</p></div>
                           </div>
                           <div className="text-right"><p className="text-xs font-bold text-zinc-500">우승 배당</p><p className="text-2xl font-black text-amber-300">{dog.odds.toFixed(2)}배</p><p className="text-[11px] text-zinc-500">예상 {dog.winProbability.toFixed(2)}%</p></div>
@@ -433,6 +549,68 @@ export default function DogRaceClient() {
           </>
         )}
       </div>
+      <style jsx global>{`
+        @keyframes dogBodyRun {
+          0%, 100% { transform: translateY(0) rotate(-1deg); }
+          50% { transform: translateY(-5px) rotate(1.2deg); }
+        }
+        @keyframes dogHeadRun {
+          0%, 100% { transform: translate(0, 0) rotate(-1deg); }
+          50% { transform: translate(1px, -2px) rotate(2deg); }
+        }
+        @keyframes dogLegA {
+          0%, 100% { transform: rotate(18deg); transform-origin: 54px 65px; }
+          50% { transform: rotate(-22deg); transform-origin: 54px 65px; }
+        }
+        @keyframes dogLegB {
+          0%, 100% { transform: rotate(-19deg); transform-origin: 77px 64px; }
+          50% { transform: rotate(23deg); transform-origin: 77px 64px; }
+        }
+        @keyframes dogTailRun {
+          0%, 100% { transform: rotate(-7deg); transform-origin: 35px 46px; }
+          50% { transform: rotate(12deg); transform-origin: 35px 46px; }
+        }
+        @keyframes dustFly {
+          0% { transform: translate(0, 0) scale(.3); opacity: 0; }
+          20% { opacity: .62; }
+          100% { transform: translate(-40px, -13px) scale(1.4); opacity: 0; }
+        }
+        @keyframes stumbleDog {
+          0%, 100% { transform: rotate(0deg) translateY(0); }
+          30% { transform: rotate(12deg) translateY(4px); }
+          60% { transform: rotate(-7deg) translateY(1px); }
+        }
+        .dog-runner.is-running .dog-body { animation: dogBodyRun .24s ease-in-out infinite; }
+        .dog-runner.is-running .dog-head { animation: dogHeadRun .24s ease-in-out infinite; }
+        .dog-runner.is-running .dog-legs-a { animation: dogLegA .22s linear infinite; }
+        .dog-runner.is-running .dog-legs-b { animation: dogLegB .22s linear infinite; }
+        .dog-runner.is-running .dog-tail { animation: dogTailRun .18s ease-in-out infinite; }
+        .dog-runner.is-boosting { filter: drop-shadow(0 0 16px rgba(251,191,36,.55)); }
+        .dog-runner.is-boosting .dog-body { animation-duration: .16s; }
+        .dog-runner.is-boosting .dog-legs-a,
+        .dog-runner.is-boosting .dog-legs-b { animation-duration: .14s; }
+        .dog-runner.is-stumbling { animation: stumbleDog .58s ease-in-out; }
+        .dust {
+          position: absolute;
+          left: 2px;
+          bottom: 5px;
+          width: 9px;
+          height: 9px;
+          border-radius: 999px;
+          background: rgba(222,184,135,.6);
+          filter: blur(1px);
+          animation: dustFly .62s linear infinite;
+        }
+        .dust-2 { width: 6px; height: 6px; animation-delay: .18s; bottom: 11px; }
+        .dust-3 { width: 12px; height: 7px; animation-delay: .35s; bottom: 2px; }
+        .race-lane {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%),
+            repeating-linear-gradient(90deg, transparent 0 78px, rgba(255,255,255,.055) 79px 80px);
+          box-shadow: inset 0 -1px rgba(0,0,0,.18);
+        }
+      `}</style>
+
     </main>
   );
 }
