@@ -209,6 +209,13 @@ export default async function AdminPage() {
           >
             📈 주식 관리
           </a>
+
+          <a
+            className="cursor-pointer rounded-xl bg-violet-600 p-6 font-bold text-white hover:bg-violet-500"
+            href="/admin/overlay-control"
+          >
+            🎛️ 오버레이 컨트롤러
+          </a>
         </div>
       </div>
     </main>

@@ -36,12 +36,12 @@ export type RaceResult = {
 };
 
 const DOGS = [
-  { dogKey: "corgi", name: "몽실이", breed: "웰시코기", emoji: "🐕" },
-  { dogKey: "shiba", name: "호두", breed: "시바견", emoji: "🐕" },
-  { dogKey: "retriever", name: "누룽지", breed: "골든리트리버", emoji: "🦮" },
-  { dogKey: "husky", name: "설이", breed: "허스키", emoji: "🐺" },
-  { dogKey: "maltese", name: "솜이", breed: "말티즈", emoji: "🐩" },
-  { dogKey: "bulldog", name: "만두", breed: "불독", emoji: "🐕" },
+  { dogKey: "minju", name: "민주", breed: "블랙 그레이하운드", emoji: "🐕" },
+  { dogKey: "dusik", name: "두식", breed: "브라운 그레이하운드", emoji: "🐕" },
+  { dogKey: "wangaji", name: "왕아지", breed: "화이트 그레이하운드", emoji: "🐕" },
+  { dogKey: "saerobi", name: "새롭이", breed: "실버 그레이하운드", emoji: "🐕" },
+  { dogKey: "wangchu", name: "왕츄", breed: "골드 그레이하운드", emoji: "🐕" },
+  { dogKey: "bini", name: "비니", breed: "크림 그레이하운드", emoji: "🐕" },
 ] as const;
 
 function randomInt(min: number, max: number) {

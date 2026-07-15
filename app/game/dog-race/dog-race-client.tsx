@@ -47,197 +47,163 @@ type PlayResponse = {
   result: RaceResult;
 };
 
-const DOG_COLORS = ["#f3b765", "#d46b3d", "#d7a56e", "#8297bc", "#f2eee8", "#88644c"];
+type RaceState = "idle" | "countdown" | "running" | "finished";
+type VisualAction = "run" | "jump" | "fall" | "recover" | "mud" | "sprint";
+
+const WORLD_LENGTH = 5200;
+const START_X = 260;
+const FINISH_X = 4860;
+const DOG_COLORS = ["#24242b", "#9a5936", "#f1eee6", "#77808e", "#d8a23d", "#ead8b8"];
+const HURDLE_WORLD_X = [1450, 2940, 4070];
+const MUD_WORLD_X = [2260, 3560];
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function smoothstep(value: number) {
+  const t = clamp(value, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function personality(dog: DogEntry) {
+  const top = [
+    ["폭주형", dog.speed + (100 - dog.stamina) * 0.3],
+    ["꾸준형", dog.stamina + dog.composure * 0.45],
+    ["역전형", dog.sprint + dog.stamina * 0.25],
+    ["승부사", dog.speed + dog.sprint * 0.32],
+    ["냉정형", dog.composure + (20 - dog.mistakeRate) * 1.5],
+    ["야생형", dog.speed + dog.mistakeRate * 1.7],
+  ] as const;
+
+  return [...top].sort((a, b) => Number(b[1]) - Number(a[1]))[0][0];
+}
 
 function StatBar({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold text-zinc-400">
-        <span>{label}</span><span>{value}</span>
+      <div className="mb-1 flex justify-between text-[11px] font-bold text-white/45">
+        <span>{label}</span>
+        <span>{value}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-amber-300" style={{ width: `${value}%` }} />
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-amber-300"
+          style={{ width: `${value}%` }}
+        />
       </div>
     </div>
   );
 }
 
-
-function DogRunner({
+function RacingDog({
   dog,
   running,
-  effect,
-  rank,
+  leader,
+  action,
 }: {
   dog: DogEntry;
   running: boolean;
-  effect?: string;
-  rank: number;
+  leader: boolean;
+  action: VisualAction;
 }) {
   const color = DOG_COLORS[dog.lane - 1] || DOG_COLORS[0];
-  const stumble = effect === "mistake";
-  const boost = effect === "surge" || effect === "sprint";
-  const isLeader = rank === 1;
 
   return (
-    <div className={`dog-runner relative h-[68px] w-[104px] origin-bottom ${running ? "is-running" : ""} ${boost ? "is-boosting" : ""} ${stumble ? "is-stumbling" : ""}`}>
-      {isLeader && running ? (
-        <div className="absolute -top-5 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-200/30 bg-amber-300/15 px-2 py-0.5 text-[9px] font-black text-amber-200 shadow-[0_0_18px_rgba(251,191,36,.3)]">
+    <div
+      className={`racing-dog relative h-[70px] w-[128px] origin-bottom ${
+        running ? "is-running" : "is-waiting"
+      } ${leader ? "is-leader" : ""} action-${action}`}
+    >
+      {leader && running ? (
+        <div className="absolute -top-8 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-yellow-200/30 bg-yellow-300/15 px-2 py-1 text-[9px] font-black text-yellow-100 shadow-[0_0_22px_rgba(250,204,21,.25)]">
           선두
         </div>
       ) : null}
 
-      <svg viewBox="0 0 150 94" className="h-full w-full overflow-visible" aria-hidden="true">
+      <svg viewBox="0 0 190 100" className="h-full w-full overflow-visible" aria-hidden="true">
         <defs>
-          <linearGradient id={`fur-${dog.lane}`} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={`body-${dog.lane}`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor={color} />
-            <stop offset="0.58" stopColor={color} />
-            <stop offset="1" stopColor="#3c2a2a" stopOpacity="0.42" />
+            <stop offset=".55" stopColor={color} />
+            <stop offset="1" stopColor="#120d13" stopOpacity=".5" />
           </linearGradient>
-          <filter id={`soft-${dog.lane}`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="1.2" />
+          <filter id={`dog-shadow-${dog.lane}`} x="-50%" y="-50%" width="220%" height="220%">
+            <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#000" floodOpacity=".45" />
           </filter>
         </defs>
 
-        <g className="dog-body">
-          <ellipse cx="69" cy="50" rx="40" ry="24" fill={`url(#fur-${dog.lane})`} />
-          <ellipse cx="73" cy="57" rx="30" ry="14" fill="#fff" opacity={dog.lane === 5 ? 0.72 : 0.13} />
+        <g filter={`url(#dog-shadow-${dog.lane})`}>
+          <g className="dog-torso">
+            <path
+              d="M42 51 C58 27, 111 23, 139 43 C149 51, 143 68, 127 72 C95 80, 61 76, 43 64Z"
+              fill={`url(#body-${dog.lane})`}
+            />
+            <path
+              d="M73 66 C91 72, 115 69, 130 59"
+              fill="none"
+              stroke="#fff"
+              strokeOpacity=".12"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+          </g>
+
+          <g className="dog-neck">
+            <path d="M127 49 C140 31, 151 29, 159 39 L153 64 L128 68Z" fill={color} />
+          </g>
 
           <g className="dog-head">
-            <circle cx="111" cy="39" r="23" fill={`url(#fur-${dog.lane})`} />
-            <path d="M97 23 L96 4 L110 20Z" fill={color} />
-            <path d="M112 19 L123 3 L126 26Z" fill={color} />
-            <path d="M100 21 L100 10 L107 20Z" fill="#f2a0a0" opacity="0.72" />
-            <path d="M116 18 L122 9 L122 23Z" fill="#f2a0a0" opacity="0.72" />
-            <ellipse cx="128" cy="45" rx="14" ry="10" fill="#efd4b6" />
-            <circle cx="115" cy="34" r="3.2" fill="#0e0b12" />
-            <circle cx="116" cy="33" r="0.9" fill="#fff" />
-            <circle cx="139" cy="43" r="3.2" fill="#111" />
-            <path d="M132 51 Q137 57 143 51" fill="none" stroke="#251b20" strokeWidth="2.2" strokeLinecap="round" />
-            <path d="M103 48 Q108 53 114 49" fill="none" stroke="#5b3030" strokeWidth="1.8" opacity=".45" />
+            <path
+              d="M148 29 C163 21, 180 31, 179 47 C178 62, 165 70, 151 64 C139 58, 137 36, 148 29Z"
+              fill={color}
+            />
+            <path d="M151 30 L148 8 L162 26Z" fill={color} />
+            <path d="M163 28 L177 11 L176 36Z" fill={color} />
+            <path d="M165 47 C178 43, 187 49, 186 57 C185 65, 173 68, 163 61Z" fill="#d9b894" />
+            <circle cx="165" cy="39" r="3.2" fill="#07070a" />
+            <circle cx="166" cy="38" r=".9" fill="#fff" />
+            <circle cx="184" cy="54" r="2.8" fill="#07070a" />
+            <path d="M173 61 Q178 68 184 62" fill="none" stroke="#301f24" strokeWidth="2" />
           </g>
 
           <g className="dog-tail">
-            <path d="M33 48 C16 44, 10 29, 22 18 C28 13, 33 19, 29 24 C23 31, 29 35, 38 36"
-              fill="none" stroke={color} strokeWidth="11" strokeLinecap="round" />
+            <path
+              d="M47 49 C27 40, 17 21, 28 12 C35 7, 40 14, 36 20 C29 29, 35 36, 51 39"
+              fill="none"
+              stroke={color}
+              strokeWidth="12"
+              strokeLinecap="round"
+            />
           </g>
 
-          <g className="dog-legs dog-legs-a">
-            <path d="M48 65 L35 86" stroke={color} strokeWidth="10" strokeLinecap="round" />
-            <path d="M80 66 L92 86" stroke={color} strokeWidth="10" strokeLinecap="round" />
+          <g className="front-leg-a">
+            <path d="M126 67 L145 94" stroke={color} strokeWidth="11" strokeLinecap="round" />
           </g>
-          <g className="dog-legs dog-legs-b">
-            <path d="M61 66 L67 88" stroke={color} strokeWidth="10" strokeLinecap="round" />
-            <path d="M92 62 L108 80" stroke={color} strokeWidth="10" strokeLinecap="round" />
+          <g className="front-leg-b">
+            <path d="M113 68 L119 97" stroke={color} strokeWidth="11" strokeLinecap="round" />
           </g>
-
-          <ellipse cx="36" cy="88" rx="10" ry="3" fill="#1b1111" opacity=".42" />
-          <ellipse cx="67" cy="89" rx="10" ry="3" fill="#1b1111" opacity=".42" />
-          <ellipse cx="93" cy="88" rx="10" ry="3" fill="#1b1111" opacity=".42" />
-          <ellipse cx="109" cy="82" rx="10" ry="3" fill="#1b1111" opacity=".42" />
+          <g className="rear-leg-a">
+            <path d="M59 67 L39 93" stroke={color} strokeWidth="12" strokeLinecap="round" />
+          </g>
+          <g className="rear-leg-b">
+            <path d="M76 69 L72 98" stroke={color} strokeWidth="12" strokeLinecap="round" />
+          </g>
         </g>
       </svg>
 
-      <div className="absolute -bottom-1 left-1/2 h-2.5 w-[72px] -translate-x-1/2 rounded-full bg-black/45 blur-[3px]" />
-
+      <div className="absolute bottom-[-3px] left-1/2 h-3 w-[92px] -translate-x-1/2 rounded-full bg-black/40 blur-[4px]" />
       {running ? (
         <>
-          <span className="dust dust-1" />
-          <span className="dust dust-2" />
-          <span className="dust dust-3" />
+          <i className="race-dust dust-a" />
+          <i className="race-dust dust-b" />
+          <i className="race-dust dust-c" />
         </>
       ) : null}
-
-      {boost ? (
-        <>
-          <div className="absolute -left-16 top-7 h-1 w-16 rounded-full bg-gradient-to-r from-transparent via-amber-300 to-white blur-[1px]" />
-          <div className="absolute -left-12 top-10 h-0.5 w-12 rounded-full bg-gradient-to-r from-transparent to-orange-300 opacity-80" />
-        </>
-      ) : null}
-
-      {stumble ? <div className="absolute -right-2 -top-3 text-xl">💫</div> : null}
     </div>
   );
 }
 
-
-function clamp01(value: number) {
-  return Math.max(0, Math.min(1, value));
-}
-
-function easeInOutCubic(value: number) {
-  const t = clamp01(value);
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-/**
- * 화면 이동은 서버 progressFrames에 의존하지 않는다.
- * 최종 순위, 능력치, 이벤트와 경과시간으로 브라우저에서 직접 계산하므로
- * 응답 프레임 일부가 누락되거나 키 형식이 달라도 6마리 모두 반드시 달린다.
- */
-function calculateVisualProgress(
-  result: RaceResult | null,
-  entries: DogEntry[],
-  elapsed: number
-) {
-  const output: Record<number, number> = {};
-  if (!result || !entries.length) return output;
-
-  const phase = clamp01(elapsed / Math.max(1, result.durationMs));
-  const base = easeInOutCubic(phase);
-
-  for (const dog of entries) {
-    const rankIndex = Math.max(0, result.ranking.indexOf(dog.lane));
-    const finishTarget = rankIndex === 0 ? 1 : 0.982 - rankIndex * 0.011;
-
-    const speedBias = (dog.speed - 78) / 650;
-    const staminaBias = (dog.stamina - 78) / 850;
-    const sprintBias = (dog.sprint - 78) / 520;
-
-    const earlyShape = Math.sin(Math.PI * clamp01(phase / 0.52)) * speedBias;
-    const midShape = Math.sin(Math.PI * clamp01((phase - 0.18) / 0.64)) * staminaBias;
-    const lateShape = easeInOutCubic(clamp01((phase - 0.66) / 0.34)) * sprintBias;
-
-    // 레인마다 다른 파형으로 초중반 추월을 만든다. 시작과 결승에서는 0으로 사라진다.
-    const raceFade = Math.sin(Math.PI * phase);
-    const wave =
-      Math.sin(phase * Math.PI * 4.4 + dog.lane * 1.17) * 0.024 * raceFade +
-      Math.sin(phase * Math.PI * 8.2 + dog.lane * 0.61) * 0.011 * raceFade;
-
-    let eventOffset = 0;
-    for (const event of result.events) {
-      if (event.lane !== dog.lane || elapsed < event.at) continue;
-      const age = elapsed - event.at;
-
-      if (event.type === "mistake" && age < 1350) {
-        eventOffset -= (1 - age / 1350) * 0.055 * event.intensity;
-      }
-      if ((event.type === "surge" || event.type === "sprint") && age < 1800) {
-        eventOffset += (1 - age / 1800) * 0.042 * event.intensity;
-      }
-    }
-
-    // 최종 순위는 마지막 30% 구간에서만 서서히 반영한다.
-    const finalOrderPull = easeInOutCubic(clamp01((phase - 0.69) / 0.31));
-    const rankAdjustment = (0.018 - rankIndex * 0.0075) * finalOrderPull;
-
-    // 출발 후 즉시 움직이고, 98% 시점에 결승선 근처까지 도달한다.
-    const minimumRun = phase * 0.72;
-    let value =
-      base * finishTarget +
-      earlyShape +
-      midShape +
-      lateShape +
-      wave +
-      eventOffset +
-      rankAdjustment;
-
-    value = Math.max(value, minimumRun);
-    output[dog.lane] = clamp01(Math.min(finishTarget, value));
-  }
-
-  return output;
-}
 export default function DogRaceClient() {
   const [dotori, setDotori] = useState<number | null>(null);
   const [entries, setEntries] = useState<DogEntry[]>([]);
@@ -248,45 +214,56 @@ export default function DogRaceClient() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [playData, setPlayData] = useState<PlayResponse | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [raceState, setRaceState] = useState<"idle" | "countdown" | "running" | "finished">("idle");
+  const [raceState, setRaceState] = useState<RaceState>("idle");
+  const [liveOrder, setLiveOrder] = useState<number[]>([]);
+  const [cameraMode, setCameraMode] = useState<"start" | "side" | "close" | "finish">("start");
+  const [dogActions, setDogActions] = useState<Record<number, VisualAction>>({});
+
   const animationRef = useRef<number | null>(null);
   const startRef = useRef(0);
-  const lastEventRef = useRef(-1);
+  const lastUiUpdateRef = useRef(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const finishRef = useRef<HTMLDivElement | null>(null);
+  const gateRef = useRef<HTMLDivElement | null>(null);
+  const dogRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const markerRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const hurdleRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const mudRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const eventMemoryRef = useRef<Record<string, boolean>>({});
 
   const selectedDog = useMemo(
     () => entries.find((dog) => dog.lane === selectedLane) || null,
     [entries, selectedLane]
   );
 
-  const progress = useMemo(() => calculateVisualProgress(playData?.result || null, entries, elapsed), [playData, entries, elapsed]);
+  const expectedPayout =
+    selectedDog && Number(betAmount) > 0
+      ? Math.floor(Number(betAmount) * selectedDog.odds)
+      : 0;
 
   const visibleEvents = useMemo(() => {
     if (!playData) return [];
-    return playData.result.events.filter((event) => event.at <= elapsed).slice(-4).reverse();
+    return playData.result.events
+      .filter((event) => event.at <= elapsed)
+      .slice(-4)
+      .reverse();
   }, [playData, elapsed]);
 
-  const currentEffects = useMemo(() => {
-    const map: Record<number, string> = {};
-    if (!playData) return map;
-    for (const event of playData.result.events) {
-      if (event.at <= elapsed && event.at >= elapsed - 1150) map[event.lane] = event.type;
-    }
-    return map;
-  }, [playData, elapsed]);
-
-  const liveRanking = useMemo(() => {
-    return [...entries].sort((a, b) => (progress[b.lane] || 0) - (progress[a.lane] || 0));
-  }, [entries, progress]);
+  const isLocked =
+    raceState === "countdown" ||
+    raceState === "running" ||
+    raceState === "finished";
 
   async function loadBalance() {
-    const response = await fetch("/api/game/dog-race/balance", { cache: "no-store" });
+    const response = await fetch("/api/game/dog-race/balance", {
+      cache: "no-store",
+    });
     const data = await response.json();
     if (data.success) setDotori(Number(data.dotori));
   }
 
-  useEffect(() => { loadBalance(); }, []);
-
   useEffect(() => {
+    loadBalance();
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
@@ -294,21 +271,29 @@ export default function DogRaceClient() {
 
   async function createRace() {
     if (loading || raceState === "running" || raceState === "countdown") return;
+
     setLoading(true);
     setSelectedLane(null);
     setBetAmount("");
     setPlayData(null);
     setElapsed(0);
     setRaceState("idle");
-    lastEventRef.current = -1;
+    setLiveOrder([]);
+    setCameraMode("start");
+    setDogActions({});
+    eventMemoryRef.current = {};
 
     try {
-      const response = await fetch("/api/game/dog-race/create", { method: "POST" });
+      const response = await fetch("/api/game/dog-race/create", {
+        method: "POST",
+      });
       const data = await response.json();
+
       if (!data.success) {
         alert(data.message || "경기를 만들 수 없습니다.");
         return;
       }
+
       setEntries(data.entries);
       setRaceCode(data.raceCode);
     } finally {
@@ -316,22 +301,171 @@ export default function DogRaceClient() {
     }
   }
 
-  function runAnimation(data: PlayResponse) {
+  function visualDistance(
+    dog: DogEntry,
+    result: RaceResult,
+    elapsedMs: number
+  ) {
+    const duration = Math.max(1, result.durationMs);
+    const phase = clamp(elapsedMs / duration, 0, 1);
+    const rankIndex = Math.max(0, result.ranking.indexOf(dog.lane));
+
+    const launch = smoothstep(clamp(phase / 0.12, 0, 1));
+    const cruise = smoothstep(phase);
+    const baseDistance = launch * 110 + cruise * (FINISH_X - START_X - 110);
+
+    const raceFade = Math.sin(Math.PI * phase);
+    const speedShape =
+      Math.sin(clamp(phase / 0.43, 0, 1) * Math.PI) *
+      ((dog.speed - 77) * 2.2);
+    const staminaShape =
+      Math.sin(clamp((phase - 0.2) / 0.58, 0, 1) * Math.PI) *
+      ((dog.stamina - 77) * 1.8);
+    const sprintShape =
+      smoothstep(clamp((phase - 0.67) / 0.33, 0, 1)) *
+      ((dog.sprint - 76) * 2.9);
+    const rhythm =
+      Math.sin(phase * Math.PI * 5.2 + dog.lane * 1.21) *
+        44 *
+        raceFade +
+      Math.sin(phase * Math.PI * 10.6 + dog.lane * 0.57) *
+        17 *
+        raceFade;
+
+    let eventShift = 0;
+    for (const event of result.events) {
+      if (event.lane !== dog.lane || elapsedMs < event.at) continue;
+      const age = elapsedMs - event.at;
+
+      if (event.type === "mistake" && age < 1300) {
+        eventShift -= (1 - age / 1300) * 125 * event.intensity;
+      }
+
+      if (
+        (event.type === "surge" || event.type === "sprint") &&
+        age < 1700
+      ) {
+        eventShift += (1 - age / 1700) * 95 * event.intensity;
+      }
+    }
+
+    const finalPull = smoothstep(clamp((phase - 0.72) / 0.28, 0, 1));
+    const finalGap = rankIndex * 34;
+    const winnerBonus = rankIndex === 0 ? 20 * finalPull : 0;
+
+    const target = FINISH_X - finalGap;
+    const natural =
+      START_X +
+      baseDistance +
+      speedShape +
+      staminaShape +
+      sprintShape +
+      rhythm +
+      eventShift +
+      winnerBonus;
+
+    return clamp(natural, START_X, target);
+  }
+
+  function getActionForDog(\n    dog: DogEntry,\n    result: RaceResult,\n    elapsedMs: number,\n    worldX: number\n  ): VisualAction {\n    const nearHurdle = HURDLE_WORLD_X.some((x) => Math.abs(worldX - x) < 145);\n    const nearMud = MUD_WORLD_X.some((x) => Math.abs(worldX - x) < 175);\n\n    const activeEvent = [...result.events].reverse().find(\n      (event) => event.lane === dog.lane && elapsedMs >= event.at && elapsedMs - event.at < 1350\n    );\n\n    if (activeEvent?.type === "mistake") {\n      const age = elapsedMs - activeEvent.at;\n      if (age < 520) return "fall";\n      if (age < 1050) return "recover";\n    }\n    if (activeEvent?.type === "sprint" || activeEvent?.type === "surge") return "sprint";\n\n    if (nearHurdle) {\n      const hurdleIndex = HURDLE_WORLD_X.findIndex((x) => Math.abs(worldX - x) < 145);\n      const key = `${dog.lane}-hurdle-${hurdleIndex}`;\n      const failChance = dog.mistakeRate + Math.max(0, 72 - dog.composure) * 0.28;\n      const deterministic = (dog.lane * 37 + hurdleIndex * 17 + Math.round(dog.speed)) % 100;\n      if (deterministic < failChance) eventMemoryRef.current[key] = true;\n      return eventMemoryRef.current[key] ? "fall" : "jump";\n    }\n    if (nearMud) return "mud";\n    return "run";\n  }\n\n  function runAnimation(data: PlayResponse) {
     setRaceState("running");
+    setCameraMode("start");
     startRef.current = performance.now();
+    lastUiUpdateRef.current = 0;
+
+    if (gateRef.current) {
+      gateRef.current.style.transform = "translateY(-112%)";
+    }
 
     const tick = (now: number) => {
       const rawElapsed = now - startRef.current;
-      const slowStart = data.result.durationMs - 1500;
-      const adjusted = rawElapsed <= slowStart
-        ? rawElapsed
-        : slowStart + (rawElapsed - slowStart) * 0.48;
+      const slowAt = data.result.durationMs - 1200;
+      const raceElapsed =
+        rawElapsed <= slowAt
+          ? rawElapsed
+          : slowAt + (rawElapsed - slowAt) * 0.46;
 
-      setElapsed(Math.min(adjusted, data.result.durationMs));
+      const safeElapsed = Math.min(raceElapsed, data.result.durationMs);
+      const positions = entries.map((dog) => ({
+        dog,
+        worldX: visualDistance(dog, data.result, safeElapsed),
+      }));
 
-      if (adjusted < data.result.durationMs) {
+      const sorted = [...positions].sort((a, b) => b.worldX - a.worldX);
+      const leaderWorldX = sorted[0]?.worldX || START_X;
+      const viewportWidth = trackRef.current?.clientWidth || 1000;
+      const phase = safeElapsed / Math.max(1, data.result.durationMs);
+      let mode: "start" | "side" | "close" | "finish" = "side";
+      if (phase < 0.12) mode = "start";
+      else if (phase > 0.84) mode = "finish";
+      else if (phase > 0.48 && phase < 0.68) mode = "close";
+      const cameraAnchor = mode === "start" ? 0.34 : mode === "close" ? 0.54 : mode === "finish" ? 0.66 : 0.48;
+      const cameraX = clamp(leaderWorldX - viewportWidth * cameraAnchor, 0, WORLD_LENGTH - viewportWidth);
+
+      const nextActions: Record<number, VisualAction> = {};
+      positions.forEach(({ dog, worldX }) => {
+        const node = dogRefs.current[dog.lane];
+        if (!node) return;
+        const action = getActionForDog(dog, data.result, safeElapsed, worldX);
+        nextActions[dog.lane] = action;
+        const screenX = worldX - cameraX;
+        const laneDepth = (dog.lane - 1) * 3.8;
+        let vertical = Math.sin(safeElapsed * 0.018 + dog.lane * 0.8) * 1.8;
+        if (action === "jump") {
+          const nearest = HURDLE_WORLD_X.reduce((best, x) => Math.abs(worldX - x) < Math.abs(worldX - best) ? x : best);
+          const local = clamp((worldX - (nearest - 145)) / 290, 0, 1);
+          vertical -= Math.sin(local * Math.PI) * 86;
+        }
+        if (action === "fall") vertical += 15;
+        if (action === "recover") vertical += 8;
+        if (action === "mud") vertical += 3;
+        node.style.transform = `translate3d(${screenX}px, ${vertical + laneDepth}px, 0)`;
+      });
+
+      if (finishRef.current) {
+        finishRef.current.style.transform = `translate3d(${
+          FINISH_X - cameraX
+        }px,0,0)`;
+      }
+
+      markerRefs.current.forEach((node, index) => {
+        if (!node) return;
+        const markerWorld = 720 + index * 680;
+        node.style.transform = `translate3d(${
+          markerWorld - cameraX
+        }px,0,0)`;
+      });
+
+      hurdleRefs.current.forEach((node, index) => {
+        if (!node) return;
+        node.style.transform = `translate3d(${HURDLE_WORLD_X[index] - cameraX}px,0,0)`;
+      });
+      mudRefs.current.forEach((node, index) => {
+        if (!node) return;
+        node.style.transform = `translate3d(${MUD_WORLD_X[index] - cameraX}px,0,0)`;
+      });
+
+      if (trackRef.current) {
+        trackRef.current.style.setProperty("--camera-x", `${cameraX}px`);
+        trackRef.current.style.setProperty(
+          "--speed-blur",
+          `${clamp(safeElapsed / 1800, 0, 1)}`
+        );
+      }
+
+      if (now - lastUiUpdateRef.current > 90) {
+        lastUiUpdateRef.current = now;
+        setElapsed(safeElapsed);
+        setLiveOrder(sorted.map((item) => item.dog.lane));
+        setDogActions(nextActions);
+        setCameraMode(mode);
+      }
+
+      if (raceElapsed < data.result.durationMs) {
         animationRef.current = requestAnimationFrame(tick);
       } else {
+        setElapsed(data.result.durationMs);
+        setLiveOrder(data.result.ranking);
         setRaceState("finished");
         setDotori(data.newBalance);
       }
@@ -342,18 +476,27 @@ export default function DogRaceClient() {
 
   async function placeBetAndRace() {
     const amount = Math.floor(Number(betAmount));
+
     if (!selectedDog) return alert("우승할 왈왈이를 선택해주세요.");
-    if (!Number.isFinite(amount) || amount < 10) return alert("최소 10도토리부터 베팅할 수 있습니다.");
-    if (dotori !== null && amount > dotori) return alert("보유 도토리가 부족합니다.");
+    if (!Number.isFinite(amount) || amount < 10)
+      return alert("최소 10도토리부터 베팅할 수 있습니다.");
+    if (dotori !== null && amount > dotori)
+      return alert("보유 도토리가 부족합니다.");
     if (loading || raceState !== "idle") return;
 
     setLoading(true);
+
     try {
       const response = await fetch("/api/game/dog-race/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raceCode, selectedLane: selectedDog.lane, betAmount: amount }),
+        body: JSON.stringify({
+          raceCode,
+          selectedLane: selectedDog.lane,
+          betAmount: amount,
+        }),
       });
+
       const data: PlayResponse = await response.json();
 
       if (!data.success) {
@@ -364,11 +507,14 @@ export default function DogRaceClient() {
       setPlayData(data);
       setRaceState("countdown");
       setCountdown(3);
-      setDotori((current) => current === null ? current : current - amount);
+      setDotori((current) =>
+        current === null ? current : current - amount
+      );
 
       let count = 3;
       const timer = window.setInterval(() => {
         count -= 1;
+
         if (count <= 0) {
           window.clearInterval(timer);
           setCountdown(null);
@@ -376,241 +522,691 @@ export default function DogRaceClient() {
         } else {
           setCountdown(count);
         }
-      }, 760);
+      }, 800);
     } finally {
       setLoading(false);
     }
   }
 
-  const expectedPayout = selectedDog && Number(betAmount) > 0
-    ? Math.floor(Number(betAmount) * selectedDog.odds)
-    : 0;
-
-  const isLocked = raceState === "countdown" || raceState === "running" || raceState === "finished";
-
   return (
     <main className="min-h-screen bg-[#090611] px-3 py-6 text-white md:px-4 md:py-8">
       <div className="mx-auto max-w-7xl">
-        <section className="relative overflow-hidden rounded-[30px] border border-violet-400/15 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.22),transparent_35%),linear-gradient(135deg,#171027,#0d0917_62%,#120b1f)] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.45)] md:rounded-[34px] md:p-9">
-          <div className="absolute -right-12 -top-16 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[30px] border border-violet-400/15 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,.22),transparent_36%),linear-gradient(135deg,#171027,#0d0917_62%,#120b1f)] p-5 shadow-[0_30px_100px_rgba(0,0,0,.45)] md:p-9">
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-3 text-xs font-black tracking-[0.28em] text-violet-300">WANGCHU RACING CLUB</p>
-              <h1 className="text-3xl font-black tracking-tight md:text-5xl">🐶 왈왈이경주</h1>
-              <p className="mt-4 max-w-2xl leading-7 text-zinc-400">능력치를 분석해 우승 왈왈이를 고르고, 추월과 돌발 상황이 이어지는 레이스를 직접 관전하세요.</p>
+              <p className="mb-3 text-xs font-black tracking-[.28em] text-violet-300">
+                WANGCHU GRAND DERBY
+              </p>
+              <h1 className="text-3xl font-black md:text-5xl">
+                왈왈이경주
+              </h1>
+              <p className="mt-4 max-w-2xl leading-7 text-white/45">
+                고정 출전견 6마리의 오늘 능력과 성격을 분석하고,
+                실제 중계처럼 펼쳐지는 장거리 레이스를 관전하세요.
+              </p>
             </div>
-            <div className="grid min-w-[280px] grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-white/8 bg-black/20 p-4">
-                <p className="text-xs font-bold text-zinc-500">보유 도토리</p>
-                <p className="mt-1 text-xl font-black text-amber-300">{dotori === null ? "-" : `${dotori.toLocaleString()}개`}</p>
+
+            <div className="grid min-w-[290px] grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-xs font-bold text-white/40">보유 도토리</p>
+                <p className="mt-1 text-xl font-black text-amber-300">
+                  {dotori === null ? "-" : `${dotori.toLocaleString()}개`}
+                </p>
               </div>
-              <button onClick={createRace} disabled={loading || raceState === "countdown" || raceState === "running"} className="rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 px-5 py-4 text-sm font-black shadow-[0_12px_35px_rgba(124,58,237,0.35)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">
-                {loading ? "처리 중..." : entries.length ? "새 경기 만들기" : "시작하기"}
+
+              <button
+                onClick={createRace}
+                disabled={
+                  loading ||
+                  raceState === "countdown" ||
+                  raceState === "running"
+                }
+                className="rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 px-5 py-4 text-sm font-black shadow-[0_12px_35px_rgba(124,58,237,.35)] disabled:opacity-50"
+              >
+                {loading
+                  ? "처리 중..."
+                  : entries.length
+                    ? "새 경기 만들기"
+                    : "시작하기"}
               </button>
             </div>
           </div>
         </section>
 
         {!entries.length ? (
-          <section className="mt-6 overflow-hidden rounded-[30px] border border-white/8 bg-[#120d1d] p-8 text-center md:p-14">
-            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border border-violet-300/15 bg-violet-500/10 text-6xl shadow-inner">🏁</div>
-            <h2 className="mt-6 text-2xl font-black">오늘의 첫 레이스를 준비하세요</h2>
-            <p className="mx-auto mt-3 max-w-xl leading-7 text-zinc-500">시작하기를 누르면 6마리의 능력치와 실시간 배당이 공개됩니다.</p>
+          <section className="mt-6 rounded-[30px] border border-white/10 bg-[#120d1d] p-12 text-center">
+            <div className="text-7xl">🏟️</div>
+            <h2 className="mt-6 text-2xl font-black">
+              오늘의 출전 능력을 확인하세요
+            </h2>
+            <p className="mt-3 text-white/40">
+              시작하기를 누르면 민주, 두식, 왕아지, 새롭이, 왕츄,
+              비니의 능력과 배당이 공개됩니다.
+            </p>
           </section>
         ) : (
           <>
             <div className="mt-6 flex items-center justify-between px-1">
-              <div><p className="text-xs font-bold text-zinc-500">현재 경기</p><p className="mt-1 font-black text-violet-300">{raceCode}</p></div>
-              <p className={`rounded-full border px-3 py-1.5 text-xs font-black ${raceState === "finished" ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : raceState === "running" ? "border-rose-400/20 bg-rose-400/10 text-rose-300" : "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"}`}>
-                {raceState === "finished" ? "경기 종료" : raceState === "running" ? "레이스 진행 중" : raceState === "countdown" ? "출발 준비" : "베팅 준비"}
-              </p>
+              <div>
+                <p className="text-xs font-bold text-white/35">현재 경기</p>
+                <p className="mt-1 font-black text-violet-300">{raceCode}</p>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-black">
+                {raceState === "idle" && "베팅 준비"}
+                {raceState === "countdown" && "출발 준비"}
+                {raceState === "running" && "LIVE"}
+                {raceState === "finished" && "경기 종료"}
+              </div>
             </div>
 
-            {(raceState === "countdown" || raceState === "running" || raceState === "finished") && playData && (
-              <section className="relative mt-4 overflow-hidden rounded-[30px] border border-violet-300/15 bg-[#10151b] shadow-[0_28px_90px_rgba(0,0,0,.5)]">
-                <div className="relative border-b border-white/10 bg-[linear-gradient(180deg,#111827,#182234)] px-4 py-4 md:px-6">
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-[repeating-linear-gradient(90deg,#fff_0_18px,#111_18px_36px)] opacity-70" />
-                  <div className="flex items-center justify-between gap-4">
-                    <div><p className="text-[10px] font-black tracking-[.28em] text-violet-300">LIVE RACE</p><h2 className="mt-1 text-lg font-black md:text-2xl">왕츄 스타디움</h2></div>
-                    <div className="text-right"><p className="text-xs text-zinc-500">선택</p><p className="font-black text-amber-300">{playData.selectedLane}번 · {playData.betAmount.toLocaleString()} 도토리</p></div>
+            {playData && isLocked ? (
+              <section className="relative mt-4 overflow-hidden rounded-[30px] border border-violet-300/15 bg-[#0b1118] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
+                <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#141b29] to-[#0d121d] px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-black tracking-[.3em] text-violet-300">
+                      LIVE VIRTUAL DOG RACING
+                    </p>
+                    <h2 className="mt-1 text-xl font-black">
+                      왕츄 그랜드 더비 경기장
+                    </h2>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-white/35">내 선택</p>
+                    <p className="font-black text-amber-300">
+                      {playData.selectedLane}번 ·{" "}
+                      {playData.betAmount.toLocaleString()} 도토리
+                    </p>
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden bg-[linear-gradient(180deg,#245b34_0%,#1e4a2d_12%,#6b4931_12%,#76523a_100%)] py-3">
-                  <div className="pointer-events-none absolute inset-0 opacity-25" style={{ backgroundImage: "repeating-linear-gradient(90deg,transparent 0 64px,rgba(255,255,255,.16) 65px 66px)" }} />
-                  <div className="pointer-events-none absolute bottom-0 right-[8%] top-0 w-5 bg-[repeating-linear-gradient(0deg,#fff_0_13px,#111_13px_26px)] shadow-[0_0_20px_rgba(255,255,255,.3)]" />
+                <div
+                  ref={trackRef}
+                  className={`cinematic-track camera-${cameraMode} relative h-[610px] overflow-hidden md:h-[660px]`}
+                >
+                  <div className="stadium-sky absolute inset-x-0 top-0 h-[36%]" />
+                  <div className="stadium-stands absolute inset-x-0 top-[18%] h-[21%]" />
+                  <div className="far-fence absolute inset-x-0 top-[36%] h-8" />
+                  <div className="track-field absolute inset-x-0 bottom-0 top-[39%]" />
 
-                  {entries.map((dog) => {
-                    const laneProgress = Math.min(1, progress[dog.lane] || 0);
-                    const x = 5 + laneProgress * 82;
-                    const rank = liveRanking.findIndex((item) => item.lane === dog.lane) + 1;
+                  <div className="absolute left-0 right-0 top-[39%] h-[2px] bg-white/25" />
+                  <div className="absolute left-0 right-0 bottom-[4%] h-[2px] bg-black/30" />
+
+                  {[0, 1, 2, 3, 4, 5].map((laneIndex) => {
+                    const dog = entries[laneIndex];
+                    const currentRank =
+                      Math.max(0, liveOrder.indexOf(dog.lane)) + 1;
+
                     return (
-                      <div key={dog.lane} className="race-lane relative h-[92px] border-b border-white/10 last:border-b-0">
-                        <div className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/45 text-sm font-black ring-1 ring-white/15">{dog.lane}</div>
-                        <div className="absolute right-2 top-2 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-black text-zinc-200">현재 {rank}위</div>
+                      <div
+                        key={dog.lane}
+                        className="perspective-lane absolute left-0 right-0"
+                        style={{
+                          top: `${42 + laneIndex * 8.35}%`,
+                          zIndex: 50 + laneIndex,
+                        }}
+                      >
+                        <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+
                         <div
-                          className="absolute bottom-1 z-20 will-change-[left,transform]"
+                          ref={(node) => {
+                            dogRefs.current[dog.lane] = node;
+                          }}
+                          className="absolute left-0 bottom-[-6px] will-change-transform"
                           style={{
-                            left: `${x}%`,
-                            transform: "translateX(-50%)",
-                            transition: raceState === "running" ? "left 55ms linear" : "none",
+                            transform: `translate3d(${START_X}px,0,0)`,
                           }}
                         >
-                          <DogRunner dog={dog} running={raceState === "running"} effect={currentEffects[dog.lane]} rank={rank} />
-                          <div className="absolute -bottom-1 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/35 blur-[2px]" />
+                          <div
+                            className="origin-bottom"
+                            style={{
+                              transform: `scale(${0.76 + laneIndex * 0.055})`,
+                            }}
+                          >
+                            <RacingDog
+                              dog={dog}
+                              running={raceState === "running"}
+                              leader={currentRank === 1}
+                              action={dogActions[dog.lane] || "run"}
+                            />
+                          </div>
+
+                          <div className="absolute -left-1 top-[-2px] rounded-lg border border-white/15 bg-black/65 px-2 py-1 text-[9px] font-black shadow-lg">
+                            {dog.lane} · {dog.name}
+                          </div>
                         </div>
-                        {currentEffects[dog.lane] === "surge" || currentEffects[dog.lane] === "sprint" ? (
-                          <div className="absolute bottom-5 h-7 w-24 rounded-full bg-amber-300/15 blur-xl" style={{ left: `calc(${Math.max(0, x - 5)}% - 50px)` }} />
-                        ) : null}
                       </div>
                     );
                   })}
-                </div>
 
-                <div className="grid gap-4 border-t border-white/10 bg-[#0c1017] p-4 md:grid-cols-[1fr_260px] md:p-5">
-                  <div className="min-h-[84px] rounded-2xl border border-white/8 bg-white/[.035] p-4">
-                    <p className="text-[10px] font-black tracking-[.24em] text-violet-300">실시간 중계</p>
-                    <div className="mt-2 space-y-1.5">
-                      {visibleEvents.length ? visibleEvents.map((event, index) => (
-                        <p key={`${event.at}-${event.lane}`} className={`text-sm font-bold ${index === 0 ? "text-white" : "text-zinc-500"}`}>{event.message}</p>
-                      )) : <p className="text-sm text-zinc-500">출발 신호를 기다리고 있습니다.</p>}
+                  <div
+                    ref={gateRef}
+                    className={`starting-gate absolute left-[120px] top-[38%] z-[90] h-[54%] w-[178px] transition-transform duration-500 ${
+                      raceState === "countdown" ? "" : raceState === "running" ? "" : ""
+                    }`}
+                  >
+                    <div className="absolute inset-0 rounded-r-xl border-2 border-zinc-500 bg-[repeating-linear-gradient(90deg,#40434b_0_8px,#1b1e24_8px_18px)] shadow-2xl" />
+                    <div className="absolute -top-10 left-0 right-0 rounded-t-xl border border-white/15 bg-[#222733] py-2 text-center text-xs font-black tracking-[.25em] text-white/75">
+                      START GATE
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/[.035] p-4">
-                    <p className="text-[10px] font-black tracking-[.24em] text-zinc-500">진행률</p>
-                    <p className="mt-2 text-2xl font-black">{Math.min(100, Math.round((elapsed / playData.result.durationMs) * 100))}%</p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400" style={{ width: `${Math.min(100, (elapsed / playData.result.durationMs) * 100)}%` }} /></div>
-                  </div>
-                </div>
 
-                {countdown !== null && (
-                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm">
-                    <div className="text-center"><p className="text-sm font-black tracking-[.4em] text-violet-200">READY</p><p className="mt-2 text-8xl font-black drop-shadow-[0_0_35px_rgba(168,85,247,.8)]">{countdown}</p></div>
+                  <div
+                    ref={finishRef}
+                    className="absolute left-0 top-[35%] z-[80] h-[63%] w-10 will-change-transform"
+                    style={{ transform: `translate3d(${FINISH_X}px,0,0)` }}
+                  >
+                    <div className="h-full w-6 bg-[repeating-linear-gradient(0deg,#fff_0_14px,#111_14px_28px)] shadow-[0_0_28px_rgba(255,255,255,.28)]" />
+                    <div className="absolute -left-14 -top-8 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-xs font-black text-black shadow-xl">
+                      FINISH
+                    </div>
                   </div>
-                )}
 
-                {raceState === "finished" && (
-                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/65 p-4 backdrop-blur-[3px]">
-                    <div className="w-full max-w-lg rounded-[30px] border border-amber-300/25 bg-[radial-gradient(circle_at_top,rgba(250,204,21,.18),transparent_42%),#17111f] p-7 text-center shadow-[0_30px_100px_rgba(0,0,0,.7)] md:p-9">
-                      <div className="text-6xl">🏆</div>
-                      <p className="mt-4 text-xs font-black tracking-[.28em] text-amber-300">RACE RESULT</p>
-                      <h2 className="mt-2 text-3xl font-black">{playData.result.winnerLane}번 {entries.find((dog) => dog.lane === playData.result.winnerLane)?.name} 우승!</h2>
-                      <div className="mt-5 rounded-2xl bg-black/25 p-4">
-                        <p className={`text-lg font-black ${playData.won ? "text-emerald-300" : "text-rose-300"}`}>{playData.won ? "베팅 적중!" : "아쉽게 빗나갔습니다"}</p>
-                        <p className="mt-2 text-3xl font-black text-amber-300">{playData.payoutAmount.toLocaleString()} 도토리</p>
+                  {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+                    <div
+                      key={index}
+                      ref={(node) => {
+                        markerRefs.current[index] = node;
+                      }}
+                      className="distance-marker absolute top-[33%] z-20 will-change-transform"
+                    >
+                      <div className="h-10 w-1 bg-white/55" />
+                      <div className="-translate-x-1/2 rounded bg-black/65 px-2 py-1 text-[9px] font-black text-white/70">
+                        {index * 50 + 50}M
                       </div>
-                      <button onClick={createRace} className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-4 text-sm font-black">새 경기 시작하기</button>
+                    </div>
+                  ))}\n\n                  {HURDLE_WORLD_X.map((_, index) => (\n                    <div key={`hurdle-${index}`} ref={(node) => { hurdleRefs.current[index] = node; }} className="absolute left-0 top-[43%] z-[45] h-[48%] w-16 will-change-transform">\n                      {[0,1,2,3,4,5].map((lane) => (\n                        <div key={lane} className="absolute left-0 h-8 w-14" style={{ top: `${lane * 16.6}%` }}>\n                          <div className="absolute bottom-0 left-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />\n                          <div className="absolute bottom-0 right-1 h-7 w-1.5 rounded bg-zinc-300 shadow" />\n                          <div className="absolute left-0 right-0 top-1 h-2 rounded bg-gradient-to-b from-white to-zinc-400 shadow-md" />\n                          <div className="absolute left-1 right-1 top-3 h-1 bg-red-500" />\n                        </div>\n                      ))}\n                    </div>\n                  ))}\n\n                  {MUD_WORLD_X.map((_, index) => (\n                    <div key={`mud-${index}`} ref={(node) => { mudRefs.current[index] = node; }} className="absolute left-0 top-[42%] z-[35] h-[49%] w-[230px] will-change-transform">\n                      <div className="absolute inset-0 rounded-[45%] bg-[radial-gradient(ellipse_at_center,#3b2419_0%,#5b3928_45%,rgba(63,39,27,.1)_72%)] opacity-85" />\n                    </div>\n                  ))}
+
+                  <div className="speed-vignette pointer-events-none absolute inset-0 z-[100]" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[99] h-24 bg-gradient-to-t from-black/45 to-transparent" />
+                </div>
+
+                <div className="grid gap-4 border-t border-white/10 bg-[#0b0f16] p-4 md:grid-cols-[1fr_250px]">
+                  <div className="min-h-[96px] rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                    <p className="text-[10px] font-black tracking-[.25em] text-violet-300">
+                      실시간 중계
+                    </p>
+                    <div className="mt-2 space-y-1.5">
+                      {visibleEvents.length ? (
+                        visibleEvents.map((event, index) => (
+                          <p
+                            key={`${event.at}-${event.lane}`}
+                            className={`text-sm font-bold ${
+                              index === 0 ? "text-white" : "text-white/35"
+                            }`}
+                          >
+                            {event.message}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-sm text-white/35">
+                          출발 신호를 기다리고 있습니다.
+                        </p>
+                      )}
                     </div>
                   </div>
-                )}
-              </section>
-            )}
 
-            {!isLocked && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                    <p className="text-[10px] font-black tracking-[.25em] text-white/35">
+                      현재 선두
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-amber-300">
+                      {liveOrder[0]
+                        ? `${liveOrder[0]}번 ${
+                            entries.find(
+                              (dog) => dog.lane === liveOrder[0]
+                            )?.name || ""
+                          }`
+                        : "출발 대기"}
+                    </p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (elapsed / playData.result.durationMs) * 100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {countdown !== null ? (
+                  <div className="absolute inset-0 z-[130] flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                    <div className="text-center">
+                      <p className="text-sm font-black tracking-[.5em] text-white/70">
+                        GATE READY
+                      </p>
+                      <p className="mt-2 text-9xl font-black text-white drop-shadow-[0_0_45px_rgba(168,85,247,.85)]">
+                        {countdown}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {raceState === "finished" ? (
+                  <div className="absolute inset-0 z-[140] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[4px]">
+                    <div className="w-full max-w-lg rounded-[30px] border border-amber-300/25 bg-[radial-gradient(circle_at_top,rgba(250,204,21,.18),transparent_42%),#17111f] p-8 text-center shadow-[0_30px_100px_rgba(0,0,0,.75)]">
+                      <div className="text-6xl">🏆</div>
+                      <p className="mt-4 text-xs font-black tracking-[.3em] text-amber-300">
+                        OFFICIAL RESULT
+                      </p>
+                      <h2 className="mt-3 text-3xl font-black">
+                        {playData.result.winnerLane}번{" "}
+                        {
+                          entries.find(
+                            (dog) =>
+                              dog.lane === playData.result.winnerLane
+                          )?.name
+                        }{" "}
+                        우승
+                      </h2>
+                      <div className="mt-5 rounded-2xl bg-black/25 p-4">
+                        <p
+                          className={`text-lg font-black ${
+                            playData.won
+                              ? "text-emerald-300"
+                              : "text-rose-300"
+                          }`}
+                        >
+                          {playData.won
+                            ? "베팅 적중!"
+                            : "아쉽게 빗나갔습니다"}
+                        </p>
+                        <p className="mt-2 text-3xl font-black text-amber-300">
+                          {playData.payoutAmount.toLocaleString()} 도토리
+                        </p>
+                      </div>
+                      <button
+                        onClick={createRace}
+                        className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-4 text-sm font-black"
+                      >
+                        새 경기 시작하기
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {!isLocked ? (
               <>
                 <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {entries.map((dog) => {
                     const selected = selectedLane === dog.lane;
                     return (
-                      <button key={dog.lane} onClick={() => setSelectedLane(dog.lane)} className={`group rounded-[26px] border p-5 text-left transition duration-300 ${selected ? "border-violet-400 bg-violet-500/14 shadow-[0_18px_55px_rgba(109,40,217,0.22)]" : "border-white/8 bg-[#151027] hover:-translate-y-1 hover:border-violet-400/30"}`}>
+                      <button
+                        key={dog.lane}
+                        onClick={() => setSelectedLane(dog.lane)}
+                        className={`rounded-[26px] border p-5 text-left transition ${
+                          selected
+                            ? "border-violet-400 bg-violet-500/15 shadow-[0_18px_55px_rgba(109,40,217,.22)]"
+                            : "border-white/10 bg-[#151027] hover:-translate-y-1 hover:border-violet-400/30"
+                        }`}
+                      >
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/25"><DogRunner dog={dog} running={false} rank={0} /></div>
-                            <div><p className="text-[11px] font-black tracking-widest text-violet-300">LANE {dog.lane}</p><h3 className="mt-1 text-xl font-black">{dog.name}</h3><p className="text-xs text-zinc-500">{dog.breed}</p></div>
+                          <div>
+                            <p className="text-[11px] font-black tracking-[.18em] text-violet-300">
+                              LANE {dog.lane}
+                            </p>
+                            <h3 className="mt-1 text-2xl font-black">
+                              {dog.name}
+                            </h3>
+                            <p className="mt-1 text-sm font-bold text-amber-200">
+                              {personality(dog)}
+                            </p>
+                            <p className="mt-1 text-xs text-white/35">
+                              {dog.breed}
+                            </p>
                           </div>
-                          <div className="text-right"><p className="text-xs font-bold text-zinc-500">우승 배당</p><p className="text-2xl font-black text-amber-300">{dog.odds.toFixed(2)}배</p><p className="text-[11px] text-zinc-500">예상 {dog.winProbability.toFixed(2)}%</p></div>
+
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-white/35">
+                              우승 배당
+                            </p>
+                            <p className="text-2xl font-black text-amber-300">
+                              {dog.odds.toFixed(2)}배
+                            </p>
+                            <p className="text-[11px] text-white/35">
+                              예상 {dog.winProbability.toFixed(2)}%
+                            </p>
+                          </div>
                         </div>
-                        <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3"><StatBar label="스피드" value={dog.speed} /><StatBar label="체력" value={dog.stamina} /><StatBar label="스퍼트" value={dog.sprint} /><StatBar label="침착성" value={dog.composure} /></div>
-                        <div className="mt-4 flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-xs"><span className="text-zinc-500">실수 확률</span><span className={dog.mistakeRate >= 13 ? "font-black text-rose-400" : "font-black text-emerald-300"}>{dog.mistakeRate}%</span></div>
+
+                        <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3">
+                          <StatBar label="스피드" value={dog.speed} />
+                          <StatBar label="체력" value={dog.stamina} />
+                          <StatBar label="스퍼트" value={dog.sprint} />
+                          <StatBar label="침착성" value={dog.composure} />
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-xs">
+                          <span className="text-white/35">실수 확률</span>
+                          <span
+                            className={
+                              dog.mistakeRate >= 13
+                                ? "font-black text-rose-400"
+                                : "font-black text-emerald-300"
+                            }
+                          >
+                            {dog.mistakeRate}%
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
                 </section>
 
-                <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_370px]">
-                  <div className="rounded-[28px] border border-white/8 bg-[#120d1d] p-6">
-                    <h2 className="text-lg font-black">레이스 분석 가이드</h2>
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">{["스피드: 초반과 기본 주행 속도", "체력: 중후반 감속 저항", "스퍼트: 결승 직전 폭발력", "침착성: 흔들림과 실수 억제"].map((text) => <div key={text} className="rounded-2xl bg-white/[0.035] p-4 text-sm text-zinc-400">{text}</div>)}</div>
-                    <p className="mt-4 text-xs leading-6 text-zinc-600">결과는 베팅 버튼을 누르는 순간 서버에서 한 번만 확정됩니다. 능력치가 높을수록 유리하지만 돌발 상황 때문에 항상 우승하는 것은 아닙니다.</p>
+                <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_380px]">
+                  <div className="rounded-[28px] border border-white/10 bg-[#120d1d] p-6">
+                    <h2 className="text-lg font-black">오늘의 경기 분석</h2>
+                    <p className="mt-3 leading-7 text-white/40">
+                      성격은 오늘 생성된 능력치를 기준으로 경기마다 다시
+                      결정됩니다. 폭주형은 초반, 꾸준형은 중반, 역전형은
+                      막판에 강하게 연출됩니다.
+                    </p>
+                    <p className="mt-4 text-xs leading-6 text-white/25">
+                      결과는 베팅 요청 순간 서버에서 한 번만 확정되며,
+                      레이스 화면은 확정된 순위와 능력치를 자연스러운 경기
+                      흐름으로 재생합니다.
+                    </p>
                   </div>
 
                   <div className="rounded-[28px] border border-violet-400/15 bg-gradient-to-b from-[#1a1230] to-[#110b1e] p-6">
-                    <p className="text-xs font-black tracking-widest text-violet-300">BET SLIP</p>
-                    <h2 className="mt-2 text-xl font-black">우승 왈왈이 선택</h2>
-                    <div className="mt-5 rounded-2xl bg-black/20 p-4">{selectedDog ? <div className="flex items-center justify-between"><div><p className="font-black">{selectedDog.lane}번 {selectedDog.name}</p><p className="mt-1 text-xs text-zinc-500">{selectedDog.breed}</p></div><p className="text-2xl font-black text-amber-300">{selectedDog.odds.toFixed(2)}배</p></div> : <p className="py-2 text-center text-sm text-zinc-500">위 카드에서 한 마리를 선택하세요.</p>}</div>
-                    <label className="mt-4 block text-xs font-bold text-zinc-400">베팅 도토리</label>
-                    <input value={betAmount} onChange={(event) => setBetAmount(event.target.value.replace(/[^0-9]/g, ""))} placeholder="최소 10" className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-lg font-black outline-none transition focus:border-violet-400" />
-                    <div className="mt-3 flex items-center justify-between text-sm"><span className="text-zinc-500">예상 당첨금</span><span className="font-black text-emerald-300">{expectedPayout.toLocaleString()}개</span></div>
-                    <button onClick={placeBetAndRace} disabled={loading || !selectedDog || Number(betAmount) < 10} className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-4 text-sm font-black shadow-[0_12px_35px_rgba(124,58,237,.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">베팅하고 레이스 시작</button>
+                    <p className="text-xs font-black tracking-[.2em] text-violet-300">
+                      BET SLIP
+                    </p>
+                    <h2 className="mt-2 text-xl font-black">
+                      우승견 선택
+                    </h2>
+
+                    <div className="mt-5 rounded-2xl bg-black/20 p-4">
+                      {selectedDog ? (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-black">
+                              {selectedDog.lane}번 {selectedDog.name}
+                            </p>
+                            <p className="mt-1 text-xs text-amber-200">
+                              {personality(selectedDog)}
+                            </p>
+                          </div>
+                          <p className="text-2xl font-black text-amber-300">
+                            {selectedDog.odds.toFixed(2)}배
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="py-2 text-center text-sm text-white/35">
+                          위 카드에서 한 마리를 선택하세요.
+                        </p>
+                      )}
+                    </div>
+
+                    <label className="mt-4 block text-xs font-bold text-white/40">
+                      베팅 도토리
+                    </label>
+                    <input
+                      value={betAmount}
+                      onChange={(event) =>
+                        setBetAmount(
+                          event.target.value.replace(/[^0-9]/g, "")
+                        )
+                      }
+                      placeholder="최소 10"
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-lg font-black outline-none focus:border-violet-400"
+                    />
+
+                    <div className="mt-3 flex items-center justify-between text-sm">
+                      <span className="text-white/35">예상 당첨금</span>
+                      <span className="font-black text-emerald-300">
+                        {expectedPayout.toLocaleString()}개
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={placeBetAndRace}
+                      disabled={
+                        loading ||
+                        !selectedDog ||
+                        Number(betAmount) < 10
+                      }
+                      className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-4 text-sm font-black disabled:opacity-40"
+                    >
+                      베팅하고 레이스 시작
+                    </button>
                   </div>
                 </section>
               </>
-            )}
+            ) : null}
           </>
         )}
       </div>
+
       <style jsx global>{`
-        @keyframes dogBodyRun {
-          0%, 100% { transform: translateY(0) rotate(-1deg); }
-          50% { transform: translateY(-5px) rotate(1.2deg); }
+        .cinematic-track {
+          --camera-x: 0px;
+          --speed-blur: 0;
+          background: #6a4934;
+          perspective: 1100px;
+          transform-style: preserve-3d;
         }
-        @keyframes dogHeadRun {
-          0%, 100% { transform: translate(0, 0) rotate(-1deg); }
-          50% { transform: translate(1px, -2px) rotate(2deg); }
+
+        .stadium-sky {
+          background:
+            radial-gradient(circle at 72% 20%, rgba(255,255,255,.8) 0 2px, transparent 3px),
+            radial-gradient(circle at 18% 28%, rgba(255,255,255,.65) 0 1px, transparent 2px),
+            linear-gradient(180deg, #5a7192 0%, #8ea5bb 52%, #c8b98e 100%);
         }
-        @keyframes dogLegA {
-          0%, 100% { transform: rotate(18deg); transform-origin: 54px 65px; }
-          50% { transform: rotate(-22deg); transform-origin: 54px 65px; }
+
+        .stadium-stands {
+          background:
+            repeating-linear-gradient(90deg, #252a35 0 26px, #313746 26px 52px),
+            linear-gradient(180deg, #333a49, #171b24);
+          box-shadow: inset 0 12px 30px rgba(255,255,255,.06);
         }
-        @keyframes dogLegB {
-          0%, 100% { transform: rotate(-19deg); transform-origin: 77px 64px; }
-          50% { transform: rotate(23deg); transform-origin: 77px 64px; }
-        }
-        @keyframes dogTailRun {
-          0%, 100% { transform: rotate(-7deg); transform-origin: 35px 46px; }
-          50% { transform: rotate(12deg); transform-origin: 35px 46px; }
-        }
-        @keyframes dustFly {
-          0% { transform: translate(0, 0) scale(.3); opacity: 0; }
-          20% { opacity: .62; }
-          100% { transform: translate(-40px, -13px) scale(1.4); opacity: 0; }
-        }
-        @keyframes stumbleDog {
-          0%, 100% { transform: rotate(0deg) translateY(0); }
-          30% { transform: rotate(12deg) translateY(4px); }
-          60% { transform: rotate(-7deg) translateY(1px); }
-        }
-        .dog-runner.is-running .dog-body { animation: dogBodyRun .24s ease-in-out infinite; }
-        .dog-runner.is-running .dog-head { animation: dogHeadRun .24s ease-in-out infinite; }
-        .dog-runner.is-running .dog-legs-a { animation: dogLegA .22s linear infinite; }
-        .dog-runner.is-running .dog-legs-b { animation: dogLegB .22s linear infinite; }
-        .dog-runner.is-running .dog-tail { animation: dogTailRun .18s ease-in-out infinite; }
-        .dog-runner.is-boosting { filter: drop-shadow(0 0 16px rgba(251,191,36,.55)); }
-        .dog-runner.is-boosting .dog-body { animation-duration: .16s; }
-        .dog-runner.is-boosting .dog-legs-a,
-        .dog-runner.is-boosting .dog-legs-b { animation-duration: .14s; }
-        .dog-runner.is-stumbling { animation: stumbleDog .58s ease-in-out; }
-        .dust {
+
+        .stadium-stands::after {
+          content: "";
           position: absolute;
-          left: 2px;
+          inset: 12px 0 0;
+          background:
+            radial-gradient(circle, #e4b657 0 2px, transparent 3px) 0 0/26px 20px,
+            radial-gradient(circle, #d26d71 0 2px, transparent 3px) 13px 8px/30px 22px,
+            radial-gradient(circle, #81a7d8 0 2px, transparent 3px) 5px 4px/28px 19px;
+          opacity: .55;
+        }
+
+        .far-fence {
+          background:
+            repeating-linear-gradient(90deg, transparent 0 30px, rgba(240,240,245,.7) 30px 34px),
+            linear-gradient(180deg, rgba(255,255,255,.7), rgba(68,72,78,.85));
+          box-shadow: 0 8px 18px rgba(0,0,0,.32);
+        }
+
+        .track-field {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.06), transparent 22%),
+            repeating-linear-gradient(
+              90deg,
+              rgba(0,0,0,.035) 0 3px,
+              rgba(255,255,255,.025) 3px 8px
+            ),
+            linear-gradient(180deg, #8c6245 0%, #6c4934 78%, #513426 100%);
+        }
+
+        .track-field::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            repeating-linear-gradient(
+              90deg,
+              transparent 0 112px,
+              rgba(255,255,255,.07) 113px 115px
+            );
+          transform: translateX(calc(var(--camera-x) * -0.34));
+          will-change: transform;
+        }
+
+        .track-field::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse at center, rgba(255,255,255,.08) 0 1px, transparent 2px) 0 0/18px 13px;
+          opacity: .24;
+          transform: translateX(calc(var(--camera-x) * -0.72));
+          will-change: transform;
+        }
+
+        .speed-vignette {
+          background:
+            linear-gradient(90deg, rgba(0,0,0,.45), transparent 12%, transparent 88%, rgba(0,0,0,.38)),
+            linear-gradient(180deg, rgba(0,0,0,.12), transparent 28%, transparent 76%, rgba(0,0,0,.2));
+          box-shadow: inset 0 0 calc(20px + 30px * var(--speed-blur)) rgba(0,0,0,.32);
+        }
+
+        .perspective-lane {
+          transform: rotateX(1.2deg);
+        }
+
+        .racing-dog {
+          filter: drop-shadow(0 5px 5px rgba(0,0,0,.38));
+        }
+
+        @keyframes torsoRun {
+          0%, 100% { transform: translateY(0) scaleX(1.02) rotate(-1deg); }
+          50% { transform: translateY(-5px) scaleX(.96) rotate(1deg); }
+        }
+
+        @keyframes headRun {
+          0%, 100% { transform: translateY(0) rotate(-2deg); transform-origin: 150px 49px; }
+          50% { transform: translateY(-4px) rotate(3deg); transform-origin: 150px 49px; }
+        }
+
+        @keyframes neckRun {
+          0%, 100% { transform: rotate(-2deg); transform-origin: 130px 58px; }
+          50% { transform: rotate(3deg); transform-origin: 130px 58px; }
+        }
+
+        @keyframes legFrontA {
+          0%, 100% { transform: rotate(26deg); transform-origin: 126px 67px; }
+          50% { transform: rotate(-42deg); transform-origin: 126px 67px; }
+        }
+
+        @keyframes legFrontB {
+          0%, 100% { transform: rotate(-34deg); transform-origin: 113px 68px; }
+          50% { transform: rotate(30deg); transform-origin: 113px 68px; }
+        }
+
+        @keyframes legRearA {
+          0%, 100% { transform: rotate(-31deg); transform-origin: 59px 67px; }
+          50% { transform: rotate(44deg); transform-origin: 59px 67px; }
+        }
+
+        @keyframes legRearB {
+          0%, 100% { transform: rotate(36deg); transform-origin: 76px 69px; }
+          50% { transform: rotate(-29deg); transform-origin: 76px 69px; }
+        }
+
+        @keyframes tailRun {
+          0%, 100% { transform: rotate(-8deg); transform-origin: 47px 49px; }
+          50% { transform: rotate(11deg); transform-origin: 47px 49px; }
+        }
+
+        @keyframes waitingDog {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+
+        @keyframes dustTrail {
+          0% { transform: translate3d(0,0,0) scale(.25); opacity: 0; }
+          18% { opacity: .55; }
+          100% { transform: translate3d(-62px,-12px,0) scale(1.8); opacity: 0; }
+        }
+
+        .racing-dog.is-running .dog-torso {
+          animation: torsoRun .22s ease-in-out infinite;
+        }
+
+        .racing-dog.is-running .dog-head {
+          animation: headRun .22s ease-in-out infinite;
+        }
+
+        .racing-dog.is-running .dog-neck {
+          animation: neckRun .22s ease-in-out infinite;
+        }
+
+        .racing-dog.is-running .front-leg-a {
+          animation: legFrontA .19s linear infinite;
+        }
+
+        .racing-dog.is-running .front-leg-b {
+          animation: legFrontB .19s linear infinite;
+        }
+
+        .racing-dog.is-running .rear-leg-a {
+          animation: legRearA .19s linear infinite;
+        }
+
+        .racing-dog.is-running .rear-leg-b {
+          animation: legRearB .19s linear infinite;
+        }
+
+        .racing-dog.is-running .dog-tail {
+          animation: tailRun .17s ease-in-out infinite;
+        }
+
+        .racing-dog.is-waiting {
+          animation: waitingDog 1.1s ease-in-out infinite;
+        }
+
+        .racing-dog.is-leader {
+          filter:
+            drop-shadow(0 5px 5px rgba(0,0,0,.38))
+            drop-shadow(0 0 12px rgba(250,204,21,.25));
+        }
+
+        .race-dust {
+          position: absolute;
+          left: 12px;
           bottom: 5px;
+          width: 15px;
+          height: 10px;
+          border-radius: 999px;
+          background: rgba(213,174,130,.55);
+          filter: blur(2px);
+          animation: dustTrail .6s linear infinite;
+        }
+
+        .dust-b {
           width: 9px;
           height: 9px;
-          border-radius: 999px;
-          background: rgba(222,184,135,.6);
-          filter: blur(1px);
-          animation: dustFly .62s linear infinite;
+          animation-delay: .17s;
+          bottom: 13px;
         }
-        .dust-2 { width: 6px; height: 6px; animation-delay: .18s; bottom: 11px; }
-        .dust-3 { width: 12px; height: 7px; animation-delay: .35s; bottom: 2px; }
-        .race-lane {
-          background:
-            linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%),
-            repeating-linear-gradient(90deg, transparent 0 78px, rgba(255,255,255,.055) 79px 80px);
-          box-shadow: inset 0 -1px rgba(0,0,0,.18);
+
+        .dust-c {
+          width: 20px;
+          height: 7px;
+          animation-delay: .34s;
+          bottom: 2px;
+        }
+
+        .starting-gate {
+          transform: translateY(0);
+          will-change: transform;
+        }
+
+\n        @keyframes dogJump { 0%,100%{transform:rotate(0deg) scaleY(1)} 30%{transform:rotate(-5deg) scaleY(.92)} 55%{transform:rotate(4deg) scaleY(1.06)} }\n        @keyframes dogFall { 0%{transform:rotate(0deg) translateY(0)} 35%{transform:rotate(18deg) translateY(8px)} 70%{transform:rotate(78deg) translateY(14px)} 100%{transform:rotate(88deg) translateY(16px)} }\n        @keyframes dogRecover { 0%{transform:rotate(88deg) translateY(16px)} 55%{transform:rotate(28deg) translateY(7px)} 100%{transform:rotate(0deg) translateY(0)} }\n        @keyframes mudShake { 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(2px) rotate(-2deg)} 75%{transform:translateY(2px) rotate(2deg)} }\n        @keyframes sprintPulse { 0%,100%{filter:drop-shadow(0 5px 5px rgba(0,0,0,.38)) brightness(1)} 50%{filter:drop-shadow(0 0 16px rgba(250,204,21,.7)) brightness(1.2)} }\n        .racing-dog.action-jump{animation:dogJump .55s ease-in-out infinite}\n        .racing-dog.action-fall{animation:dogFall .52s ease-out forwards}\n        .racing-dog.action-recover{animation:dogRecover .55s ease-out forwards}\n        .racing-dog.action-mud{animation:mudShake .18s linear infinite;filter:saturate(.72) brightness(.86)}\n        .racing-dog.action-sprint{animation:sprintPulse .24s ease-in-out infinite}\n        .racing-dog.action-sprint::before,.racing-dog.action-sprint::after{content:"";position:absolute;left:-74px;top:30px;width:76px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(255,224,128,.95))}\n        .racing-dog.action-sprint::after{top:43px;width:56px;left:-54px;opacity:.72}\n        .camera-close{filter:contrast(1.05) saturate(1.08)}\n        .camera-close .perspective-lane{transform:rotateX(1.2deg) scale(1.05);transform-origin:center}\n        .camera-finish{filter:contrast(1.1) saturate(1.12)}\n
+        @media (max-width: 768px) {
+          .cinematic-track {
+            min-width: 760px;
+            transform-origin: left top;
+          }
         }
       `}</style>
-
     </main>
   );
 }

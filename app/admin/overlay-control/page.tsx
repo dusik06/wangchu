@@ -18,6 +18,8 @@ type QueueItem = {
   type: "item" | "song" | "mission";
   nickname: string;
   title: string;
+  message?: string | null;
+  overlay_text?: string | null;
   status: string;
   created_at: string;
 };
@@ -45,6 +47,7 @@ export default function Page() {
   const [imageUrl, setImageUrl] = useState("");
   const [goalDotori, setGoalDotori] = useState("");
   const [loading, setLoading] = useState(false);
+  const [replayingKey, setReplayingKey] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
   async function loadMissions() {
@@ -226,26 +229,41 @@ export default function Page() {
   }
 
   async function queueControl(command: string, item?: QueueItem) {
-    const res = await fetch("/api/admin/overlay-queue/control", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        command,
-        targetType: item?.type || null,
-        targetId: item?.id || null,
-      }),
-    });
+    const replayKey = item ? `${item.type}-${item.id}` : null;
 
-    const data = await res.json();
+    if (command === "replay" && replayingKey) return;
+    if (command === "replay" && replayKey) setReplayingKey(replayKey);
 
-    if (!data.success) {
-      alert(data.message || "명령 실패");
-      return;
+    try {
+      const res = await fetch("/api/admin/overlay-queue/control", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          command,
+          targetType: item?.type || null,
+          targetId: item?.id || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        alert(data.message || "명령 실패");
+        return;
+      }
+
+      if (command === "replay") {
+        alert("다시 재생 요청을 대기열에 전달했습니다.");
+      }
+
+      await loadQueue();
+    } finally {
+      if (command === "replay") {
+        window.setTimeout(() => setReplayingKey(null), 800);
+      }
     }
-
-    await loadQueue();
   }
 
   function openEdit(mission: Mission) {
@@ -275,6 +293,16 @@ export default function Page() {
     if (type === "song") return "시그";
     if (type === "mission") return "미션";
     return "아이템";
+  }
+
+  function usageMessage(item: QueueItem) {
+    const message = String(item.message || "").trim();
+    if (message) return message;
+
+    const overlayText = String(item.overlay_text || "").trim();
+    if (overlayText) return overlayText;
+
+    return "-";
   }
 
   useEffect(() => {
@@ -420,37 +448,73 @@ export default function Page() {
         </section>
 
         <section className="mb-6 rounded-2xl border border-white/10 bg-[#151027] p-5">
-          <h2 className="mb-4 text-xl font-black">최근 사용 로그</h2>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">최근 사용 아이템 다시 재생</h2>
+              <p className="mt-1 text-sm text-white/45">
+                이미 재생이 끝난 아이템도 닉네임과 사용 멘트를 그대로 다시 띄울 수 있습니다.
+              </p>
+            </div>
 
-          <div className="overflow-hidden rounded-xl border border-white/10">
-            <table className="w-full text-left text-sm">
+            <button
+              onClick={loadQueue}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-black hover:bg-white/10"
+            >
+              목록 새로고침
+            </button>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[#09090f] text-white/60">
                 <tr>
-                  <th className="px-4 py-3">시간</th>
-                  <th className="px-4 py-3">종류</th>
-                  <th className="px-4 py-3">사용자</th>
+                  <th className="px-4 py-3">닉네임</th>
+                  <th className="px-4 py-3">사용한 아이템</th>
                   <th className="px-4 py-3">내용</th>
-                  <th className="px-4 py-3">상태</th>
+                  <th className="w-[130px] px-4 py-3 text-center">다시 재생</th>
                 </tr>
               </thead>
 
               <tbody>
-                {recentLogs.map((item) => (
-                  <tr key={`log-${item.type}-${item.id}`} className="border-t border-white/10">
-                    <td className="px-4 py-3">{formatTime(item.played_at)}</td>
-                    <td className="px-4 py-3">{typeLabel(item.type)}</td>
-                    <td className="px-4 py-3 font-bold">{item.nickname}</td>
-                    <td className="px-4 py-3">{item.title}</td>
-                    <td className="px-4 py-3">
-                      {item.status === "skipped" ? "스킵됨" : "재생완료"}
-                    </td>
-                  </tr>
-                ))}
+                {recentLogs
+                  .filter((item) => item.type !== "mission")
+                  .map((item) => {
+                    const key = `${item.type}-${item.id}`;
+                    const isReplaying = replayingKey === key;
 
-                {recentLogs.length === 0 && (
+                    return (
+                      <tr key={`log-${key}`} className="border-t border-white/10">
+                        <td className="px-4 py-3">
+                          <div className="font-black">{item.nickname || "익명"}</div>
+                          <div className="mt-1 text-xs text-white/35">
+                            {formatTime(item.played_at)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1 font-black text-purple-200">
+                            {item.title}
+                          </span>
+                        </td>
+                        <td className="max-w-[440px] whitespace-pre-wrap break-words px-4 py-3 text-white/80">
+                          {usageMessage(item)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => queueControl("replay", item)}
+                            disabled={Boolean(replayingKey)}
+                            className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-black hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {isReplaying ? "요청 중..." : "▶ 다시 재생"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                {recentLogs.filter((item) => item.type !== "mission").length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-white/50">
-                      최근 사용 로그가 없습니다.
+                    <td colSpan={4} className="px-4 py-10 text-center text-white/50">
+                      최근 사용한 아이템이 없습니다.
                     </td>
                   </tr>
                 )}

@@ -700,6 +700,8 @@ export const OverlayEngine = {
           'item' AS type,
           nickname,
           item_name AS title,
+          message,
+          overlay_text,
           status,
           created_at,
           played_at
@@ -715,6 +717,8 @@ export const OverlayEngine = {
           'mission' AS type,
           nickname,
           mission_title AS title,
+          '' AS message,
+          NULL AS overlay_text,
           status,
           created_at,
           played_at
@@ -738,6 +742,8 @@ export const OverlayEngine = {
           'item' AS type,
           nickname,
           item_name AS title,
+          message,
+          overlay_text,
           status,
           created_at,
           played_at
@@ -753,6 +759,8 @@ export const OverlayEngine = {
           'mission' AS type,
           nickname,
           mission_title AS title,
+          '' AS message,
+          NULL AS overlay_text,
           status,
           created_at,
           played_at
