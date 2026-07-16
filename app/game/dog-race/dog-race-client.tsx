@@ -47,7 +47,7 @@ type PlayResponse = {
   result: RaceResult;
 };
 
-type RaceState = "idle" | "countdown" | "running" | "finished";
+type RaceState = "idle" | "countdown" | "running" | "photo" | "finished";
 type VisualAction = "run" | "jump" | "fall" | "recover" | "mud" | "sprint";
 
 const WORLD_LENGTH = 5200;
@@ -218,6 +218,9 @@ export default function DogRaceClient() {
   const [liveOrder, setLiveOrder] = useState<number[]>([]);
   const [cameraMode, setCameraMode] = useState<"start" | "side" | "close" | "finish">("start");
   const [dogActions, setDogActions] = useState<Record<number, VisualAction>>({});
+  const [photoFinish, setPhotoFinish] = useState(false);
+  const [finishFlash, setFinishFlash] = useState(false);
+  const [crowdLevel, setCrowdLevel] = useState(0);
 
   const animationRef = useRef<number | null>(null);
   const startRef = useRef(0);
@@ -230,6 +233,7 @@ export default function DogRaceClient() {
   const hurdleRefs = useRef<Array<HTMLDivElement | null>>([]);
   const mudRefs = useRef<Array<HTMLDivElement | null>>([]);
   const eventMemoryRef = useRef<Record<string, boolean>>({});
+  const cameraShellRef = useRef<HTMLDivElement | null>(null);
 
   const selectedDog = useMemo(
     () => entries.find((dog) => dog.lane === selectedLane) || null,
@@ -252,6 +256,7 @@ export default function DogRaceClient() {
   const isLocked =
     raceState === "countdown" ||
     raceState === "running" ||
+    raceState === "photo" ||
     raceState === "finished";
 
   async function loadBalance() {
@@ -281,6 +286,9 @@ export default function DogRaceClient() {
     setLiveOrder([]);
     setCameraMode("start");
     setDogActions({});
+    setPhotoFinish(false);
+    setFinishFlash(false);
+    setCrowdLevel(0);
     eventMemoryRef.current = {};
 
     try {
@@ -491,6 +499,21 @@ export default function DogRaceClient() {
         setLiveOrder(sorted.map((item) => item.dog.lane));
         setDogActions(nextActions);
         setCameraMode(mode);
+
+        const leadGap =
+          sorted.length >= 2
+            ? Math.max(0, sorted[0].worldX - sorted[1].worldX)
+            : 100;
+        const closeRaceBoost = clamp(1 - leadGap / 170, 0, 1) * 32;
+        const finishBoost = clamp((phase - 0.68) / 0.32, 0, 1) * 50;
+        const eventBoost = Object.values(nextActions).some(
+          (action) => action === "fall" || action === "sprint"
+        )
+          ? 18
+          : 0;
+        setCrowdLevel(
+          Math.round(clamp(18 + closeRaceBoost + finishBoost + eventBoost, 0, 100))
+        );
       }
 
       if (raceElapsed < data.result.durationMs) {
@@ -498,8 +521,19 @@ export default function DogRaceClient() {
       } else {
         setElapsed(data.result.durationMs);
         setLiveOrder(data.result.ranking);
-        setRaceState("finished");
-        setDotori(data.newBalance);
+        setDogActions({});
+        setCameraMode("finish");
+        setRaceState("photo");
+        setPhotoFinish(true);
+        setFinishFlash(true);
+        setCrowdLevel(100);
+
+        window.setTimeout(() => setFinishFlash(false), 420);
+        window.setTimeout(() => {
+          setPhotoFinish(false);
+          setRaceState("finished");
+          setDotori(data.newBalance);
+        }, 2200);
       }
     };
 
@@ -627,12 +661,20 @@ export default function DogRaceClient() {
                 {raceState === "idle" && "베팅 준비"}
                 {raceState === "countdown" && "출발 준비"}
                 {raceState === "running" && "LIVE"}
+                {raceState === "photo" && "사진 판독 중"}
                 {raceState === "finished" && "경기 종료"}
               </div>
             </div>
 
             {playData && isLocked ? (
-              <section className="relative mt-4 overflow-hidden rounded-[30px] border border-violet-300/15 bg-[#0b1118] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
+              <section
+                ref={cameraShellRef}
+                className={`relative mt-4 overflow-hidden rounded-[30px] border border-violet-300/15 bg-[#0b1118] shadow-[0_30px_100px_rgba(0,0,0,.65)] ${
+                  cameraMode === "finish" && raceState === "running"
+                    ? "finish-camera-tension"
+                    : ""
+                }`}
+              >
                 <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#141b29] to-[#0d121d] px-5 py-4">
                   <div>
                     <p className="text-[10px] font-black tracking-[.3em] text-violet-300">
@@ -820,8 +862,50 @@ export default function DogRaceClient() {
                         }}
                       />
                     </div>
+
+                    <div className="mt-4 flex items-center justify-between text-[10px] font-black text-white/35">
+                      <span>관중 열기</span>
+                      <span>{crowdLevel}%</span>
+                    </div>
+                    <div className="mt-1.5 flex h-4 items-end gap-1">
+                      {[20, 36, 55, 72, 88, 100].map((threshold, index) => (
+                        <span
+                          key={threshold}
+                          className={`w-full rounded-sm transition-all duration-200 ${
+                            crowdLevel >= threshold
+                              ? "bg-gradient-to-t from-fuchsia-600 to-amber-300"
+                              : "bg-white/10"
+                          }`}
+                          style={{ height: `${5 + index * 2}px` }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
+
+                {finishFlash ? (
+                  <div className="pointer-events-none absolute inset-0 z-[145] bg-white finish-flash" />
+                ) : null}
+
+                {photoFinish ? (
+                  <div className="absolute inset-0 z-[142] overflow-hidden bg-black/35 backdrop-blur-[1px]">
+                    <div className="photo-scan-line absolute inset-y-0 w-[3px] bg-white shadow-[0_0_28px_8px_rgba(255,255,255,.7)]" />
+                    <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-full border border-white/20 bg-black/70 px-5 py-2 text-xs font-black tracking-[.28em] text-white shadow-2xl">
+                      PHOTO FINISH · 사진 판독 중
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-7 flex justify-center">
+                      <div className="rounded-2xl border border-white/15 bg-black/75 px-6 py-4 text-center shadow-[0_20px_70px_rgba(0,0,0,.6)]">
+                        <p className="text-xs font-black text-amber-300">
+                          결승선 카메라 분석
+                        </p>
+                        <p className="mt-1 text-sm text-white/55">
+                          최종 순위를 확인하고 있습니다...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {countdown !== null ? (
                   <div className="absolute inset-0 z-[130] flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
@@ -853,7 +937,30 @@ export default function DogRaceClient() {
                         }{" "}
                         우승
                       </h2>
-                      <div className="mt-5 rounded-2xl bg-black/25 p-4">
+                      <div className="mt-5 grid grid-cols-3 gap-2">
+                        {playData.result.ranking.slice(0, 3).map((lane, index) => {
+                          const dog = entries.find((entry) => entry.lane === lane);
+                          return (
+                            <div
+                              key={lane}
+                              className={`rounded-2xl border p-3 ${
+                                index === 0
+                                  ? "border-amber-300/40 bg-amber-300/10"
+                                  : "border-white/10 bg-black/20"
+                              }`}
+                            >
+                              <p className="text-xs font-black text-white/40">
+                                {index + 1}위
+                              </p>
+                              <p className="mt-1 font-black">
+                                {lane}번 {dog?.name || ""}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 rounded-2xl bg-black/25 p-4">
                         <p
                           className={`text-lg font-black ${
                             playData.won
@@ -1266,6 +1373,63 @@ export default function DogRaceClient() {
         .camera-close{filter:contrast(1.05) saturate(1.08)}
         .camera-close .perspective-lane{transform:rotateX(1.2deg) scale(1.05);transform-origin:center}
         .camera-finish{filter:contrast(1.1) saturate(1.12)}
+
+
+        @keyframes finishCameraTension {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          20% { transform: translate3d(-1px, 0, 0) scale(1.002); }
+          40% { transform: translate3d(1px, -1px, 0) scale(1.004); }
+          60% { transform: translate3d(-1px, 1px, 0) scale(1.003); }
+          80% { transform: translate3d(1px, 0, 0) scale(1.002); }
+        }
+
+        @keyframes photoScan {
+          0% { left: 6%; opacity: .25; }
+          12% { opacity: 1; }
+          88% { opacity: 1; }
+          100% { left: 94%; opacity: .25; }
+        }
+
+        @keyframes finishFlashAnimation {
+          0% { opacity: 0; }
+          18% { opacity: .95; }
+          42% { opacity: .25; }
+          64% { opacity: .72; }
+          100% { opacity: 0; }
+        }
+
+        @keyframes crowdPulse {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.24); }
+        }
+
+        .finish-camera-tension {
+          animation: finishCameraTension .16s linear infinite;
+          transform-origin: center;
+        }
+
+        .photo-scan-line {
+          animation: photoScan 1.65s ease-in-out infinite;
+        }
+
+        .finish-flash {
+          animation: finishFlashAnimation .42s ease-out forwards;
+        }
+
+        .camera-finish .stadium-stands::after {
+          animation: crowdPulse .24s ease-in-out infinite;
+          opacity: .82;
+        }
+
+        .camera-finish .track-field {
+          filter: contrast(1.08) saturate(1.12);
+        }
+
+        .camera-finish .racing-dog {
+          filter:
+            drop-shadow(0 6px 6px rgba(0,0,0,.42))
+            drop-shadow(0 0 9px rgba(255,255,255,.12));
+        }
 
         @media (max-width: 768px) {
           .cinematic-track {
