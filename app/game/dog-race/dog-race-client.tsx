@@ -49,6 +49,8 @@ type PlayResponse = {
 
 type RaceState = "idle" | "countdown" | "running" | "photo" | "finished";
 type VisualAction = "run" | "jump" | "fall" | "recover" | "mud" | "sprint";
+type PathPoint = { t: number; x: number; y: number; action: VisualAction };
+type RunnerPath = { lane: number; points: PathPoint[] };
 
 const WORLD_LENGTH = 5200;
 const START_X = 260;
@@ -56,6 +58,7 @@ const FINISH_X = 4860;
 const DOG_COLORS = ["#24242b", "#9a5936", "#f1eee6", "#77808e", "#d8a23d", "#ead8b8"];
 const HURDLE_WORLD_X = [1450, 2940, 4070];
 const MUD_WORLD_X = [2260, 3560];
+const CHARACTER_ASSETS: Record<string, string> = { 민주: "/dog-race/characters/minju.png", 두식: "/dog-race/characters/dusik.jpg", 왕아지: "/dog-race/characters/wangaji.png", 새롭이: "/dog-race/characters/saerobi.png", 왕츄: "/dog-race/characters/wangchu.png", 비니: "/dog-race/characters/bini.png" };
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -96,112 +99,69 @@ function StatBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function RacingDog({
-  dog,
-  running,
-  leader,
-  action,
-}: {
-  dog: DogEntry;
-  running: boolean;
-  leader: boolean;
-  action: VisualAction;
-}) {
-  const color = DOG_COLORS[dog.lane - 1] || DOG_COLORS[0];
-
+function RacingDog({ dog, running, leader, action }: { dog: DogEntry; running: boolean; leader: boolean; action: VisualAction; }) {
+  const src = CHARACTER_ASSETS[dog.name] || CHARACTER_ASSETS["왕츄"];
+  const photo = dog.name === "왕츄" || dog.name === "두식";
   return (
-    <div
-      className={`racing-dog relative h-[70px] w-[128px] origin-bottom ${
-        running ? "is-running" : "is-waiting"
-      } ${leader ? "is-leader" : ""} action-${action}`}
-    >
-      {leader && running ? (
-        <div className="absolute -top-8 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-yellow-200/30 bg-yellow-300/15 px-2 py-1 text-[9px] font-black text-yellow-100 shadow-[0_0_22px_rgba(250,204,21,.25)]">
-          선두
-        </div>
-      ) : null}
-
-      <svg viewBox="0 0 190 100" className="h-full w-full overflow-visible" aria-hidden="true">
-        <defs>
-          <linearGradient id={`body-${dog.lane}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={color} />
-            <stop offset=".55" stopColor={color} />
-            <stop offset="1" stopColor="#120d13" stopOpacity=".5" />
-          </linearGradient>
-          <filter id={`dog-shadow-${dog.lane}`} x="-50%" y="-50%" width="220%" height="220%">
-            <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#000" floodOpacity=".45" />
-          </filter>
-        </defs>
-
-        <g filter={`url(#dog-shadow-${dog.lane})`}>
-          <g className="dog-torso">
-            <path
-              d="M42 51 C58 27, 111 23, 139 43 C149 51, 143 68, 127 72 C95 80, 61 76, 43 64Z"
-              fill={`url(#body-${dog.lane})`}
-            />
-            <path
-              d="M73 66 C91 72, 115 69, 130 59"
-              fill="none"
-              stroke="#fff"
-              strokeOpacity=".12"
-              strokeWidth="5"
-              strokeLinecap="round"
-            />
-          </g>
-
-          <g className="dog-neck">
-            <path d="M127 49 C140 31, 151 29, 159 39 L153 64 L128 68Z" fill={color} />
-          </g>
-
-          <g className="dog-head">
-            <path
-              d="M148 29 C163 21, 180 31, 179 47 C178 62, 165 70, 151 64 C139 58, 137 36, 148 29Z"
-              fill={color}
-            />
-            <path d="M151 30 L148 8 L162 26Z" fill={color} />
-            <path d="M163 28 L177 11 L176 36Z" fill={color} />
-            <path d="M165 47 C178 43, 187 49, 186 57 C185 65, 173 68, 163 61Z" fill="#d9b894" />
-            <circle cx="165" cy="39" r="3.2" fill="#07070a" />
-            <circle cx="166" cy="38" r=".9" fill="#fff" />
-            <circle cx="184" cy="54" r="2.8" fill="#07070a" />
-            <path d="M173 61 Q178 68 184 62" fill="none" stroke="#301f24" strokeWidth="2" />
-          </g>
-
-          <g className="dog-tail">
-            <path
-              d="M47 49 C27 40, 17 21, 28 12 C35 7, 40 14, 36 20 C29 29, 35 36, 51 39"
-              fill="none"
-              stroke={color}
-              strokeWidth="12"
-              strokeLinecap="round"
-            />
-          </g>
-
-          <g className="front-leg-a">
-            <path d="M126 67 L145 94" stroke={color} strokeWidth="11" strokeLinecap="round" />
-          </g>
-          <g className="front-leg-b">
-            <path d="M113 68 L119 97" stroke={color} strokeWidth="11" strokeLinecap="round" />
-          </g>
-          <g className="rear-leg-a">
-            <path d="M59 67 L39 93" stroke={color} strokeWidth="12" strokeLinecap="round" />
-          </g>
-          <g className="rear-leg-b">
-            <path d="M76 69 L72 98" stroke={color} strokeWidth="12" strokeLinecap="round" />
-          </g>
-        </g>
-      </svg>
-
-      <div className="absolute bottom-[-3px] left-1/2 h-3 w-[92px] -translate-x-1/2 rounded-full bg-black/40 blur-[4px]" />
-      {running ? (
-        <>
-          <i className="race-dust dust-a" />
-          <i className="race-dust dust-b" />
-          <i className="race-dust dust-c" />
-        </>
-      ) : null}
+    <div className={`character-runner ${running ? "is-running" : "is-waiting"} action-${action} ${leader ? "is-leader" : ""}`}>
+      {leader && running ? <div className="leader-badge">선두</div> : null}
+      <div className={`character-shell ${photo ? "photo-shell" : "png-shell"}`}>
+        <img src={src} alt={dog.name} className="character-image" draggable={false} />
+        <div className="character-light" />
+      </div>
+      <div className="character-shadow" />
+      {running ? <><i className="race-dust dust-a"/><i className="race-dust dust-b"/><i className="race-dust dust-c"/></> : null}
+      {action === "sprint" ? <><i className="speed-streak streak-a"/><i className="speed-streak streak-b"/></> : null}
+      {action === "fall" ? <span className="impact-mark">💥</span> : null}
     </div>
   );
+}
+
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+function smootherstep(value: number) { const t = clamp(value, 0, 1); return t*t*t*(t*(t*6-15)+10); }
+
+function buildRunnerPaths(entries: DogEntry[], result: RaceResult): RunnerPath[] {
+  const samples = 240;
+  const duration = Math.max(1, result.durationMs);
+  return entries.map((dog) => {
+    const rankIndex = Math.max(0, result.ranking.indexOf(dog.lane));
+    const points: PathPoint[] = [];
+    let previousX = START_X;
+    for (let i=0;i<=samples;i++) {
+      const t=i/samples;
+      const eased=smootherstep(t);
+      const fade=Math.sin(Math.PI*t);
+      const early=Math.sin(Math.PI*clamp(t/0.44,0,1))*((dog.speed-76)*2.4);
+      const mid=Math.sin(Math.PI*clamp((t-0.16)/0.62,0,1))*((dog.stamina-76)*2.0);
+      const late=smootherstep(clamp((t-0.67)/0.33,0,1))*((dog.sprint-76)*3.2);
+      const weave=(Math.sin(t*Math.PI*4.2+dog.lane*1.17)*34 + Math.sin(t*Math.PI*8.3+dog.lane*.61)*12)*fade;
+      const rankPull=(5-rankIndex)*14*smootherstep(clamp((t-.7)/.3,0,1));
+      let eventOffset=0; let action:VisualAction='run';
+      for (const event of result.events) {
+        if (event.lane!==dog.lane) continue;
+        const center=event.at/duration; const d=Math.abs(t-center);
+        if (event.type==='mistake' && d<.052) { const q=1-d/.052; eventOffset-=72*q*Math.max(.7,event.intensity); action=d<.018?'fall':'recover'; }
+        if ((event.type==='surge'||event.type==='sprint') && d<.07) { const q=1-d/.07; eventOffset+=68*q*Math.max(.7,event.intensity); action='sprint'; }
+      }
+      const finalGap=rankIndex*38;
+      const maxX=FINISH_X-finalGap;
+      let x=START_X+eased*(FINISH_X-START_X)+early+mid+late+weave+rankPull+eventOffset;
+      x=clamp(x, i===0?START_X:previousX+0.4, maxX);
+      if (i===samples) x=maxX;
+      let y=0;
+      const hurdle=HURDLE_WORLD_X.find(h=>Math.abs(x-h)<150);
+      const mud=MUD_WORLD_X.some(m=>Math.abs(x-m)<180);
+      if (hurdle && action!=='fall' && action!=='recover') { const local=clamp((x-(hurdle-150))/300,0,1); y=-Math.sin(local*Math.PI)*82; action='jump'; }
+      else if (mud && action==='run') { action='mud'; y=4; }
+      points.push({t,x,y,action}); previousX=x;
+    }
+    return { lane: dog.lane, points };
+  });
+}
+
+function sampleRunnerPath(path: RunnerPath, phase: number) {
+  const p=clamp(phase,0,1); const idx=p*(path.points.length-1); const a=path.points[Math.floor(idx)]; const b=path.points[Math.min(path.points.length-1,Math.ceil(idx))]; const f=idx-Math.floor(idx);
+  return { x:lerp(a.x,b.x,f), y:lerp(a.y,b.y,f), action:f<.5?a.action:b.action };
 }
 
 export default function DogRaceClient() {
@@ -233,6 +193,8 @@ export default function DogRaceClient() {
   const hurdleRefs = useRef<Array<HTMLDivElement | null>>([]);
   const mudRefs = useRef<Array<HTMLDivElement | null>>([]);
   const eventMemoryRef = useRef<Record<string, boolean>>({});
+  const runnerPathsRef = useRef<RunnerPath[]>([]);
+  const cameraXRef = useRef(0);
   const cameraShellRef = useRef<HTMLDivElement | null>(null);
 
   const selectedDog = useMemo(
@@ -290,6 +252,8 @@ export default function DogRaceClient() {
     setFinishFlash(false);
     setCrowdLevel(0);
     eventMemoryRef.current = {};
+    runnerPathsRef.current = [];
+    cameraXRef.current = 0;
 
     try {
       const response = await fetch("/api/game/dog-race/create", {
@@ -408,136 +372,28 @@ export default function DogRaceClient() {
   }
 
   function runAnimation(data: PlayResponse) {
-    setRaceState("running");
-    setCameraMode("start");
-    startRef.current = performance.now();
-    lastUiUpdateRef.current = 0;
-
-    if (gateRef.current) {
-      gateRef.current.style.transform = "translateY(-112%)";
-    }
-
-    const tick = (now: number) => {
-      const rawElapsed = now - startRef.current;
-      const slowAt = data.result.durationMs - 1200;
-      const raceElapsed =
-        rawElapsed <= slowAt
-          ? rawElapsed
-          : slowAt + (rawElapsed - slowAt) * 0.46;
-
-      const safeElapsed = Math.min(raceElapsed, data.result.durationMs);
-      const positions = entries.map((dog) => ({
-        dog,
-        worldX: visualDistance(dog, data.result, safeElapsed),
-      }));
-
-      const sorted = [...positions].sort((a, b) => b.worldX - a.worldX);
-      const leaderWorldX = sorted[0]?.worldX || START_X;
-      const viewportWidth = trackRef.current?.clientWidth || 1000;
-      const phase = safeElapsed / Math.max(1, data.result.durationMs);
-      let mode: "start" | "side" | "close" | "finish" = "side";
-      if (phase < 0.12) mode = "start";
-      else if (phase > 0.84) mode = "finish";
-      else if (phase > 0.48 && phase < 0.68) mode = "close";
-      const cameraAnchor = mode === "start" ? 0.34 : mode === "close" ? 0.54 : mode === "finish" ? 0.66 : 0.48;
-      const cameraX = clamp(leaderWorldX - viewportWidth * cameraAnchor, 0, WORLD_LENGTH - viewportWidth);
-
-      const nextActions: Record<number, VisualAction> = {};
-      positions.forEach(({ dog, worldX }) => {
-        const node = dogRefs.current[dog.lane];
-        if (!node) return;
-        const action = getActionForDog(dog, data.result, safeElapsed, worldX);
-        nextActions[dog.lane] = action;
-        const screenX = worldX - cameraX;
-        const laneDepth = (dog.lane - 1) * 3.8;
-        let vertical = Math.sin(safeElapsed * 0.018 + dog.lane * 0.8) * 1.8;
-        if (action === "jump") {
-          const nearest = HURDLE_WORLD_X.reduce((best, x) => Math.abs(worldX - x) < Math.abs(worldX - best) ? x : best);
-          const local = clamp((worldX - (nearest - 145)) / 290, 0, 1);
-          vertical -= Math.sin(local * Math.PI) * 86;
-        }
-        if (action === "fall") vertical += 15;
-        if (action === "recover") vertical += 8;
-        if (action === "mud") vertical += 3;
-        node.style.transform = `translate3d(${screenX}px, ${vertical + laneDepth}px, 0)`;
-      });
-
-      if (finishRef.current) {
-        finishRef.current.style.transform = `translate3d(${
-          FINISH_X - cameraX
-        }px,0,0)`;
-      }
-
-      markerRefs.current.forEach((node, index) => {
-        if (!node) return;
-        const markerWorld = 720 + index * 680;
-        node.style.transform = `translate3d(${
-          markerWorld - cameraX
-        }px,0,0)`;
-      });
-
-      hurdleRefs.current.forEach((node, index) => {
-        if (!node) return;
-        node.style.transform = `translate3d(${HURDLE_WORLD_X[index] - cameraX}px,0,0)`;
-      });
-      mudRefs.current.forEach((node, index) => {
-        if (!node) return;
-        node.style.transform = `translate3d(${MUD_WORLD_X[index] - cameraX}px,0,0)`;
-      });
-
-      if (trackRef.current) {
-        trackRef.current.style.setProperty("--camera-x", `${cameraX}px`);
-        trackRef.current.style.setProperty(
-          "--speed-blur",
-          `${clamp(safeElapsed / 1800, 0, 1)}`
-        );
-      }
-
-      if (now - lastUiUpdateRef.current > 90) {
-        lastUiUpdateRef.current = now;
-        setElapsed(safeElapsed);
-        setLiveOrder(sorted.map((item) => item.dog.lane));
-        setDogActions(nextActions);
-        setCameraMode(mode);
-
-        const leadGap =
-          sorted.length >= 2
-            ? Math.max(0, sorted[0].worldX - sorted[1].worldX)
-            : 100;
-        const closeRaceBoost = clamp(1 - leadGap / 170, 0, 1) * 32;
-        const finishBoost = clamp((phase - 0.68) / 0.32, 0, 1) * 50;
-        const eventBoost = Object.values(nextActions).some(
-          (action) => action === "fall" || action === "sprint"
-        )
-          ? 18
-          : 0;
-        setCrowdLevel(
-          Math.round(clamp(18 + closeRaceBoost + finishBoost + eventBoost, 0, 100))
-        );
-      }
-
-      if (raceElapsed < data.result.durationMs) {
-        animationRef.current = requestAnimationFrame(tick);
-      } else {
-        setElapsed(data.result.durationMs);
-        setLiveOrder(data.result.ranking);
-        setDogActions({});
-        setCameraMode("finish");
-        setRaceState("photo");
-        setPhotoFinish(true);
-        setFinishFlash(true);
-        setCrowdLevel(100);
-
-        window.setTimeout(() => setFinishFlash(false), 420);
-        window.setTimeout(() => {
-          setPhotoFinish(false);
-          setRaceState("finished");
-          setDotori(data.newBalance);
-        }, 2200);
-      }
+    const paths = buildRunnerPaths(entries, data.result);
+    runnerPathsRef.current = paths;
+    setRaceState("running"); setCameraMode("start"); startRef.current=performance.now(); lastUiUpdateRef.current=0; cameraXRef.current=0;
+    if (gateRef.current) gateRef.current.style.transform="translateY(-112%)";
+    const tick=(now:number)=>{
+      const raw=now-startRef.current; const slowAt=data.result.durationMs-1300; const raceElapsed=raw<=slowAt?raw:slowAt+(raw-slowAt)*.44; const safe=Math.min(raceElapsed,data.result.durationMs); const phase=clamp(safe/data.result.durationMs,0,1);
+      const positions=paths.map(path=>{const sampled=sampleRunnerPath(path,phase); const dog=entries.find(e=>e.lane===path.lane)!; return {dog,...sampled};});
+      const sorted=[...positions].sort((a,b)=>b.x-a.x); const leaderX=sorted[0]?.x||START_X; const vw=trackRef.current?.clientWidth||1000;
+      const mode: "start"|"side"|"close"|"finish" = phase<.12?'start':phase>.84?'finish':phase>.48&&phase<.68?'close':'side';
+      const target=clamp(leaderX-vw*(mode==='finish'?.66:mode==='close'?.54:.48),0,WORLD_LENGTH-vw);
+      cameraXRef.current += (target-cameraXRef.current)*.045; const cameraX=cameraXRef.current;
+      const nextActions:Record<number,VisualAction>={};
+      positions.forEach(({dog,x,y,action})=>{const node=dogRefs.current[dog.lane]; if(!node)return; nextActions[dog.lane]=action; node.style.transform=`translate3d(${x-cameraX}px, ${y+(dog.lane-1)*3.8}px, 0)`;});
+      if(finishRef.current) finishRef.current.style.transform=`translate3d(${FINISH_X-cameraX}px,0,0)`;
+      markerRefs.current.forEach((n,i)=>{if(n)n.style.transform=`translate3d(${720+i*680-cameraX}px,0,0)`;});
+      hurdleRefs.current.forEach((n,i)=>{if(n)n.style.transform=`translate3d(${HURDLE_WORLD_X[i]-cameraX}px,0,0)`;});
+      mudRefs.current.forEach((n,i)=>{if(n)n.style.transform=`translate3d(${MUD_WORLD_X[i]-cameraX}px,0,0)`;});
+      if(trackRef.current) trackRef.current.style.setProperty('--camera-x',`${cameraX}px`);
+      if(now-lastUiUpdateRef.current>100){lastUiUpdateRef.current=now; setElapsed(safe); setLiveOrder(sorted.map(v=>v.dog.lane)); setDogActions(nextActions); setCameraMode(mode);}
+      if(raceElapsed<data.result.durationMs) animationRef.current=requestAnimationFrame(tick); else {setElapsed(data.result.durationMs);setLiveOrder(data.result.ranking);setDogActions({});setCameraMode('finish');setRaceState('photo');setPhotoFinish(true);setFinishFlash(true);setCrowdLevel(100);window.setTimeout(()=>setFinishFlash(false),420);window.setTimeout(()=>{setPhotoFinish(false);setRaceState('finished');setDotori(data.newBalance);},2200);}
     };
-
-    animationRef.current = requestAnimationFrame(tick);
+    animationRef.current=requestAnimationFrame(tick);
   }
 
   async function placeBetAndRace() {
@@ -1003,8 +859,9 @@ export default function DogRaceClient() {
                             : "border-white/10 bg-[#151027] hover:-translate-y-1 hover:border-violet-400/30"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
+                        <div className="flex items-start gap-4">
+                          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5"><img src={CHARACTER_ASSETS[dog.name]} alt={dog.name} className="h-full w-full object-contain" /></div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-black tracking-[.18em] text-violet-300">
                               LANE {dog.lane}
                             </p>
@@ -1430,6 +1287,9 @@ export default function DogRaceClient() {
             drop-shadow(0 6px 6px rgba(0,0,0,.42))
             drop-shadow(0 0 9px rgba(255,255,255,.12));
         }
+
+
+        .character-runner{position:relative;width:132px;height:98px;transform-origin:center bottom;filter:drop-shadow(0 8px 7px rgba(0,0,0,.45));animation:characterGallop .42s ease-in-out infinite}.character-shell{position:absolute;left:14px;bottom:9px;width:104px;height:80px;overflow:hidden;border-radius:38% 46% 34% 42%;border:2px solid rgba(255,255,255,.24);background:rgba(255,255,255,.07);transform-origin:50% 82%;animation:characterStretch .42s ease-in-out infinite;box-shadow:inset 0 0 20px rgba(255,255,255,.12),0 12px 28px rgba(0,0,0,.28)}.character-image{width:100%;height:100%;object-fit:contain;object-position:center;user-select:none;pointer-events:none}.photo-shell .character-image{object-fit:cover;object-position:center 32%;transform:scale(1.08)}.character-light{position:absolute;inset:0;background:linear-gradient(145deg,rgba(255,255,255,.28),transparent 28%),radial-gradient(circle at 72% 78%,rgba(124,58,237,.18),transparent 38%);mix-blend-mode:screen}.character-shadow{position:absolute;left:20px;bottom:0;width:92px;height:13px;border-radius:999px;background:rgba(0,0,0,.42);filter:blur(5px);animation:characterShadow .42s ease-in-out infinite}.leader-badge{position:absolute;left:50%;top:-24px;z-index:10;transform:translateX(-50%);border:1px solid rgba(253,224,71,.3);border-radius:999px;background:rgba(250,204,21,.16);padding:3px 9px;color:#fef3c7;font-size:9px;font-weight:900;white-space:nowrap}.speed-streak{position:absolute;left:-68px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,#fde68a)}.streak-a{top:30px;width:68px}.streak-b{top:48px;width:52px;left:-52px}.impact-mark{position:absolute;right:-6px;top:-8px;font-size:24px}.action-jump{animation:characterJump .5s ease-in-out infinite}.action-fall{animation:characterFall .45s ease-out forwards}.action-recover{animation:characterRecover .55s ease-out forwards}.action-mud{animation:characterMud .2s linear infinite;filter:saturate(.7) brightness(.86) drop-shadow(0 8px 7px rgba(0,0,0,.45))}.action-sprint{animation-duration:.27s;filter:drop-shadow(0 8px 7px rgba(0,0,0,.45)) drop-shadow(0 0 15px rgba(250,204,21,.5))}@keyframes characterGallop{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1.4deg)}}@keyframes characterStretch{0%,100%{transform:scaleX(1.04) scaleY(.98) rotate(-1deg)}50%{transform:scaleX(.96) scaleY(1.04) rotate(1deg)}}@keyframes characterShadow{0%,100%{transform:scaleX(1);opacity:.48}50%{transform:scaleX(.78);opacity:.3}}@keyframes characterJump{0%,100%{transform:rotate(0deg) scale(1)}50%{transform:rotate(-5deg) scale(1.03)}}@keyframes characterFall{0%{transform:rotate(0deg) translateY(0)}100%{transform:rotate(82deg) translateY(18px)}}@keyframes characterRecover{0%{transform:rotate(82deg) translateY(18px)}100%{transform:rotate(0deg) translateY(0)}}@keyframes characterMud{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(2px) rotate(-2deg)}75%{transform:translateY(2px) rotate(2deg)}}
 
         @media (max-width: 768px) {
           .cinematic-track {
