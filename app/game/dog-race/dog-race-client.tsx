@@ -187,6 +187,7 @@ export default function DogRaceClient() {
   const lastUiUpdateRef = useRef(0);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const finishRef = useRef<HTMLDivElement | null>(null);
+  const finishLineRef = useRef<HTMLDivElement | null>(null);
   const gateRef = useRef<HTMLDivElement | null>(null);
   const dogRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const markerRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -549,6 +550,15 @@ export default function DogRaceClient() {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between border-b border-white/10 bg-black/25 px-5 py-2.5 text-xs">
+                  <span className="font-bold text-white/55">
+                    판정 기준: 캐릭터 앞쪽 판정점이 빨간 결승선을 통과한 순서
+                  </span>
+                  <span className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 font-black text-red-300">
+                    빨간선 = 공식 판정선
+                  </span>
+                </div>
+
                 <div
                   ref={trackRef}
                   className={`cinematic-track camera-${cameraMode} relative h-[610px] overflow-hidden md:h-[660px]`}
@@ -621,13 +631,23 @@ export default function DogRaceClient() {
                   </div>
 
                   <div
-                    ref={finishRef}
-                    className="absolute left-0 top-[35%] z-[80] h-[63%] w-10 will-change-transform"
+                    ref={finishLineRef}
+                    className="finish-ground-line absolute left-0 top-[39%] z-[73] h-[59%] w-[22px] will-change-transform"
                     style={{ transform: `translate3d(${FINISH_X}px,0,0)` }}
                   >
-                    <div className="h-full w-6 bg-[repeating-linear-gradient(0deg,#fff_0_14px,#111_14px_28px)] shadow-[0_0_28px_rgba(255,255,255,.28)]" />
-                    <div className="absolute -left-14 -top-8 whitespace-nowrap rounded-lg bg-white px-3 py-2 text-xs font-black text-black shadow-xl">
-                      FINISH
+                    <div className="absolute inset-y-0 left-0 w-[14px] bg-[repeating-linear-gradient(0deg,#fff_0_18px,#0b0b0d_18px_36px)] shadow-[0_0_18px_rgba(255,255,255,.58)]" />
+                    <div className="absolute inset-y-0 left-[14px] w-[4px] bg-red-500 shadow-[0_0_14px_rgba(239,68,68,.9)]" />
+                  </div>
+
+                  <div
+                    ref={finishRef}
+                    className="absolute left-0 top-[31%] z-[84] h-[68%] w-[110px] will-change-transform"
+                    style={{ transform: `translate3d(${FINISH_X}px,0,0)` }}
+                  >
+                    <div className="absolute left-[-7px] top-0 h-full w-[8px] bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,.35)]" />
+                    <div className="absolute right-[-7px] top-0 h-full w-[8px] bg-zinc-200 shadow-[0_0_20px_rgba(255,255,255,.35)]" />
+                    <div className="absolute left-[-7px] right-[-7px] top-0 rounded-t-xl border-2 border-white/40 bg-[repeating-linear-gradient(90deg,#fff_0_18px,#111_18px_36px)] px-3 py-2 text-center text-xs font-black text-black shadow-2xl">
+                      결승 · FINISH
                     </div>
                   </div>
 

@@ -58,10 +58,6 @@ export async function POST(req: Request) {
     }
 
     const user = users[0];
-    if (String(user.role || "") === "admin") {
-      await conn.rollback();
-      return NextResponse.json({ success: false, message: "관리자 계정은 게임에 베팅할 수 없습니다." }, { status: 403 });
-    }
 
     if (Number(user.dotori || 0) < betAmount) {
       await conn.rollback();

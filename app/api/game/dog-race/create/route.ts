@@ -28,11 +28,6 @@ export async function POST() {
       return NextResponse.json({ success: false, message: "유저 정보를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    if (String(users[0].role || "") === "admin") {
-      await conn.rollback();
-      return NextResponse.json({ success: false, message: "관리자 계정은 게임에 참여할 수 없습니다." }, { status: 403 });
-    }
-
     const [settingsRows]: any = await conn.query(
       "SELECT payout_rate, is_active FROM dog_race_settings WHERE id = 1 LIMIT 1"
     );

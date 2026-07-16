@@ -287,6 +287,7 @@ export default async function Home() {
                 <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">사다리게임</a>
                 <a href="/game/pinball" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">핀볼게임</a>
                 <a href="/game/updown" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">업다운게임</a>
+                <a href="/game/dog-race" className="block rounded-xl px-4 py-3 text-[#f7d36b] hover:bg-[#2b2415]">왈왈이경주</a>
                 <a href="/lottery" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 로또</a>
               </div>
             </div>
@@ -316,6 +317,7 @@ export default async function Home() {
                   <a href="/admin/dotori" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 지급</a>
                   <a href="/admin/board" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">게시판 관리</a>
                   <a href="/admin/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">게임 관리</a>
+                  <a href="/admin/dog-race" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">왈왈이경주 관리</a>
                   <a href="/admin/lottery" className="block rounded-xl px-4 py-3 text-[#f7d36b] hover:bg-[#2b2415]">로또 관리</a>
                 </div>
               </div>
@@ -458,6 +460,16 @@ export default async function Home() {
                   <div className="text-4xl">🎟️</div>
                   <p className="mt-3 font-black">도토리 로또</p>
                   <p className="text-xs text-zinc-500">참여하기</p>
+                </a>
+
+                <a
+                  href="/game/dog-race"
+                  className="group relative overflow-hidden rounded-2xl border border-violet-500/35 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,.22),transparent_45%),#11131b] p-4 hover:border-violet-400 hover:bg-[#201735]"
+                >
+                  <div className="absolute right-2 top-2 rounded-full bg-red-500/15 px-2 py-1 text-[9px] font-black text-red-300">NEW</div>
+                  <div className="text-4xl transition-transform group-hover:scale-110">🏁</div>
+                  <p className="mt-3 font-black text-violet-200">왈왈이경주</p>
+                  <p className="text-xs text-zinc-500">그랜드 더비 참가</p>
                 </a>
               </div>
             </div>
