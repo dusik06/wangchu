@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
-  calculateFee,
   getSeasonNowText,
   isMarketOpen,
   isSeasonRunning,
@@ -73,17 +72,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, message: "유저 정보를 찾을 수 없습니다." },
         { status: 404 }
-      );
-    }
-
-    if (user.role === "admin") {
-      await connection.rollback();
-      return NextResponse.json(
-        {
-          success: false,
-          message: "관리자 계정은 시즌 주식 거래를 할 수 없습니다.",
-        },
-        { status: 403 }
       );
     }
 
@@ -208,8 +196,8 @@ export async function POST(req: Request) {
 
     const unitPrice = toInteger(stock.current_price);
     const grossAmount = unitPrice * quantity;
-    const feeRate = toNumber(season.trade_fee_rate);
-    const feeAmount = calculateFee(grossAmount, feeRate);
+    const feeRate = 0;
+    const feeAmount = 0;
     const receiveAmount = grossAmount - feeAmount;
 
     if (
@@ -336,15 +324,6 @@ export async function POST(req: Request) {
       ]
     );
 
-    await connection.query(
-      `
-      UPDATE stock_seasons
-      SET fee_prize = fee_prize + ?,
-          updated_at = ?
-      WHERE id = ?
-      `,
-      [feeAmount, now, season.id]
-    );
 
     const [assetRows]: any = await connection.query(
       `

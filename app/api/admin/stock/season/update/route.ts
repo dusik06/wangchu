@@ -191,7 +191,7 @@ export async function POST(req: Request) {
         startingMoney,
         integer(body.basePrize),
         body.includeEntryFeeInPrize === true ? 1 : 0,
-        number(body.tradeFeeRate),
+        0,
         integer(body.minTradeCount),
         rates[0],
         rates[1],

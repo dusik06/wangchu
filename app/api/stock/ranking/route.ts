@@ -14,7 +14,6 @@ export async function GET() {
       FROM stock_holdings h
       INNER JOIN users u ON u.id = h.user_id
       INNER JOIN stock_items s ON s.id = h.stock_id
-      WHERE u.role != 'admin'
       GROUP BY u.id, u.nickname
       HAVING profit_amount != 0
       ORDER BY profit_amount DESC
@@ -29,7 +28,6 @@ export async function GET() {
       FROM stock_trades t
       INNER JOIN users u ON u.id = t.user_id
       WHERE t.trade_type = 'SELL'
-        AND u.role != 'admin'
       GROUP BY u.id, u.nickname
       HAVING profit_amount != 0
       ORDER BY profit_amount DESC

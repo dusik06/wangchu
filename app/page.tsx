@@ -71,6 +71,19 @@ async function getSiteSettings() {
   };
 }
 
+function formatSeasonRemaining(value: unknown) {
+  const text = String(value || "").slice(0, 19).replace(" ", "T");
+  if (!text) return "-";
+  const end = new Date(`${text}+09:00`).getTime();
+  const diff = Math.max(0, end - Date.now());
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  if (days > 0) return `${days}일 ${hours}시간`;
+  if (hours > 0) return `${hours}시간 ${minutes}분`;
+  return `${minutes}분`;
+}
+
 async function getMainData() {
   const [
     noticePosts,
@@ -80,6 +93,9 @@ async function getMainData() {
     shopItems,
     dotoriRanking,
     stockPreview,
+    stockSeasonRows,
+    stockLeaderRows,
+    stockLatestEventRows,
     lotteryRoundRows,
     lotteryWinners,
   ] = await Promise.all([
@@ -158,6 +174,47 @@ async function getMainData() {
 `),
 
     safeQuery(`
+      SELECT
+        s.*,
+        DATE_FORMAT(s.ends_at, '%Y-%m-%d %H:%i:%s') AS ends_at_text,
+        (SELECT COUNT(*) FROM stock_season_participants p WHERE p.season_id = s.id) AS participant_count,
+        (IFNULL(s.base_prize, 0) + IFNULL(s.entry_fee_prize, 0) + IFNULL(s.fee_prize, 0)) AS total_prize
+      FROM stock_seasons s
+      WHERE s.status IN ('ready', 'active')
+      ORDER BY s.id DESC
+      LIMIT 1
+    `),
+
+    safeQuery(`
+      SELECT u.nickname, p.current_profit_rate
+      FROM stock_season_participants p
+      INNER JOIN users u ON u.id = p.user_id
+      INNER JOIN stock_seasons s ON s.id = p.season_id
+      WHERE s.status IN ('ready', 'active')
+      ORDER BY p.current_profit_rate DESC, p.current_total_asset DESC, p.id ASC
+      LIMIT 1
+    `),
+
+    safeQuery(`
+      SELECT
+        e.id,
+        e.event_title,
+        e.event_rate,
+        DATE_FORMAT(e.created_at, '%Y.%m.%d %H:%i') AS created_at_text,
+        si.stock_name
+      FROM stock_events e
+      INNER JOIN stock_items si ON si.id = e.stock_id
+      WHERE e.event_type = 'up'
+        AND EXISTS (
+          SELECT 1
+          FROM stock_seasons s
+          WHERE s.status IN ('ready', 'active')
+        )
+      ORDER BY e.id DESC
+      LIMIT 5
+    `),
+
+    safeQuery(`
   SELECT
       r.*,
       COUNT(e.id) AS participant_count
@@ -192,6 +249,11 @@ async function getMainData() {
     shopItems,
     dotoriRanking,
     stockPreview,
+    stockSeasonCard: {
+      season: stockSeasonRows[0] || null,
+      leader: stockLeaderRows[0] || null,
+      latestEvents: stockLatestEventRows || [],
+    },
     lotteryPreview: {
       current: lotteryRoundRows[0] || null,
       winners: lotteryWinners,
@@ -225,6 +287,7 @@ export default async function Home() {
     shopItems,
     dotoriRanking,
     stockPreview,
+    stockSeasonCard,
     lotteryPreview,
   } = mainData;
 
@@ -546,6 +609,59 @@ export default async function Home() {
                   전체 보기 〉
                 </a>
               </div>
+
+              {stockSeasonCard.season && (
+                <a
+                  href="/stock"
+                  className="mb-4 block rounded-2xl border border-[#f7d36b]/35 bg-[linear-gradient(135deg,rgba(247,211,107,0.14),rgba(21,25,37,0.9))] p-4"
+                >
+                  <p className="text-xs font-black tracking-[0.16em] text-[#f7d36b]">진행 중인 주식 시즌</p>
+                  <h3 className="mt-2 text-lg font-black">{stockSeasonCard.season.title}</h3>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl bg-black/25 p-3">
+                      <p className="text-zinc-500">현재 1등</p>
+                      <p className="mt-1 truncate font-black">{stockSeasonCard.leader?.nickname || "아직 순위 없음"}</p>
+                    </div>
+                    <div className="rounded-xl bg-black/25 p-3">
+                      <p className="text-zinc-500">1등 수익률</p>
+                      <p className={`mt-1 font-black ${Number(stockSeasonCard.leader?.current_profit_rate || 0) >= 0 ? "text-red-400" : "text-blue-400"}`}>
+                        {Number(stockSeasonCard.leader?.current_profit_rate || 0) >= 0 ? "+" : ""}{Number(stockSeasonCard.leader?.current_profit_rate || 0).toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-black/25 p-3">
+                      <p className="text-zinc-500">총 상금</p>
+                      <p className="mt-1 font-black text-yellow-300">{Number(stockSeasonCard.season.total_prize || 0).toLocaleString()} 도토리</p>
+                    </div>
+                    <div className="rounded-xl bg-black/25 p-3">
+                      <p className="text-zinc-500">참가자</p>
+                      <p className="mt-1 font-black">{Number(stockSeasonCard.season.participant_count || 0)}명</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                    <span className="text-xs font-bold text-zinc-400">시즌 종료까지</span>
+                    <span className="text-sm font-black text-white">{formatSeasonRemaining(stockSeasonCard.season.ends_at_text)}</span>
+                  </div>
+
+                  {stockSeasonCard.latestEvents.length > 0 && (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-red-400/20 bg-red-400/10">
+                      <div className="border-b border-red-400/15 px-3 py-2 text-xs font-black text-red-200">🚨 최근 자동 호재</div>
+                      <div className="divide-y divide-red-400/10">
+                        {stockSeasonCard.latestEvents.map((event: any) => (
+                          <div key={event.id} className="px-3 py-2">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="min-w-0 truncate font-black text-red-100">{event.stock_name} · {event.event_title}</span>
+                              <span className="shrink-0 font-black text-red-300">+{Number(event.event_rate || 0).toFixed(2)}%</span>
+                            </div>
+                            <p className="mt-1 text-[10px] text-red-200/60">{event.created_at_text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="mt-3 text-right text-xs font-black text-[#f7d36b]">주식시장 참여하기 〉</p>
+                </a>
+              )}
 
               {stockPreview.length === 0 ? (
                 <p className="text-sm text-zinc-400">등록된 주식이 없습니다.</p>

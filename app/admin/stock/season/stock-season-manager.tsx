@@ -14,9 +14,7 @@ type SeasonForm = {
   startingMoney: number;
   basePrize: number;
   entryFeePrize?: number;
-  feePrize?: number;
   includeEntryFeeInPrize: boolean;
-  tradeFeeRate: number;
   minTradeCount: number;
   firstPrizeRate: number;
   secondPrizeRate: number;
@@ -55,7 +53,6 @@ const defaults: SeasonForm = {
   startingMoney: 10000,
   basePrize: 5000,
   includeEntryFeeInPrize: false,
-  tradeFeeRate: 2,
   minTradeCount: 5,
   firstPrizeRate: 60,
   secondPrizeRate: 30,
@@ -96,8 +93,7 @@ export default function StockSeasonManager({
   );
   const totalPrize =
     Number(form.basePrize || 0) +
-    Number(form.entryFeePrize || 0) +
-    Number(form.feePrize || 0);
+    Number(form.entryFeePrize || 0);
 
   function set<K extends keyof SeasonForm>(key: K, value: SeasonForm[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -130,7 +126,6 @@ export default function StockSeasonManager({
       startingMoney: Number(form.startingMoney),
       basePrize: Number(form.basePrize),
       includeEntryFeeInPrize: form.includeEntryFeeInPrize,
-      tradeFeeRate: Number(form.tradeFeeRate),
       minTradeCount: Number(form.minTradeCount),
       firstPrizeRate: Number(form.firstPrizeRate),
       secondPrizeRate: Number(form.secondPrizeRate),
@@ -240,7 +235,6 @@ export default function StockSeasonManager({
           <div className="mb-5 grid gap-3 md:grid-cols-4">
             <Summary label="현재 상태" value={String(form.status || "ready")} />
             <Summary label="총상금" value={`${n(totalPrize)} 도토리`} accent />
-            <Summary label="수수료 누적" value={`${n(form.feePrize)} 도토리`} />
             <Summary label="상금 비율 합계" value={`${totalRate}%`} danger={totalRate !== 100} />
           </div>
         )}
@@ -262,7 +256,6 @@ export default function StockSeasonManager({
             <Panel title="상금·거래 조건">
               <div className="grid gap-4 md:grid-cols-3">
                 <NumberBox label="기본상금" value={form.basePrize} onChange={(v) => set("basePrize", v)} />
-                <NumberBox label="수수료 %" step="0.01" value={form.tradeFeeRate} onChange={(v) => set("tradeFeeRate", v)} />
                 <NumberBox label="최소 거래횟수" value={form.minTradeCount} onChange={(v) => set("minTradeCount", v)} />
                 <NumberBox label="1등 %" step="0.01" value={form.firstPrizeRate} onChange={(v) => set("firstPrizeRate", v)} />
                 <NumberBox label="2등 %" step="0.01" value={form.secondPrizeRate} onChange={(v) => set("secondPrizeRate", v)} />

@@ -193,12 +193,8 @@ export function isMarketOpen(openTimeValue: unknown, closeTimeValue: unknown) {
   };
 }
 
-export function calculateFee(grossAmount: number, feeRate: number) {
-  if (grossAmount <= 0 || feeRate <= 0) {
-    return 0;
-  }
-
-  return Math.max(1, Math.ceil((grossAmount * feeRate) / 100));
+export function calculateFee(_grossAmount: number, _feeRate: number) {
+  return 0;
 }
 
 export function getSeasonNowText() {

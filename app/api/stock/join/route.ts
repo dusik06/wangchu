@@ -40,17 +40,6 @@ export async function POST() {
       );
     }
 
-    if (user.role === "admin") {
-      await connection.rollback();
-      return NextResponse.json(
-        {
-          success: false,
-          message: "관리자 계정은 주식 시즌에 참가할 수 없습니다.",
-        },
-        { status: 403 }
-      );
-    }
-
     const [seasonRows]: any = await connection.query(
       `
       SELECT

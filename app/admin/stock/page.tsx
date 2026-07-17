@@ -280,25 +280,25 @@ export default async function AdminStockPage() {
                     {formatNumber(stock.current_price)} 도토리
                   </p>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+                  <div className="mt-4 grid gap-2 text-center text-sm sm:grid-cols-3">
                     <div className="rounded-xl bg-black/30 p-3">
-                      <p className="text-xs text-zinc-500">일반 변동</p>
-                      <p className="mt-1 font-black">
-                        ±{stock.normal_rate}%
+                      <p className="text-xs text-zinc-500">일반 하락</p>
+                      <p className="mt-1 font-black text-blue-300">
+                        -{Number(stock.normal_down_min || 1)}~{Number(stock.normal_down_max || stock.normal_rate || 3)}%
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-black/30 p-3">
-                      <p className="text-xs text-zinc-500">특수 확률</p>
-                      <p className="mt-1 font-black">
-                        {stock.special_chance}%
+                      <p className="text-xs text-zinc-500">일반 상승</p>
+                      <p className="mt-1 font-black text-red-300">
+                        +{Number(stock.normal_up_min || 1)}~{Number(stock.normal_up_max || stock.normal_rate || 5)}%
                       </p>
                     </div>
 
-                    <div className="rounded-xl bg-black/30 p-3">
-                      <p className="text-xs text-zinc-500">특수 변동</p>
-                      <p className="mt-1 font-black">
-                        ±{stock.special_rate}%
+                    <div className="rounded-xl border border-yellow-300/15 bg-yellow-300/5 p-3">
+                      <p className="text-xs text-zinc-500">자동 호재</p>
+                      <p className="mt-1 font-black text-yellow-300">
+                        {Number(stock.special_chance || 0)}% · +{Number(stock.special_up_min || 1)}~{Number(stock.special_up_max || stock.special_rate || 10)}%
                       </p>
                     </div>
                   </div>

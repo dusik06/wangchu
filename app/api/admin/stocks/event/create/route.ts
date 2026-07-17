@@ -86,10 +86,7 @@ export async function POST(req: Request) {
     body.eventTitle || ""
   ).trim();
 
-  const eventType =
-    String(body.eventType || "").toLowerCase() === "down"
-      ? "down"
-      : "up";
+  const eventType = "up";
 
   const eventRate = toNumber(body.eventRate);
   const durationMinutes = toInteger(
@@ -313,9 +310,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `${stock.stock_name}에 ${
-        eventType === "up" ? "호재" : "악재"
-      } 이벤트가 등록되었습니다.`,
+      message: `${stock.stock_name}에 호재 이벤트가 등록되었습니다.`,
       event: {
         id: Number(insertResult.insertId),
         stockId,

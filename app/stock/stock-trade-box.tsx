@@ -16,7 +16,6 @@ type Props = {
   myProfit: number;
   myProfitRate: number;
   buyableQuantity: number;
-  feeRate: number;
   canTrade: boolean;
   disabledMessage: string;
 };
@@ -32,13 +31,6 @@ function profitClass(value: number) {
   return "text-zinc-400";
 }
 
-function calculateFee(grossAmount: number, feeRate: number) {
-  if (grossAmount <= 0 || feeRate <= 0) {
-    return 0;
-  }
-
-  return Math.max(1, Math.ceil((grossAmount * feeRate) / 100));
-}
 
 export default function StockTradeBox({
   stockId,
@@ -52,7 +44,6 @@ export default function StockTradeBox({
   myProfit,
   myProfitRate,
   buyableQuantity,
-  feeRate,
   canTrade,
   disabledMessage,
 }: Props) {
@@ -65,12 +56,10 @@ export default function StockTradeBox({
   }, [quantity]);
 
   const grossAmount = currentPrice * tradeQuantity;
-  const feeAmount = calculateFee(grossAmount, feeRate);
-
-  const buyFinalCost = grossAmount + feeAmount;
+  const buyFinalCost = grossAmount;
   const buyAfterMoney = availableMoney - buyFinalCost;
 
-  const sellReceiveAmount = Math.max(0, grossAmount - feeAmount);
+  const sellReceiveAmount = grossAmount;
   const sellBuyCost =
     myQuantity > 0
       ? Math.floor((myBuyAmount * tradeQuantity) / myQuantity)
@@ -141,7 +130,6 @@ export default function StockTradeBox({
           data.message,
           "",
           `거래금액: ${formatNumber(data.grossAmount)} ${currencyName}`,
-          `수수료: ${formatNumber(data.feeAmount)} ${currencyName}`,
           type === "buy"
             ? `최종 차감: ${formatNumber(data.finalCost)} ${currencyName}`
             : `실제 수령: ${formatNumber(
@@ -278,11 +266,6 @@ export default function StockTradeBox({
             value={`${formatNumber(grossAmount)} ${currencyName}`}
           />
 
-          <Row
-            label={`거래 수수료 ${feeRate}%`}
-            value={`${formatNumber(feeAmount)} ${currencyName}`}
-          />
-
           <div className="my-3 h-px bg-white/10" />
 
           <Row
@@ -375,11 +358,6 @@ export default function StockTradeBox({
               <ModalRow
                 label="거래 금액"
                 value={`${formatNumber(grossAmount)} ${currencyName}`}
-              />
-
-              <ModalRow
-                label={`수수료 ${feeRate}%`}
-                value={`${formatNumber(feeAmount)} ${currencyName}`}
               />
 
               {modalType === "buy" ? (

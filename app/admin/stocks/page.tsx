@@ -81,6 +81,71 @@ export default async function AdminStocksPage() {
       )
     : [[{ last_round_at: null }]];
 
+  const [virtualSummaryRows]: any = season
+    ? await db.query(
+        `
+        SELECT
+          COUNT(*) AS trader_count,
+          SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_count,
+          IFNULL(SUM(trade_count), 0) AS total_trade_count,
+          IFNULL(SUM(available_money), 0) AS total_available_money,
+          MAX(last_action_at) AS last_action_at
+        FROM stock_virtual_traders
+        WHERE season_id = ?
+        `,
+        [season.id]
+      )
+    : [[{
+        trader_count: 0,
+        active_count: 0,
+        total_trade_count: 0,
+        total_available_money: 0,
+        last_action_at: null,
+      }]];
+
+  const [virtualTradeRows]: any = season
+    ? await db.query(
+        `
+        SELECT
+          vt.id,
+          vt.trade_type,
+          vt.quantity,
+          vt.unit_price,
+          vt.gross_amount,
+          vt.decision_reason,
+          vt.was_mistake,
+          vt.created_at,
+          trader.display_name,
+          trader.strategy_type,
+          stock.stock_name
+        FROM stock_virtual_trades vt
+        INNER JOIN stock_virtual_traders trader
+          ON trader.id = vt.virtual_trader_id
+        INNER JOIN stock_items stock
+          ON stock.id = vt.stock_id
+        WHERE vt.season_id = ?
+        ORDER BY vt.id DESC
+        LIMIT 12
+        `,
+        [season.id]
+      )
+    : [[]];
+
+  const [pressureRows]: any = season
+    ? await db.query(
+        `
+        SELECT
+          IFNULL(SUM(virtual_buy_amount), 0) AS virtual_buy_amount,
+          IFNULL(SUM(virtual_sell_amount), 0) AS virtual_sell_amount,
+          IFNULL(AVG(virtual_pressure_rate), 0) AS average_pressure_rate
+        FROM stock_market_rounds
+        WHERE season_id = ?
+          AND round_ended_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        `,
+        [season.id]
+      )
+    : [[{ virtual_buy_amount: 0, virtual_sell_amount: 0, average_pressure_rate: 0 }]];
+
   const listed = stocks.filter((stock: any) => Number(stock.is_listed) === 1);
   const delisted = stocks.filter((stock: any) => Number(stock.is_listed) !== 1);
   const totalPrize = season
@@ -138,6 +203,75 @@ export default async function AdminStocksPage() {
           <StockMarketRefreshButton />
         </section>
 
+        <section className="mb-6 rounded-3xl border border-white/10 bg-[#101321] p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black tracking-[0.18em] text-violet-300">
+                VIRTUAL MARKET ACTIVITY
+              </p>
+              <h2 className="mt-2 text-2xl font-black">가상 투자자 현황</h2>
+              <p className="mt-2 text-sm text-zinc-400">
+                가상 투자자는 가격 흐름에만 영향을 주며 사용자 랭킹에는 포함되지 않습니다.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-violet-300/20 bg-violet-300/5 px-4 py-3 text-right text-xs">
+              <p className="text-zinc-500">마지막 행동</p>
+              <p className="mt-1 font-black text-violet-200">
+                {formatDate(virtualSummaryRows[0]?.last_action_at)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <Summary label="설정 인원" value={`${formatNumber(virtualSummaryRows[0]?.trader_count)}명`} />
+            <Summary label="활성 인원" value={`${formatNumber(virtualSummaryRows[0]?.active_count)}명`} />
+            <Summary label="누적 거래" value={`${formatNumber(virtualSummaryRows[0]?.total_trade_count)}회`} />
+            <Summary label="24시간 매수" value={`${formatNumber(pressureRows[0]?.virtual_buy_amount)} ${season?.currency_name || "주식머니"}`} />
+            <Summary label="24시간 매도" value={`${formatNumber(pressureRows[0]?.virtual_sell_amount)} ${season?.currency_name || "주식머니"}`} />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-black">최근 가상 투자자 거래</p>
+              <p className="text-xs text-zinc-500">
+                평균 가격 압력 {Number(pressureRows[0]?.average_pressure_rate || 0).toFixed(3)}%
+              </p>
+            </div>
+
+            {virtualTradeRows.length === 0 ? (
+              <p className="mt-4 rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-zinc-500">
+                아직 가상 투자자 거래가 없습니다.
+              </p>
+            ) : (
+              <div className="mt-4 grid gap-2 lg:grid-cols-2">
+                {virtualTradeRows.map((trade: any) => (
+                  <div key={trade.id} className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-black ${String(trade.trade_type).toUpperCase() === "BUY" ? "bg-red-400/10 text-red-300" : "bg-blue-400/10 text-blue-300"}`}>
+                            {String(trade.trade_type).toUpperCase() === "BUY" ? "매수" : "매도"}
+                          </span>
+                          <span className="text-sm font-black">{trade.display_name}</span>
+                          <span className="text-[11px] text-zinc-500">{trade.strategy_type}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-zinc-300">
+                          {trade.stock_name} · {formatNumber(trade.quantity)}주 · {formatNumber(trade.gross_amount)}
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {trade.decision_reason || "자동 판단"}
+                          {Number(trade.was_mistake) === 1 ? " · 판단 실수 포함" : ""}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-xs text-zinc-600">{formatDate(trade.created_at)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="mb-6 grid gap-6 xl:grid-cols-2">
           <StockCreateForm />
           <StockEventForm stocks={stocks} />
@@ -146,7 +280,7 @@ export default async function AdminStocksPage() {
         <section className="mb-6 rounded-3xl border border-white/10 bg-[#101321] p-6">
           <h2 className="text-2xl font-black">이벤트 관리</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            진행 중 이벤트를 즉시 종료하거나 기록을 삭제할 수 있습니다.
+            자동 호재와 기존 이벤트 기록을 확인할 수 있습니다. 자동 호재는 직접 등록하지 않아도 시장 갱신 때 발생합니다.
           </p>
 
           {eventRows.length === 0 ? (
@@ -215,7 +349,7 @@ function StockList({ title, stocks, danger = false }: { title: string; stocks: a
                 <div>
                   <h3 className="text-xl font-black">{stock.stock_name}</h3>
                   <p className="mt-2 text-xs text-zinc-500">
-                    일반 ±{stock.normal_rate}% · 특수 {stock.special_chance}% · 특수폭 ±{stock.special_rate}%
+                    일반 하락 {stock.normal_down_min}%~{stock.normal_down_max}% · 상승 {stock.normal_up_min}%~{stock.normal_up_max}% · 자동 호재 {stock.special_chance}% / +{stock.special_up_min}%~+{stock.special_up_max}%
                   </p>
                 </div>
                 <p className="text-2xl font-black text-yellow-300">

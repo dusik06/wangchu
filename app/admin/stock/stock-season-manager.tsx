@@ -87,7 +87,7 @@ export default function StockSeasonManager({
     basePrize: "5000",
     includeEntryFeeInPrize: true,
 
-    tradeFeeRate: "2",
+    tradeFeeRate: "0",
     minTradeCount: "5",
 
     firstPrizeRate: "50",
@@ -180,7 +180,7 @@ export default function StockSeasonManager({
             startingMoney: Number(form.startingMoney),
             basePrize: Number(form.basePrize),
 
-            tradeFeeRate: Number(form.tradeFeeRate),
+            tradeFeeRate: 0,
             minTradeCount: Number(form.minTradeCount),
 
             firstPrizeRate: Number(form.firstPrizeRate),
@@ -369,12 +369,6 @@ export default function StockSeasonManager({
             )} 도토리`}
           />
 
-          <InfoCard
-            label="수수료 적립"
-            value={`${formatNumber(
-              activeSeason.fee_prize
-            )} 도토리`}
-          />
         </div>
 
         <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-5">
@@ -439,11 +433,6 @@ export default function StockSeasonManager({
             )} ~ ${String(
               activeSeason.market_close_time
             ).slice(0, 5)} · ${activeSeason.price_interval_minutes}분`}
-          />
-
-          <InfoCard
-            label="거래 수수료"
-            value={`${activeSeason.trade_fee_rate}%`}
           />
 
           <InfoCard
@@ -563,15 +552,6 @@ export default function StockSeasonManager({
             value={form.basePrize}
             onChange={(value) =>
               changeField("basePrize", value)
-            }
-          />
-        </Field>
-
-        <Field label="거래 수수료 (%)">
-          <DecimalInput
-            value={form.tradeFeeRate}
-            onChange={(value) =>
-              changeField("tradeFeeRate", value)
             }
           />
         </Field>

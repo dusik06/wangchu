@@ -9,7 +9,6 @@ type Props = {
   canJoin: boolean;
   alreadyJoined: boolean;
   isLoggedIn: boolean;
-  isAdmin: boolean;
   seasonRunning: boolean;
   entryFeeDotori: number;
   startingMoney: number;
@@ -53,7 +52,6 @@ export default function StockSeasonActions({
   canJoin,
   alreadyJoined,
   isLoggedIn,
-  isAdmin,
   seasonRunning,
   entryFeeDotori,
   startingMoney,
@@ -142,17 +140,6 @@ export default function StockSeasonActions({
             현재 시즌 전용 화폐로 종목을 거래할 수 있습니다.
           </p>
         </div>
-      ) : isAdmin ? (
-        <div className="rounded-2xl border border-zinc-500/20 bg-zinc-500/10 p-5">
-          <p className="text-sm font-black text-zinc-300">
-            관리자 계정
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            관리자 계정은 시즌 랭킹의 공정성을 위해 참가할 수
-            없습니다.
-          </p>
-        </div>
       ) : !isLoggedIn ? (
         <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-5">
           <p className="text-sm font-black text-yellow-200">
@@ -186,7 +173,7 @@ export default function StockSeasonActions({
         </button>
       )}
 
-      {!alreadyJoined && !isAdmin && (
+      {!alreadyJoined && (
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
           <div className="flex items-center justify-between gap-4">
             <span className="text-zinc-400">참가비</span>

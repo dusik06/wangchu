@@ -8,8 +8,6 @@ type Stock = {
   is_listed: number;
 };
 
-type EventType = "up" | "down";
-
 function formatNumber(value: unknown) {
   return Number(value || 0).toLocaleString();
 }
@@ -50,9 +48,6 @@ export default function StockEventForm({
 
   const [eventTitle, setEventTitle] =
     useState("");
-
-  const [eventType, setEventType] =
-    useState<EventType>("up");
 
   const [eventRate, setEventRate] =
     useState("10");
@@ -120,14 +115,8 @@ export default function StockEventForm({
           "선택된 종목"
         }`,
         `제목: ${eventTitle.trim()}`,
-        `유형: ${
-          eventType === "up"
-            ? "호재"
-            : "악재"
-        }`,
-        `변동률: ${
-          eventType === "up" ? "+" : "-"
-        }${parsedEventRate}%`,
+        "유형: 호재",
+        `변동률: +${parsedEventRate}%`,
         `지속시간: ${formatNumber(
           parsedDuration
         )}분`,
@@ -156,7 +145,7 @@ export default function StockEventForm({
             stockId: parsedStockId,
             eventTitle:
               eventTitle.trim(),
-            eventType,
+            eventType: "up",
             eventRate:
               parsedEventRate,
             durationMinutes:
@@ -279,48 +268,11 @@ export default function StockEventForm({
             </div>
           </label>
 
-          <div>
-            <span className="text-sm font-bold text-zinc-300">
-              이벤트 유형
-            </span>
-
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setEventType("up")
-                }
-                disabled={loading}
-                className={`rounded-xl border px-4 py-4 font-black transition disabled:opacity-50 ${
-                  eventType === "up"
-                    ? "border-red-400/40 bg-red-400/15 text-red-300"
-                    : "border-white/10 bg-black/20 text-zinc-500 hover:bg-white/5"
-                }`}
-              >
-                호재
-                <span className="mt-1 block text-xs font-normal">
-                  가격 상승 효과
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setEventType("down")
-                }
-                disabled={loading}
-                className={`rounded-xl border px-4 py-4 font-black transition disabled:opacity-50 ${
-                  eventType === "down"
-                    ? "border-blue-400/40 bg-blue-400/15 text-blue-300"
-                    : "border-white/10 bg-black/20 text-zinc-500 hover:bg-white/5"
-                }`}
-              >
-                악재
-                <span className="mt-1 block text-xs font-normal">
-                  가격 하락 효과
-                </span>
-              </button>
-            </div>
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+            <p className="text-sm font-black text-emerald-300">호재 이벤트</p>
+            <p className="mt-1 text-xs leading-6 text-zinc-400">
+              현재 주식 시스템은 이해하기 쉽도록 상승 호재만 등록할 수 있습니다.
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -379,30 +331,15 @@ export default function StockEventForm({
             </label>
           </div>
 
-          <div
-            className={`rounded-2xl border p-4 ${
-              eventType === "up"
-                ? "border-red-400/20 bg-red-400/10"
-                : "border-blue-400/20 bg-blue-400/10"
-            }`}
-          >
+          <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
             <p className="text-xs font-bold text-zinc-400">
               적용 미리보기
             </p>
 
-            <p
-              className={`mt-2 text-lg font-black ${
-                eventType === "up"
-                  ? "text-red-300"
-                  : "text-blue-300"
-              }`}
-            >
+            <p className="mt-2 text-lg font-black text-red-300">
               {selectedStock?.stock_name ||
                 "선택된 종목"}{" "}
-              {eventType === "up"
-                ? "+"
-                : "-"}
-              {Number(
+              +              {Number(
                 eventRate || 0
               ).toLocaleString()}
               %

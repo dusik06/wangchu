@@ -3,6 +3,7 @@ import Providers from "./providers";
 import OnlineTracker from "./online-tracker";
 import db from "@/lib/db";
 import GlobalHomeLogo from "@/components/GlobalHomeLogo";
+import StockMarketGlobalAlert from "@/components/StockMarketGlobalAlert";
 
 async function getSiteLogo() {
   try {
@@ -29,6 +30,7 @@ export default async function RootLayout({
         <Providers>
           <OnlineTracker />
           <GlobalHomeLogo siteLogo={siteLogo} />
+          <StockMarketGlobalAlert />
 
           {children}
 

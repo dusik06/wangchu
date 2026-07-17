@@ -15,6 +15,15 @@ type StockRow = {
   normal_rate: number;
   special_chance: number;
   special_rate: number;
+  normal_down_min?: number;
+  normal_down_max?: number;
+  normal_up_min?: number;
+  normal_up_max?: number;
+  special_up_min?: number;
+  special_up_max?: number;
+  market_trend?: string | null;
+  trend_rounds_left?: number | null;
+  auto_event_cooldown_until?: any;
   is_listed: number;
   last_updated_at: any;
   previous_price?: number | null;
@@ -43,6 +52,30 @@ function randomInteger(min: number, max: number) {
 
 function randomBoolean(percent: number) {
   return Math.random() * 100 < clamp(percent, 0, 100);
+}
+
+const AUTO_EVENT_MESSAGES = [
+  "신제품 기대감이 높아졌습니다.",
+  "대규모 투자 소식이 전해졌습니다.",
+  "실적 개선 기대감이 반영됐습니다.",
+  "신규 사업 발표로 관심이 몰렸습니다.",
+  "대형 계약 체결 소식이 전해졌습니다.",
+  "시장에 강한 매수세가 유입됐습니다.",
+  "긍정적인 소식으로 거래가 활발해졌습니다.",
+];
+
+function chooseAutoEventMessage() {
+  return AUTO_EVENT_MESSAGES[randomInteger(0, AUTO_EVENT_MESSAGES.length - 1)];
+}
+
+function nextTrend(currentTrend: string, finalChangeRate: number) {
+  if (finalChangeRate >= 12) return "OVERHEAT";
+  if (finalChangeRate <= -8) return "REBOUND";
+  if (finalChangeRate >= 2) return "RISE";
+  if (finalChangeRate <= -2) return "WEAK";
+  if (currentTrend === "OVERHEAT" && finalChangeRate < 0) return "NORMAL";
+  if (currentTrend === "REBOUND" && finalChangeRate > 0) return "NORMAL";
+  return currentTrend || "NORMAL";
 }
 
 function timeToSeconds(value: unknown) {
@@ -879,15 +912,37 @@ export async function POST() {
       );
 
       const event = eventRows[0] || null;
-      const normalLimit = Math.abs(num(stock.normal_rate));
+      const fallbackNormal = Math.max(0.1, Math.abs(num(stock.normal_rate, 3)));
+      const normalDownMin = Math.max(0.1, num(stock.normal_down_min, Math.min(1, fallbackNormal)));
+      const normalDownMax = Math.max(normalDownMin, num(stock.normal_down_max, fallbackNormal));
+      const normalUpMin = Math.max(0.1, num(stock.normal_up_min, Math.min(1, fallbackNormal)));
+      const normalUpMax = Math.max(normalUpMin, num(stock.normal_up_max, Math.max(fallbackNormal, normalDownMax + 1)));
       const specialChance = clamp(num(stock.special_chance), 0, 100);
-      const specialLimit = Math.abs(num(stock.special_rate));
-      const specialTriggered = randomBoolean(specialChance);
+      const fallbackSpecial = Math.max(1, Math.abs(num(stock.special_rate, 10)));
+      const specialUpMin = Math.max(0.1, num(stock.special_up_min, Math.min(5, fallbackSpecial)));
+      const specialUpMax = Math.max(specialUpMin, num(stock.special_up_max, fallbackSpecial));
+      const cooldownUntil = mysqlText(stock.auto_event_cooldown_until);
+      const cooldownReady = !cooldownUntil || cooldownUntil <= now;
+      const specialTriggered = cooldownReady && randomBoolean(specialChance);
+      const currentTrend = String(stock.market_trend || "NORMAL").toUpperCase();
 
-      let randomRate = randomBetween(
-        -(specialTriggered ? specialLimit : normalLimit),
-        specialTriggered ? specialLimit : normalLimit
-      );
+      let upChance = 56;
+      if (currentTrend === "RISE") upChance = 66;
+      if (currentTrend === "WEAK") upChance = 42;
+      if (currentTrend === "OVERHEAT") upChance = 35;
+      if (currentTrend === "REBOUND") upChance = 68;
+
+      const normalUp = randomBoolean(upChance);
+      let randomRate = specialTriggered
+        ? randomBetween(specialUpMin, specialUpMax)
+        : normalUp
+          ? randomBetween(normalUpMin, normalUpMax)
+          : -randomBetween(normalDownMin, normalDownMax);
+
+      const autoEventTitle = specialTriggered
+        ? `🚨 ${stock.stock_name} 자동 호재 발생`
+        : null;
+      const autoEventMessage = specialTriggered ? chooseAutoEventMessage() : null;
 
       const endsAt = new Date(
         `${String(season.ends_at_text).replace(" ", "T")}+09:00`
@@ -1029,10 +1084,20 @@ export async function POST() {
           `
           UPDATE stock_items
           SET current_price = ?,
+              market_trend = ?,
+              trend_rounds_left = ?,
+              auto_event_cooldown_until = ?,
               last_updated_at = ?
           WHERE id = ?
           `,
-          [newPrice, now, stock.id]
+          [
+            newPrice,
+            nextTrend(currentTrend, finalChangeRate),
+            Math.max(0, int(stock.trend_rounds_left, 0) - 1),
+            specialTriggered ? addMinutes(now, intervalMinutes * 6) : cooldownUntil,
+            now,
+            stock.id,
+          ]
         );
 
         await connection.query(
@@ -1046,7 +1111,26 @@ export async function POST() {
             newPrice,
             actualChangeAmount,
             finalChangeRate,
-            event?.event_title || null,
+            autoEventTitle || event?.event_title || null,
+            now,
+          ]
+        );
+      }
+
+      if (specialTriggered && autoEventTitle) {
+        const eventEndsAt = addMinutes(now, Math.max(intervalMinutes, 10));
+        await connection.query(
+          `
+          INSERT INTO stock_events
+          (stock_id, event_title, event_type, event_rate, starts_at, ends_at, is_active, created_at)
+          VALUES (?, ?, 'up', ?, ?, ?, 1, ?)
+          `,
+          [
+            stock.id,
+            `${autoEventTitle} · ${autoEventMessage}`,
+            Number(randomRate.toFixed(4)),
+            now,
+            eventEndsAt,
             now,
           ]
         );
@@ -1095,9 +1179,9 @@ export async function POST() {
           now,
           oldPrice,
           newPrice,
-          normalLimit,
+          Math.max(normalDownMax, normalUpMax),
           specialChance,
-          specialLimit,
+          specialUpMax,
           randomRate,
           realPressure.rate,
           virtualPressure.rate,
@@ -1115,8 +1199,9 @@ export async function POST() {
           specialTriggered ? 1 : 0,
           finalDayApplied ? 1 : 0,
           [
-            specialTriggered ? "특수변동" : "일반변동",
-            event?.event_title ? `이벤트:${event.event_title}` : null,
+            specialTriggered ? `자동호재:${autoEventMessage}` : "일반변동",
+            event?.event_title ? `수동이벤트:${event.event_title}` : null,
+            `흐름:${currentTrend}`,
           ]
             .filter(Boolean)
             .join(" / "),

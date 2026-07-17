@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     startingMoney: int(body.startingMoney),
     basePrize: int(body.basePrize),
     includeEntryFeeInPrize: body.includeEntryFeeInPrize === true ? 1 : 0,
-    tradeFeeRate: num(body.tradeFeeRate),
+    tradeFeeRate: 0,
     minTradeCount: int(body.minTradeCount),
     firstPrizeRate: num(body.firstPrizeRate),
     secondPrizeRate: num(body.secondPrizeRate),
@@ -111,8 +111,6 @@ export async function POST(req: Request) {
     values.startingMoney <= 0 ||
     values.entryFeeDotori < 0 ||
     values.basePrize < 0 ||
-    values.tradeFeeRate < 0 ||
-    values.tradeFeeRate > 20 ||
     values.minTradeCount < 0 ||
     values.virtualTraderCount < 0 ||
     values.virtualTraderCount > 30 ||

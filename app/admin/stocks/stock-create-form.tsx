@@ -2,416 +2,99 @@
 
 import { useState } from "react";
 
-function sanitizeInteger(value: string) {
-  return value.replace(/[^0-9]/g, "");
-}
-
-function sanitizeDecimal(value: string) {
-  let next = value.replace(/[^0-9.]/g, "");
-  const parts = next.split(".");
-
-  if (parts.length > 2) {
-    next = `${parts[0]}.${parts.slice(1).join("")}`;
-  }
-
-  return next;
-}
-
-function formatNumber(value: unknown) {
-  return Number(value || 0).toLocaleString();
+function clean(value: string) {
+  const next = value.replace(/[^0-9.]/g, "");
+  const [head, ...tail] = next.split(".");
+  return tail.length ? `${head}.${tail.join("")}` : head;
 }
 
 export default function StockCreateForm() {
-  const [stockName, setStockName] = useState("");
-  const [currentPrice, setCurrentPrice] =
-    useState("1000");
-  const [normalRate, setNormalRate] =
-    useState("5");
-  const [specialChance, setSpecialChance] =
-    useState("5");
-  const [specialRate, setSpecialRate] =
-    useState("20");
-  const [loading, setLoading] =
-    useState(false);
+  const [form, setForm] = useState({
+    stockName: "",
+    currentPrice: "1000",
+    normalDownMin: "1",
+    normalDownMax: "3",
+    normalUpMin: "1",
+    normalUpMax: "5",
+    specialChance: "5",
+    specialUpMin: "10",
+    specialUpMax: "25",
+  });
+  const [loading, setLoading] = useState(false);
 
-  async function createStock() {
-    if (loading) {
-      return;
-    }
+  function change(key: keyof typeof form, value: string) {
+    setForm((prev) => ({ ...prev, [key]: key === "stockName" ? value : clean(value) }));
+  }
 
-    const trimmedName = stockName.trim();
-    const parsedCurrentPrice =
-      Number(currentPrice);
-    const parsedNormalRate =
-      Number(normalRate);
-    const parsedSpecialChance =
-      Number(specialChance);
-    const parsedSpecialRate =
-      Number(specialRate);
-
-    if (!trimmedName) {
-      alert("주식 이름을 입력해주세요.");
-      return;
-    }
-
-    if (
-      !Number.isFinite(parsedCurrentPrice) ||
-      parsedCurrentPrice <= 0
-    ) {
-      alert("초기 가격은 1 이상이어야 합니다.");
-      return;
-    }
-
-    if (
-      !Number.isFinite(parsedNormalRate) ||
-      parsedNormalRate < 0 ||
-      parsedNormalRate > 100
-    ) {
-      alert(
-        "일반 변동폭은 0% 이상 100% 이하로 입력해주세요."
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(parsedSpecialChance) ||
-      parsedSpecialChance < 0 ||
-      parsedSpecialChance > 100
-    ) {
-      alert(
-        "특수 발생 확률은 0% 이상 100% 이하로 입력해주세요."
-      );
-      return;
-    }
-
-    if (
-      !Number.isFinite(parsedSpecialRate) ||
-      parsedSpecialRate < 0 ||
-      parsedSpecialRate > 500
-    ) {
-      alert(
-        "특수 변동폭은 0% 이상 500% 이하로 입력해주세요."
-      );
-      return;
-    }
-
-    const confirmed = confirm(
-      [
-        "새 주식을 상장할까요?",
-        "",
-        `종목명: ${trimmedName}`,
-        `초기 가격: ${formatNumber(
-          parsedCurrentPrice
-        )}`,
-        `일반 변동폭: ±${parsedNormalRate}%`,
-        `특수 발생 확률: ${parsedSpecialChance}%`,
-        `특수 변동폭: ±${parsedSpecialRate}%`,
-      ].join("\n")
+  async function submit() {
+    if (loading) return;
+    const values = Object.fromEntries(
+      Object.entries(form).map(([key, value]) => [key, key === "stockName" ? value.trim() : Number(value)])
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!form.stockName.trim()) return alert("주식 이름을 입력해주세요.");
+    if (Number(form.currentPrice) <= 0) return alert("초기 가격은 1 이상이어야 합니다.");
+    if (Number(form.normalDownMin) > Number(form.normalDownMax)) return alert("일반 하락 최소값은 최대값보다 클 수 없습니다.");
+    if (Number(form.normalUpMin) > Number(form.normalUpMax)) return alert("일반 상승 최소값은 최대값보다 클 수 없습니다.");
+    if (Number(form.specialUpMin) > Number(form.specialUpMax)) return alert("자동 호재 최소값은 최대값보다 클 수 없습니다.");
 
     setLoading(true);
-
     try {
-      const response = await fetch(
-        "/api/admin/stocks/create",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            stockName: trimmedName,
-            currentPrice:
-              parsedCurrentPrice,
-            normalRate:
-              parsedNormalRate,
-            specialChance:
-              parsedSpecialChance,
-            specialRate:
-              parsedSpecialRate,
-          }),
-        }
-      );
-
-      let data: any = null;
-
-      try {
-        data = await response.json();
-      } catch {
-        data = {
-          success: false,
-          message:
-            "서버 응답을 읽을 수 없습니다.",
-        };
-      }
-
-      if (
-        !response.ok ||
-        !data?.success
-      ) {
-        alert(
-          data?.message ||
-            "주식 생성에 실패했습니다."
-        );
-        return;
-      }
-
-      alert(
-        data.message ||
-          "신규 주식이 생성되었습니다."
-      );
-
-      window.location.reload();
-    } catch {
-      alert(
-        "주식 생성 중 네트워크 오류가 발생했습니다."
-      );
+      const res = await fetch("/api/admin/stocks/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "등록에 실패했습니다.");
+      alert(data.message);
+      location.reload();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "등록에 실패했습니다.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#101321] p-6 shadow-xl">
-      <div>
-        <p className="text-xs font-black tracking-[0.2em] text-cyan-300">
-          NEW STOCK
-        </p>
+    <section className="rounded-3xl border border-white/10 bg-[#101321] p-6">
+      <h2 className="text-2xl font-black">새 주식 등록</h2>
+      <p className="mt-2 text-sm text-zinc-400">하락·상승 범위와 자동 호재만 정하면 나머지는 시장이 자동으로 움직입니다.</p>
 
-        <h2 className="mt-2 text-2xl font-black text-white">
-          신규 주식 상장
-        </h2>
+      <div className="mt-5 space-y-4">
+        <Field label="주식 이름" value={form.stockName} onChange={(v) => change("stockName", v)} />
+        <Field label="초기 가격" value={form.currentPrice} onChange={(v) => change("currentPrice", v)} />
 
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          종목별 일반 랜덤 변동폭과 특수
-          이벤트 확률을 설정할 수 있습니다.
-        </p>
-      </div>
-
-      <div className="mt-6 space-y-5">
-        <label className="block">
-          <span className="text-sm font-bold text-zinc-300">
-            주식 이름
-          </span>
-
-          <input
-            value={stockName}
-            onChange={(event) =>
-              setStockName(
-                event.target.value
-              )
-            }
-            disabled={loading}
-            maxLength={100}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 disabled:opacity-50"
-            placeholder="예: 왕츄전자"
-          />
-
-          <div className="mt-2 flex justify-end text-xs text-zinc-600">
-            {stockName.length} / 100
-          </div>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-bold text-zinc-300">
-            초기 가격
-          </span>
-
-          <input
-            inputMode="numeric"
-            value={currentPrice}
-            onChange={(event) =>
-              setCurrentPrice(
-                sanitizeInteger(
-                  event.target.value
-                )
-              )
-            }
-            disabled={loading}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-300/50 disabled:opacity-50"
-            placeholder="1000"
-          />
-
-          <p className="mt-2 text-xs text-zinc-600">
-            시즌 전용 화폐 기준 가격입니다.
-          </p>
-        </label>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-300">
-              일반 변동폭
-            </span>
-
-            <div className="relative mt-2">
-              <input
-                inputMode="decimal"
-                value={normalRate}
-                onChange={(event) =>
-                  setNormalRate(
-                    sanitizeDecimal(
-                      event.target.value
-                    )
-                  )
-                }
-                disabled={loading}
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-white outline-none transition focus:border-cyan-300/50 disabled:opacity-50"
-                placeholder="5"
-              />
-
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-zinc-500">
-                %
-              </span>
-            </div>
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-300">
-              특수 발생 확률
-            </span>
-
-            <div className="relative mt-2">
-              <input
-                inputMode="decimal"
-                value={specialChance}
-                onChange={(event) =>
-                  setSpecialChance(
-                    sanitizeDecimal(
-                      event.target.value
-                    )
-                  )
-                }
-                disabled={loading}
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-white outline-none transition focus:border-cyan-300/50 disabled:opacity-50"
-                placeholder="5"
-              />
-
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-zinc-500">
-                %
-              </span>
-            </div>
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-300">
-              특수 변동폭
-            </span>
-
-            <div className="relative mt-2">
-              <input
-                inputMode="decimal"
-                value={specialRate}
-                onChange={(event) =>
-                  setSpecialRate(
-                    sanitizeDecimal(
-                      event.target.value
-                    )
-                  )
-                }
-                disabled={loading}
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 pr-10 text-white outline-none transition focus:border-cyan-300/50 disabled:opacity-50"
-                placeholder="20"
-              />
-
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-black text-zinc-500">
-                %
-              </span>
-            </div>
-          </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="일반 하락 최소 %" value={form.normalDownMin} onChange={(v) => change("normalDownMin", v)} />
+          <Field label="일반 하락 최대 %" value={form.normalDownMax} onChange={(v) => change("normalDownMax", v)} />
+          <Field label="일반 상승 최소 %" value={form.normalUpMin} onChange={(v) => change("normalUpMin", v)} />
+          <Field label="일반 상승 최대 %" value={form.normalUpMax} onChange={(v) => change("normalUpMax", v)} />
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-xs font-bold text-zinc-500">
-            설정 미리보기
-          </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <PreviewCard
-              label="종목명"
-              value={
-                stockName.trim() ||
-                "주식 이름 미입력"
-              }
-            />
-
-            <PreviewCard
-              label="초기 가격"
-              value={`${formatNumber(
-                currentPrice
-              )}`}
-              highlight
-            />
-
-            <PreviewCard
-              label="일반 변동"
-              value={`±${Number(
-                normalRate || 0
-              )}%`}
-            />
-
-            <PreviewCard
-              label="특수 변동"
-              value={`${Number(
-                specialChance || 0
-              )}% 확률 / ±${Number(
-                specialRate || 0
-              )}%`}
-            />
+        <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/5 p-4">
+          <p className="font-black text-yellow-300">자동 호재</p>
+          <p className="mt-1 text-xs text-zinc-400">설정한 확률로 자동 발생하며 모든 유저에게 시장 속보가 표시됩니다.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <Field label="발생 확률 %" value={form.specialChance} onChange={(v) => change("specialChance", v)} />
+            <Field label="상승 최소 %" value={form.specialUpMin} onChange={(v) => change("specialUpMin", v)} />
+            <Field label="상승 최대 %" value={form.specialUpMax} onChange={(v) => change("specialUpMax", v)} />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-cyan-300/10 bg-cyan-300/5 p-4 text-xs leading-6 text-zinc-400">
-          신규 상장 시 초기 가격 기록이 자동
-          생성됩니다. 이후 가격 갱신 때 일반
-          랜덤 변동, 특수 변동, 실제 유저 거래
-          압력, 가상 참가자 거래 압력과 뉴스
-          이벤트가 함께 반영됩니다.
-        </div>
-
-        <button
-          type="button"
-          onClick={createStock}
-          disabled={loading}
-          className="w-full rounded-xl bg-gradient-to-r from-cyan-400 to-sky-400 px-4 py-4 font-black text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading
-            ? "신규 상장 처리 중..."
-            : "신규 주식 상장"}
+        <button onClick={submit} disabled={loading} className="w-full rounded-xl bg-cyan-400 px-4 py-4 font-black text-black disabled:opacity-50">
+          {loading ? "등록 중..." : "신규 주식 상장"}
         </button>
       </div>
     </section>
   );
 }
 
-function PreviewCard({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-      <p className="text-xs text-zinc-500">
-        {label}
-      </p>
-
-      <p
-        className={`mt-1 font-black ${
-          highlight
-            ? "text-yellow-300"
-            : "text-white"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
+    <label className="block">
+      <span className="mb-2 block text-xs font-bold text-zinc-400">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400/60" />
+    </label>
   );
 }

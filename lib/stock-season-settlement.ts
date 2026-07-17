@@ -55,8 +55,7 @@ export async function settleStockSeason(
       seasonId,
       totalPrize:
         toInteger(season.base_prize) +
-        toInteger(season.entry_fee_prize) +
-        toInteger(season.fee_prize),
+        toInteger(season.entry_fee_prize),
       participantCount: 0,
       qualifiedParticipantCount: 0,
       winners: [],
@@ -153,7 +152,6 @@ export async function settleStockSeason(
     const tradeCount = toInteger(participant.trade_count);
 
     const qualified =
-      String(participant.role) !== "admin" &&
       tradeCount >= Math.max(0, toInteger(season.min_trade_count));
 
     await connection.query(
@@ -223,8 +221,7 @@ export async function settleStockSeason(
 
   const totalPrize =
     toInteger(season.base_prize) +
-    toInteger(season.entry_fee_prize) +
-    toInteger(season.fee_prize);
+    toInteger(season.entry_fee_prize);
 
   const prizeRates = [
     toNumber(season.first_prize_rate),

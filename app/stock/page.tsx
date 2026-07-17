@@ -59,77 +59,34 @@ function getChangeText(currentPrice: number, previousPrice: number | null) {
   };
 }
 
-function getRiskInfo(stock: any) {
-  const normalRate = Number(stock.normal_rate || 0);
-  const specialChance = Number(stock.special_chance || 0);
-  const specialRate = Number(stock.special_rate || 0);
+function getTrendInfo(stock: any) {
+  const trend = String(stock.market_trend || "NORMAL").toUpperCase();
 
-  const score =
-    normalRate * 1.5 +
-    specialChance * 0.3 +
-    specialRate * 0.8;
-
-  if (score <= 15) {
-    return {
-      label: "안정형",
-      className:
-        "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-    };
+  if (trend === "RISE") {
+    return { label: "상승세", className: "border-red-400/30 bg-red-400/10 text-red-300" };
   }
 
-  if (score <= 30) {
-    return {
-      label: "중립형",
-      className:
-        "border-yellow-300/20 bg-yellow-300/10 text-yellow-200",
-    };
+  if (trend === "WEAK") {
+    return { label: "약세", className: "border-blue-400/30 bg-blue-400/10 text-blue-300" };
   }
 
-  if (score <= 50) {
-    return {
-      label: "공격형",
-      className:
-        "border-orange-400/20 bg-orange-400/10 text-orange-300",
-    };
+  if (trend === "OVERHEAT") {
+    return { label: "과열 주의", className: "border-orange-400/30 bg-orange-400/10 text-orange-300" };
   }
 
-  return {
-    label: "초고위험",
-    className:
-      "border-red-400/20 bg-red-400/10 text-red-300",
-  };
+  if (trend === "REBOUND") {
+    return { label: "반등 가능", className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" };
+  }
+
+  return { label: "보통", className: "border-white/10 bg-white/5 text-zinc-300" };
 }
 
-function getBuyableQuantity(
-  availableMoney: number,
-  price: number,
-  feeRate: number
-) {
+function getBuyableQuantity(availableMoney: number, price: number) {
   if (availableMoney <= 0 || price <= 0) {
     return 0;
   }
 
-  let quantity = Math.floor(
-    availableMoney / (price * (1 + feeRate / 100))
-  );
-
-  quantity = Math.max(0, quantity);
-
-  while (quantity > 0) {
-    const grossAmount = price * quantity;
-    const feeAmount =
-      feeRate > 0
-        ? Math.max(1, Math.ceil((grossAmount * feeRate) / 100))
-        : 0;
-
-    if (grossAmount + feeAmount <= availableMoney) {
-      return quantity;
-    }
-
-    quantity -= 1;
-  }
-
-  return 0;
+  return Math.max(0, Math.floor(availableMoney / price));
 }
 
 export default async function StockPage() {
@@ -226,6 +183,36 @@ export default async function StockPage() {
     ORDER BY s.is_listed DESC, s.id ASC
   `);
 
+  let recentMarketEvents: any[] = [];
+
+  if (season) {
+    try {
+      const [eventRows]: any = await db.query(
+        `
+        SELECT
+          e.id,
+          e.stock_id,
+          e.event_title,
+          e.event_rate,
+          e.event_type,
+          DATE_FORMAT(e.created_at, '%Y.%m.%d %H:%i') AS created_at_kst,
+          s.stock_name
+        FROM stock_events e
+        INNER JOIN stock_items s ON s.id = e.stock_id
+        WHERE e.created_at >= ?
+        ORDER BY e.id DESC
+        LIMIT 8
+        `,
+        [season.starts_at_text]
+      );
+
+      recentMarketEvents = eventRows || [];
+    } catch (error) {
+      console.error("최근 주식시장 속보 조회 실패", error);
+      recentMarketEvents = [];
+    }
+  }
+
   const [myHoldingRows]: any =
     season && currentUser
       ? await db.query(
@@ -305,7 +292,6 @@ export default async function StockPage() {
         INNER JOIN users u
           ON u.id = p.user_id
         WHERE p.season_id = ?
-          AND IFNULL(u.role, '') <> 'admin'
         ORDER BY p.id ASC
         `,
         [season.id]
@@ -433,13 +419,11 @@ export default async function StockPage() {
     : [0, 0, 0];
 
   const isLoggedIn = Boolean(currentUser);
-  const isAdmin = currentUser?.role === "admin";
   const alreadyJoined = Boolean(currentParticipant);
 
   const canJoin =
     Boolean(season) &&
     isLoggedIn &&
-    !isAdmin &&
     !alreadyJoined &&
     seasonState.running;
 
@@ -447,8 +431,7 @@ export default async function StockPage() {
     Boolean(season) &&
     Boolean(currentParticipant) &&
     seasonState.running &&
-    marketState.open &&
-    !isAdmin;
+    marketState.open;
 
   let tradeDisabledMessage = "현재 거래할 수 없습니다.";
 
@@ -456,9 +439,6 @@ export default async function StockPage() {
     tradeDisabledMessage = "현재 진행 중인 시즌이 없습니다.";
   } else if (!currentUser) {
     tradeDisabledMessage = "로그인 후 시즌에 참가해주세요.";
-  } else if (isAdmin) {
-    tradeDisabledMessage =
-      "관리자 계정은 시즌 주식 거래를 할 수 없습니다.";
   } else if (!currentParticipant) {
     tradeDisabledMessage = "먼저 이번 시즌에 참가해주세요.";
   } else if (!seasonState.running) {
@@ -570,12 +550,6 @@ export default async function StockPage() {
                       )} 도토리`}
                     />
 
-                    <SeasonInfo
-                      label="수수료 적립"
-                      value={`${formatNumber(
-                        season.fee_prize
-                      )} 도토리`}
-                    />
                   </div>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -623,7 +597,6 @@ export default async function StockPage() {
                     canJoin={canJoin}
                     alreadyJoined={alreadyJoined}
                     isLoggedIn={isLoggedIn}
-                    isAdmin={isAdmin}
                     seasonRunning={seasonState.running}
                     entryFeeDotori={Number(
                       season.entry_fee_dotori
@@ -634,6 +607,65 @@ export default async function StockPage() {
                   />
                 </div>
               </div>
+            </section>
+
+            <section className="mt-6 overflow-hidden rounded-3xl border border-red-400/20 bg-[#101321]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+                <div>
+                  <p className="text-xs font-black tracking-[0.2em] text-red-300">
+                    MARKET NEWS
+                  </p>
+                  <h2 className="mt-1 text-xl font-black">주식시장 속보</h2>
+                </div>
+                <p className="text-xs text-zinc-500">호재가 발생하면 모든 이용자에게 공개됩니다.</p>
+              </div>
+
+              {recentMarketEvents.length === 0 ? (
+                <div className="px-5 py-7 text-sm text-zinc-500">
+                  이번 시즌에 아직 발생한 시장 속보가 없습니다.
+                </div>
+              ) : (
+                <div className="divide-y divide-white/10">
+                  {recentMarketEvents.map((event: any, index: number) => {
+                    const rate = Number(event.event_rate || 0);
+                    const isLatest = index === 0;
+
+                    return (
+                      <a
+                        key={event.id}
+                        href={`/stock/${event.stock_id}`}
+                        className={`grid gap-3 px-5 py-4 transition hover:bg-white/[0.04] md:grid-cols-[1fr_auto_auto] md:items-center ${
+                          isLatest ? "bg-red-400/[0.06]" : ""
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isLatest && (
+                              <span className="rounded-full bg-red-400 px-2 py-0.5 text-[10px] font-black text-black">
+                                최신
+                              </span>
+                            )}
+                            <strong className="truncate text-sm text-white">
+                              {event.stock_name}
+                            </strong>
+                          </div>
+                          <p className="mt-1 truncate text-sm text-zinc-300">
+                            {event.event_title || "자동 호재가 발생했습니다."}
+                          </p>
+                        </div>
+
+                        <strong className={rate >= 0 ? "text-red-400" : "text-blue-400"}>
+                          {rate >= 0 ? "+" : ""}{rate.toFixed(2)}%
+                        </strong>
+
+                        <span className="text-xs text-zinc-500">
+                          {event.created_at_kst}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
             {currentParticipant && (
@@ -949,7 +981,7 @@ export default async function StockPage() {
                     previousPrice
                   );
 
-                  const risk = getRiskInfo(stock);
+                  const trend = getTrendInfo(stock);
                   const myHolding = myHoldingsMap.get(
                     Number(stock.id)
                   );
@@ -983,8 +1015,7 @@ export default async function StockPage() {
 
                   const buyableQuantity = getBuyableQuantity(
                     myAvailableMoney,
-                    currentPrice,
-                    Number(season.trade_fee_rate || 0)
+                    currentPrice
                   );
 
                   return (
@@ -1007,9 +1038,9 @@ export default async function StockPage() {
 
                           <div className="mt-2 flex flex-wrap gap-2">
                             <span
-                              className={`rounded-full border px-3 py-1 text-xs font-black ${risk.className}`}
+                              className={`rounded-full border px-3 py-1 text-xs font-black ${trend.className}`}
                             >
-                              {risk.label}
+                              {trend.label}
                             </span>
 
                             {Number(stock.is_listed) === 1 ? (
@@ -1043,33 +1074,28 @@ export default async function StockPage() {
 
                       <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                         <VolatilityCard
-                          label="일반 변동"
-                          value={`±${stock.normal_rate}%`}
+                          label="일반 하락"
+                          value={`-${Number(stock.normal_down_min || 1)}~${Number(stock.normal_down_max || stock.normal_rate)}%`}
                           description={`${season.price_interval_minutes}분마다`}
                         />
 
                         <VolatilityCard
-                          label="특수 확률"
-                          value={`${stock.special_chance}%`}
-                          description="각 변동 회차"
+                          label="일반 상승"
+                          value={`+${Number(stock.normal_up_min || 1)}~${Number(stock.normal_up_max || (Number(stock.normal_rate || 0) + 1))}%`}
+                          description={`${season.price_interval_minutes}분마다`}
                         />
 
                         <VolatilityCard
-                          label="특수 변동"
-                          value={`±${stock.special_rate}%`}
-                          description="발생 시 최대"
+                          label="자동 호재"
+                          value={`${stock.special_chance}% 확률`}
+                          description={`+${Number(stock.special_up_min || 1)}~${Number(stock.special_up_max || stock.special_rate)}%`}
                         />
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-xs leading-6 text-zinc-400">
-                        이 종목은 매 가격 갱신 시 일반 변동폭 안에서
-                        랜덤하게 움직입니다. 각 회차에는{" "}
-                        <strong className="text-white">
-                          {stock.special_chance}% 확률
-                        </strong>
-                        로 특수 변동이 발생할 수 있으며, 실제 유저와
-                        가상 참가자의 매수·매도 흐름도 제한된 범위에서
-                        가격에 영향을 줍니다.
+                        가격은 자동 변동과 이용자들의 매수·매도에 따라 움직입니다.
+                        자동 호재가 발생하면 이 종목은 큰 폭으로 상승하며 모두에게 공개됩니다.
+                        현재 흐름은 다음 결과를 보장하지 않으니 판단에 참고하세요.
                       </div>
 
                       {Number(stock.is_listed) === 1 ? (
@@ -1085,9 +1111,6 @@ export default async function StockPage() {
                           myProfit={myProfit}
                           myProfitRate={myStockProfitRate}
                           buyableQuantity={buyableQuantity}
-                          feeRate={Number(
-                            season.trade_fee_rate || 0
-                          )}
                           canTrade={canTrade}
                           disabledMessage={tradeDisabledMessage}
                         />
@@ -1132,9 +1155,8 @@ export default async function StockPage() {
                 </Rule>
 
                 <Rule>
-                  매수와 매도마다 거래금액의{" "}
-                  <strong>{season.trade_fee_rate}%</strong>가 수수료로
-                  차감되며 실제 유저의 수수료는 시즌 상금에 적립됩니다.
+                  매수와 매도에는 <strong>거래 수수료가 없습니다.</strong>
+                  같은 가격에 사고팔면 거래 자체로 손해가 발생하지 않습니다.
                 </Rule>
 
                 <Rule>
