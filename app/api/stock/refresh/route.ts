@@ -54,6 +54,61 @@ function randomBoolean(percent: number) {
   return Math.random() * 100 < clamp(percent, 0, 100);
 }
 
+function stochasticPriceDelta(price: number, rate: number) {
+  if (price <= 0 || rate === 0) return 0;
+
+  const rawDelta = price * (rate / 100);
+  const direction = rawDelta > 0 ? 1 : -1;
+  const absolute = Math.abs(rawDelta);
+  const whole = Math.floor(absolute);
+  const remainder = absolute - whole;
+  const rounded = whole + (Math.random() < remainder ? 1 : 0);
+
+  return direction * rounded;
+}
+
+type RecentFlow = {
+  consecutiveUp: number;
+  consecutiveDown: number;
+  cumulativeRate: number;
+};
+
+async function getRecentFlow(connection: any, stockId: number): Promise<RecentFlow> {
+  const [rows]: any = await connection.query(
+    `
+    SELECT price
+    FROM stock_price_logs
+    WHERE stock_id = ?
+    ORDER BY id DESC
+    LIMIT 6
+    `,
+    [stockId]
+  );
+
+  const prices = rows
+    .map((row: any) => int(row.price))
+    .filter((price: number) => price > 0);
+
+  let consecutiveUp = 0;
+  let consecutiveDown = 0;
+
+  for (let index = 0; index < prices.length - 1; index += 1) {
+    const latest = prices[index];
+    const previous = prices[index + 1];
+
+    if (latest > previous && consecutiveDown === 0) consecutiveUp += 1;
+    else if (latest < previous && consecutiveUp === 0) consecutiveDown += 1;
+    else break;
+  }
+
+  const newest = prices[0] || 0;
+  const oldest = prices[prices.length - 1] || 0;
+  const cumulativeRate =
+    newest > 0 && oldest > 0 ? ((newest - oldest) / oldest) * 100 : 0;
+
+  return { consecutiveUp, consecutiveDown, cumulativeRate };
+}
+
 const AUTO_EVENT_MESSAGES = [
   "신제품 기대감이 높아졌습니다.",
   "대규모 투자 소식이 전해졌습니다.",
@@ -592,14 +647,14 @@ async function pressure(
     [season.id, stock.id, since]
   );
 
-  const rawTotal = rows.reduce(
-    (sum: number, row: any) =>
-      sum + num(row.buy_amount) + num(row.sell_amount),
-    0
+  const startingMoney = Math.max(1, int(season.starting_money, 10000));
+  const targetLiquidity = Math.max(
+    num(stock.current_price) * 1000,
+    startingMoney * 0.15
   );
   const actorCap = Math.max(
-    num(stock.current_price) * 10,
-    rawTotal * 0.2
+    num(stock.current_price) * 100,
+    targetLiquidity * 0.35
   );
 
   let buyAmount = 0;
@@ -608,19 +663,21 @@ async function pressure(
   let sellCount = 0;
 
   for (const row of rows) {
-    const net = num(row.buy_amount) - num(row.sell_amount);
-    const capped = clamp(net, -actorCap, actorCap);
+    const buy = Math.min(num(row.buy_amount), actorCap);
+    const sell = Math.min(num(row.sell_amount), actorCap);
 
-    if (capped > 0) buyAmount += capped;
-    if (capped < 0) sellAmount += Math.abs(capped);
-
+    buyAmount += buy;
+    sellAmount += sell;
     buyCount += int(row.buy_count);
     sellCount += int(row.sell_count);
   }
 
-  const denominator = Math.max(buyAmount + sellAmount, 1);
+  const totalAmount = buyAmount + sellAmount;
+  const imbalance =
+    totalAmount > 0 ? (buyAmount - sellAmount) / totalAmount : 0;
+  const activityFactor = clamp(totalAmount / targetLiquidity, 0, 1);
   const rate = clamp(
-    ((buyAmount - sellAmount) / denominator) * maxPressure,
+    imbalance * activityFactor * maxPressure,
     -maxPressure,
     maxPressure
   );
@@ -872,6 +929,38 @@ export async function POST() {
       [now]
     );
 
+    const [marketFlowRows]: any = await connection.query(
+      `
+      SELECT AVG(final_change_rate) AS average_change_rate
+      FROM
+      (
+        SELECT final_change_rate
+        FROM stock_market_rounds
+        WHERE season_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+      ) recent_market_rounds
+      `,
+      [season.id, Math.max(5, allStocks.length * 3)]
+    );
+
+    const recentMarketAverage = num(
+      marketFlowRows?.[0]?.average_change_rate
+    );
+    const randomMarketPulse = randomBetween(-0.35, 0.35);
+    let marketBias = randomMarketPulse;
+    let marketMood = "횡보";
+
+    if (recentMarketAverage >= 1.5) {
+      marketBias += 0.55;
+      marketMood = "상승";
+    } else if (recentMarketAverage <= -1.5) {
+      marketBias -= 0.55;
+      marketMood = "하락";
+    }
+
+    marketBias = clamp(marketBias, -0.9, 0.9);
+
     let updatedCount = 0;
     let delistedCount = 0;
 
@@ -905,6 +994,7 @@ export async function POST() {
           AND is_active = 1
           AND starts_at <= ?
           AND ends_at >= ?
+          AND event_title NOT LIKE '🚨 % 자동 호재 발생%'
         ORDER BY id DESC
         LIMIT 1
         `,
@@ -925,12 +1015,26 @@ export async function POST() {
       const cooldownReady = !cooldownUntil || cooldownUntil <= now;
       const specialTriggered = cooldownReady && randomBoolean(specialChance);
       const currentTrend = String(stock.market_trend || "NORMAL").toUpperCase();
+      const recentFlow = await getRecentFlow(connection, stock.id);
 
       let upChance = 56;
       if (currentTrend === "RISE") upChance = 66;
       if (currentTrend === "WEAK") upChance = 42;
       if (currentTrend === "OVERHEAT") upChance = 35;
       if (currentTrend === "REBOUND") upChance = 68;
+
+      upChance += marketBias * 10;
+
+      if (recentFlow.consecutiveUp >= 2) {
+        upChance -= Math.min(18, recentFlow.consecutiveUp * 5);
+      }
+      if (recentFlow.consecutiveDown >= 2) {
+        upChance += Math.min(18, recentFlow.consecutiveDown * 5);
+      }
+      if (recentFlow.cumulativeRate >= 15) upChance -= 10;
+      if (recentFlow.cumulativeRate <= -15) upChance += 10;
+
+      upChance = clamp(upChance, 20, 80);
 
       const normalUp = randomBoolean(upChance);
       let randomRate = specialTriggered
@@ -973,24 +1077,26 @@ export async function POST() {
       const maxPressure = Math.abs(
         num(season.total_max_pressure_rate, 2.5)
       );
-      const combinedPressure = clamp(
+      let combinedPressure = clamp(
         realPressure.rate + virtualPressure.rate,
         -maxPressure,
         maxPressure
       );
 
+      if (recentFlow.consecutiveUp >= 3 && combinedPressure > 0) {
+        combinedPressure *= 0.55;
+      }
+      if (recentFlow.consecutiveDown >= 3 && combinedPressure < 0) {
+        combinedPressure *= 0.55;
+      }
+
       const oldPrice = Math.max(0, int(stock.current_price));
       let finalChangeRate = clamp(
-        randomRate + combinedPressure + eventRate,
+        randomRate + combinedPressure + eventRate + marketBias,
         -95,
         300
       );
-      let newPrice =
-        oldPrice + Math.trunc(oldPrice * (finalChangeRate / 100));
-
-      if (finalChangeRate !== 0 && newPrice === oldPrice) {
-        newPrice = finalChangeRate > 0 ? oldPrice + 1 : oldPrice - 1;
-      }
+      let newPrice = oldPrice + stochasticPriceDelta(oldPrice, finalChangeRate);
 
       if (newPrice <= 0) {
         const [holdingRows]: any = await connection.query(
@@ -1128,7 +1234,7 @@ export async function POST() {
           [
             stock.id,
             `${autoEventTitle} · ${autoEventMessage}`,
-            Number(randomRate.toFixed(4)),
+            0,
             now,
             eventEndsAt,
             now,
@@ -1202,6 +1308,12 @@ export async function POST() {
             specialTriggered ? `자동호재:${autoEventMessage}` : "일반변동",
             event?.event_title ? `수동이벤트:${event.event_title}` : null,
             `흐름:${currentTrend}`,
+            `시장:${marketMood}(${marketBias.toFixed(2)}%)`,
+            recentFlow.consecutiveUp > 0
+              ? `연속상승:${recentFlow.consecutiveUp}`
+              : recentFlow.consecutiveDown > 0
+                ? `연속하락:${recentFlow.consecutiveDown}`
+                : null,
           ]
             .filter(Boolean)
             .join(" / "),
