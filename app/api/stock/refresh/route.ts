@@ -109,6 +109,28 @@ async function getRecentFlow(connection: any, stockId: number): Promise<RecentFl
   return { consecutiveUp, consecutiveDown, cumulativeRate };
 }
 
+
+async function getSeasonAnchorPrice(
+  connection: any,
+  stockId: number,
+  seasonStartsAt: string,
+  fallbackPrice: number
+) {
+  const [rows]: any = await connection.query(
+    `
+    SELECT price
+    FROM stock_price_logs
+    WHERE stock_id = ?
+      AND created_at >= ?
+    ORDER BY id ASC
+    LIMIT 1
+    `,
+    [stockId, seasonStartsAt]
+  );
+
+  return Math.max(1, int(rows?.[0]?.price, fallbackPrice));
+}
+
 const AUTO_EVENT_MESSAGES = [
   "신제품 기대감이 높아졌습니다.",
   "대규모 투자 소식이 전해졌습니다.",
@@ -961,6 +983,41 @@ export async function POST() {
 
     marketBias = clamp(marketBias, -0.9, 0.9);
 
+    const kstDate = now.slice(0, 10);
+    const [todayAutoEventRows]: any = await connection.query(
+      `
+      SELECT stock_id
+      FROM stock_events
+      WHERE event_title LIKE '🚨 % 자동 호재 발생%'
+        AND starts_at >= CONCAT(?, ' 00:00:00')
+        AND starts_at <= CONCAT(?, ' 23:59:59')
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [kstDate, kstDate]
+    );
+
+    let dailyAutoEventStockId: number | null = null;
+
+    if (!todayAutoEventRows[0] && dueStocks.length > 0) {
+      const [recentAutoEventRows]: any = await connection.query(
+        `
+        SELECT stock_id
+        FROM stock_events
+        WHERE event_title LIKE '🚨 % 자동 호재 발생%'
+        ORDER BY id DESC
+        LIMIT 1
+        `
+      );
+
+      const previousStockId = int(recentAutoEventRows?.[0]?.stock_id);
+      const candidates = (dueStocks as StockRow[]).filter(
+        (item) => dueStocks.length <= 1 || item.id !== previousStockId
+      );
+      const pool = candidates.length > 0 ? candidates : (dueStocks as StockRow[]);
+      dailyAutoEventStockId = pool[randomInteger(0, pool.length - 1)]?.id || null;
+    }
+
     let updatedCount = 0;
     let delistedCount = 0;
 
@@ -1012,10 +1069,16 @@ export async function POST() {
       const specialUpMin = Math.max(0.1, num(stock.special_up_min, Math.min(5, fallbackSpecial)));
       const specialUpMax = Math.max(specialUpMin, num(stock.special_up_max, fallbackSpecial));
       const cooldownUntil = mysqlText(stock.auto_event_cooldown_until);
-      const cooldownReady = !cooldownUntil || cooldownUntil <= now;
-      const specialTriggered = cooldownReady && randomBoolean(specialChance);
+      const specialTriggered = dailyAutoEventStockId === stock.id;
       const currentTrend = String(stock.market_trend || "NORMAL").toUpperCase();
       const recentFlow = await getRecentFlow(connection, stock.id);
+      const seasonAnchorPrice = await getSeasonAnchorPrice(
+        connection,
+        stock.id,
+        String(season.starts_at_text),
+        Math.max(1, int(stock.current_price))
+      );
+      const priceMultiple = Math.max(0.01, num(stock.current_price) / seasonAnchorPrice);
 
       let upChance = 56;
       if (currentTrend === "RISE") upChance = 66;
@@ -1034,7 +1097,13 @@ export async function POST() {
       if (recentFlow.cumulativeRate >= 15) upChance -= 10;
       if (recentFlow.cumulativeRate <= -15) upChance += 10;
 
-      upChance = clamp(upChance, 20, 80);
+      if (priceMultiple >= 2) upChance -= 8;
+      if (priceMultiple >= 3) upChance -= 10;
+      if (priceMultiple >= 5) upChance -= 12;
+      if (priceMultiple <= 0.6) upChance += 8;
+      if (priceMultiple <= 0.35) upChance += 10;
+
+      upChance = clamp(upChance, 12, 80);
 
       const normalUp = randomBoolean(upChance);
       let randomRate = specialTriggered
@@ -1042,6 +1111,17 @@ export async function POST() {
         : normalUp
           ? randomBetween(normalUpMin, normalUpMax)
           : -randomBetween(normalDownMin, normalDownMax);
+
+      if (randomRate > 0 && !specialTriggered) {
+        if (priceMultiple >= 2) randomRate *= 0.72;
+        if (priceMultiple >= 3) randomRate *= 0.58;
+        if (priceMultiple >= 5) randomRate *= 0.42;
+        if (priceMultiple >= 8) randomRate *= 0.28;
+      }
+
+      if (specialTriggered && priceMultiple >= 3) {
+        randomRate *= priceMultiple >= 8 ? 0.45 : priceMultiple >= 5 ? 0.6 : 0.78;
+      }
 
       const autoEventTitle = specialTriggered
         ? `🚨 ${stock.stock_name} 자동 호재 발생`
@@ -1307,6 +1387,7 @@ export async function POST() {
           [
             specialTriggered ? `자동호재:${autoEventMessage}` : "일반변동",
             event?.event_title ? `수동이벤트:${event.event_title}` : null,
+            `시작가대비:${priceMultiple.toFixed(2)}배`,
             `흐름:${currentTrend}`,
             `시장:${marketMood}(${marketBias.toFixed(2)}%)`,
             recentFlow.consecutiveUp > 0
