@@ -20,8 +20,10 @@ type OverlayQueueItem = {
   alert_type?: "support" | "complete" | null;
   nickname: string;
   title: string;
+  media_type?: "image" | "video" | null;
   item_image: string | null;
   item_audio: string | null;
+  item_video?: string | null;
   overlay_text: string | null;
   message: string;
   dotori_amount?: number;
@@ -51,6 +53,7 @@ export default function Page() {
   const [visible, setVisible] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -123,6 +126,18 @@ export default function Page() {
     } catch {}
   }
 
+  function stopVideo() {
+    const video = videoRef.current;
+
+    if (!video) return;
+
+    try {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    } catch {}
+  }
+
   function closeStream() {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -134,6 +149,7 @@ export default function Page() {
     clearPlayTimer();
     clearHideTimer();
     stopAudio();
+    stopVideo();
 
     playingKeyRef.current = null;
     currentItemRef.current = null;
@@ -227,6 +243,7 @@ export default function Page() {
     clearPlayTimer();
     clearHideTimer();
     stopAudio();
+    stopVideo();
 
     playingKeyRef.current = key;
     doneKeyRef.current = null;
@@ -245,6 +262,14 @@ export default function Page() {
       playTimerRef.current = setTimeout(() => {
         markDone(item);
       }, item.alert_type === "complete" ? 6500 : 4500);
+
+      return;
+    }
+
+    if (item.media_type === "video" && item.item_video) {
+      playTimerRef.current = setTimeout(() => {
+        markDone(item);
+      }, 10 * 60 * 1000);
 
       return;
     }
@@ -644,7 +669,32 @@ export default function Page() {
             }}
           >
             <div className="flex flex-col items-center justify-center px-14 py-10">
-              {currentItem.item_image && (
+              {currentItem.media_type === "video" &&
+              currentItem.item_video ? (
+                <video
+                  ref={videoRef}
+                  src={currentItem.item_video}
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  className="mb-6 max-h-[720px] max-w-[1280px] object-contain"
+                  onCanPlay={(event) => {
+                    event.currentTarget.muted = false;
+                    event.currentTarget.volume = 0.8;
+                    event.currentTarget.play().catch((error) => {
+                      console.error("영상 재생 실패:", error);
+                    });
+                  }}
+                  onEnded={() => {
+                    if (!currentItemRef.current) return;
+                    finishAfterAudio(currentItemRef.current);
+                  }}
+                  onError={() => {
+                    if (!currentItemRef.current) return;
+                    markDone(currentItemRef.current);
+                  }}
+                />
+              ) : currentItem.item_image ? (
                 <img
                   src={currentItem.item_image}
                   alt={currentItem.title}
@@ -652,7 +702,7 @@ export default function Page() {
                   decoding="async"
                   className="mb-6 max-h-[300px] w-[300px] rounded-2xl object-contain"
                 />
-              )}
+              ) : null}
 
               <div
                 className="text-center text-[54px] font-black leading-[1.25]"

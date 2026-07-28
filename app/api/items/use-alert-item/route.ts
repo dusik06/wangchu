@@ -72,8 +72,10 @@ export async function POST(req: Request) {
       SELECT
         id,
         item_name,
+        media_type,
         item_image,
         item_audio,
+        item_video,
         overlay_text,
         item_count
       FROM user_inventory
@@ -124,21 +126,25 @@ export async function POST(req: Request) {
         user_id,
         nickname,
         item_name,
+        media_type,
         item_image,
         item_audio,
+        item_video,
         overlay_text,
         message,
         status
       )
       VALUES
-      (?, ?, ?, ?, ?, ?, ?, 'pending')
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `,
       [
         user.id,
         user.nickname || "익명",
         item.item_name,
-        item.item_image || null,
-        item.item_audio || null,
+        item.media_type === "video" ? "video" : "image",
+        item.media_type === "video" ? null : item.item_image || null,
+        item.media_type === "video" ? null : item.item_audio || null,
+        item.media_type === "video" ? item.item_video || null : null,
         item.overlay_text || null,
         message,
       ]

@@ -100,15 +100,19 @@ export async function POST(req: Request) {
         UPDATE user_inventory
         SET
           item_count = item_count + ?,
+          media_type = ?,
           item_image = ?,
           item_audio = ?,
+          item_video = ?,
           overlay_text = ?
         WHERE id = ?
         `,
         [
           quantity,
-          item.item_image || null,
-          item.item_audio || null,
+          item.media_type === "video" ? "video" : "image",
+          item.media_type === "video" ? null : item.item_image || null,
+          item.media_type === "video" ? null : item.item_audio || null,
+          item.media_type === "video" ? item.item_video || null : null,
           item.overlay_text || null,
           inventory.id,
         ]
@@ -117,15 +121,26 @@ export async function POST(req: Request) {
       await connection.query(
         `
         INSERT INTO user_inventory
-          (user_id, item_name, item_image, item_audio, overlay_text, item_count)
+          (
+            user_id,
+            item_name,
+            media_type,
+            item_image,
+            item_audio,
+            item_video,
+            overlay_text,
+            item_count
+          )
         VALUES
-          (?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           user.id,
           item.item_name,
-          item.item_image || null,
-          item.item_audio || null,
+          item.media_type === "video" ? "video" : "image",
+          item.media_type === "video" ? null : item.item_image || null,
+          item.media_type === "video" ? null : item.item_audio || null,
+          item.media_type === "video" ? item.item_video || null : null,
           item.overlay_text || null,
           quantity,
         ]

@@ -71,11 +71,19 @@ export default async function AdminShopPage() {
                     </span>
                   </div>
 
-                  {item.item_image ? (
+                  {item.media_type === "video" && item.item_video ? (
+                    <video
+                      src={item.item_video}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="mb-3 h-32 w-full rounded-xl bg-black/30 object-contain"
+                    />
+                  ) : item.item_image ? (
                     <img
                       src={item.item_image}
                       alt={item.item_name}
-                      className="mb-3 h-32 w-full rounded-xl object-contain bg-black/30"
+                      className="mb-3 h-32 w-full rounded-xl bg-black/30 object-contain"
                     />
                   ) : (
                     <div className="mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-black/30 text-4xl">
@@ -85,8 +93,14 @@ export default async function AdminShopPage() {
 
                   <h3 className="text-lg font-black">{item.item_name}</h3>
 
-                  {item.item_audio ? (
-                    <p className="mt-2 text-xs text-emerald-300">노래 등록됨</p>
+                  {item.media_type === "video" ? (
+                    <p className="mt-2 text-xs text-violet-300">
+                      영상 등록됨 · 영상 내부 음성 재생
+                    </p>
+                  ) : item.item_audio ? (
+                    <p className="mt-2 text-xs text-emerald-300">
+                      이미지 + 노래 등록됨
+                    </p>
                   ) : (
                     <p className="mt-2 text-xs text-slate-400">노래 없음</p>
                   )}
