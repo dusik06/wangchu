@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [settingRows]: any = await db.query(
-    "SELECT title FROM contribution_rank_settings WHERE id = 1 LIMIT 1"
+    "SELECT title, show_title FROM contribution_rank_settings WHERE id = 1 LIMIT 1"
   );
 
   const [categoryRows]: any = await db.query(
@@ -75,6 +75,7 @@ export async function GET() {
   return NextResponse.json(
     {
       title: settingRows[0]?.title || "기여도 순위",
+      showTitle: Number(settingRows[0]?.show_title ?? 1) === 1,
       categories,
       participants,
       updatedAt: Date.now(),

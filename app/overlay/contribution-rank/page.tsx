@@ -17,6 +17,7 @@ type Participant = {
 
 type RankData = {
   title: string;
+  showTitle: boolean;
   categories: Category[];
   participants: Participant[];
 };
@@ -30,6 +31,7 @@ function formatMoney(value: number) {
 export default function ContributionRankOverlay() {
   const [data, setData] = useState<RankData>({
     title: "기여도 순위",
+    showTitle: true,
     categories: [],
     participants: [],
   });
@@ -76,7 +78,7 @@ export default function ContributionRankOverlay() {
     <main className="min-h-screen bg-transparent p-3 font-sans text-white">
       <div className="mx-auto w-full max-w-[1200px] rounded-[18px] border-[5px] border-[#bfc2c7] bg-[#090b0d] p-[5px] shadow-[0_0_0_2px_#36393e,0_0_0_7px_#e4e5e7,0_8px_30px_rgba(0,0,0,.48)]">
         <section className="overflow-hidden rounded-[8px] border-2 border-[#555a60] bg-[#090b0d]">
-          {data.title.trim() && (
+          {data.showTitle && data.title.trim() && (
             <header className="px-3 pb-2.5 pt-3 text-center">
               <h1 className="truncate text-[clamp(16px,2.35vw,27px)] font-black tracking-tight">
                 {data.title}

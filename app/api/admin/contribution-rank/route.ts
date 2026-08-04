@@ -41,6 +41,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "setShowTitle") {
+    const showTitle = body.showTitle ? 1 : 0;
+    await db.query(
+      `UPDATE contribution_rank_settings
+       SET show_title = ?
+       WHERE id = 1`,
+      [showTitle]
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "addParticipant") {
     const rankName = String(body.rankName || "직급").trim().slice(0, 50);
     const streamerName = String(body.streamerName || "새 스트리머").trim().slice(0, 100);

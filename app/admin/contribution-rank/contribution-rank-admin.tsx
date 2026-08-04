@@ -21,12 +21,14 @@ type Participant = {
 
 type RankData = {
   title: string;
+  showTitle: boolean;
   categories: Category[];
   participants: Participant[];
 };
 
 const emptyData: RankData = {
   title: "기여도 순위",
+  showTitle: true,
   categories: [],
   participants: [],
 };
@@ -161,6 +163,32 @@ export default function ContributionRankAdmin() {
                 className="rounded-xl bg-red-900/80 px-5 py-3 font-bold hover:bg-red-800"
               >
                 전체 초기화
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-[#090613] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-black">순위판 제목 표시</div>
+                <div className="mt-1 text-xs text-white/45">
+                  끄면 제목과 제목 영역이 함께 사라지고 표가 위로 올라갑니다.
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={working}
+                onClick={() =>
+                  action({ action: "setShowTitle", showTitle: !data.showTitle })
+                }
+                className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                  data.showTitle ? "bg-violet-600" : "bg-white/15"
+                } disabled:opacity-50`}
+                aria-pressed={data.showTitle}
+              >
+                <span
+                  className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-all ${
+                    data.showTitle ? "left-7" : "left-1"
+                  }`}
+                />
               </button>
             </div>
 
