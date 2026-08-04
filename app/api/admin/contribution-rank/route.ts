@@ -52,6 +52,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+
+  if (action === "setDisplaySettings") {
+    const titleFontSize = Math.min(60, Math.max(12, intValue(body.titleFontSize, 24)));
+    const headerFontSize = Math.min(36, Math.max(8, intValue(body.headerFontSize, 13)));
+    const bodyFontSize = Math.min(40, Math.max(8, intValue(body.bodyFontSize, 15)));
+    const rowHeight = Math.min(90, Math.max(24, intValue(body.rowHeight, 42)));
+    const scalePercent = Math.min(150, Math.max(50, intValue(body.scalePercent, 100)));
+    const borderWidth = Math.min(14, Math.max(0, intValue(body.borderWidth, 5)));
+    const borderRadius = Math.min(50, Math.max(0, intValue(body.borderRadius, 18)));
+    const showShadow = body.showShadow ? 1 : 0;
+    const titleAlign = ["left", "center", "right"].includes(String(body.titleAlign))
+      ? String(body.titleAlign)
+      : "center";
+    const columnGap = Math.min(24, Math.max(0, intValue(body.columnGap, 0)));
+    const useCommas = body.useCommas ? 1 : 0;
+    const color = (value: unknown, fallback: string) =>
+      /^#[0-9a-fA-F]{6}$/.test(String(value || "")) ? String(value) : fallback;
+
+    await db.query(
+      `UPDATE contribution_rank_settings
+       SET title_font_size = ?, header_font_size = ?, body_font_size = ?,
+           row_height = ?, scale_percent = ?, border_width = ?, border_radius = ?,
+           show_shadow = ?, title_align = ?, column_gap = ?, use_commas = ?,
+           first_color = ?, second_color = ?, third_color = ?
+       WHERE id = 1`,
+      [
+        titleFontSize, headerFontSize, bodyFontSize, rowHeight, scalePercent,
+        borderWidth, borderRadius, showShadow, titleAlign, columnGap, useCommas,
+        color(body.firstColor, "#ef3340"),
+        color(body.secondColor, "#00b94f"),
+        color(body.thirdColor, "#1769e8"),
+      ]
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "addParticipant") {
     const rankName = String(body.rankName || "직급").trim().slice(0, 50);
     const streamerName = String(body.streamerName || "새 스트리머").trim().slice(0, 100);

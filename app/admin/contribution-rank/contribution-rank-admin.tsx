@@ -19,9 +19,17 @@ type Participant = {
   amounts: Record<string, number>;
 };
 
+type DisplaySettings = {
+  titleFontSize: number; headerFontSize: number; bodyFontSize: number; rowHeight: number;
+  scalePercent: number; borderWidth: number; borderRadius: number; showShadow: boolean;
+  titleAlign: "left" | "center" | "right"; columnGap: number; useCommas: boolean;
+  firstColor: string; secondColor: string; thirdColor: string;
+};
+
 type RankData = {
   title: string;
   showTitle: boolean;
+  display: DisplaySettings;
   categories: Category[];
   participants: Participant[];
 };
@@ -29,6 +37,7 @@ type RankData = {
 const emptyData: RankData = {
   title: "기여도 순위",
   showTitle: true,
+  display: { titleFontSize:24, headerFontSize:13, bodyFontSize:15, rowHeight:42, scalePercent:100, borderWidth:5, borderRadius:18, showShadow:true, titleAlign:"center", columnGap:0, useCommas:true, firstColor:"#ef3340", secondColor:"#00b94f", thirdColor:"#1769e8" },
   categories: [],
   participants: [],
 };
@@ -46,12 +55,14 @@ export default function ContributionRankAdmin() {
   const [amountInputs, setAmountInputs] = useState<Record<string, string>>({});
   const [manualInputs, setManualInputs] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [displayDraft, setDisplayDraft] = useState<DisplaySettings>(emptyData.display);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/contribution-rank", { cache: "no-store" });
       const json = await res.json();
       setData(json);
+      setDisplayDraft({ ...emptyData.display, ...(json.display || {}) });
       setTitleDraft((current) => current || json.title || "기여도 순위");
     } catch {
       setMessage("데이터를 불러오지 못했습니다.");
@@ -190,6 +201,34 @@ export default function ContributionRankAdmin() {
                   }`}
                 />
               </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-white/10 bg-[#090613] p-4">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-black">방송 화면 디자인 조절</div>
+                  <div className="mt-1 text-xs text-white/45">저장하면 미리보기와 OBS에 즉시 반영됩니다.</div>
+                </div>
+                <button type="button" disabled={working} onClick={() => action({ action:"setDisplaySettings", ...displayDraft })} className="rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-black hover:bg-violet-600 disabled:opacity-50">디자인 저장</button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <RangeField label="제목 글씨" min={12} max={60} value={displayDraft.titleFontSize} onChange={v=>setDisplayDraft(x=>({...x,titleFontSize:v}))} />
+                <RangeField label="카테고리 글씨" min={8} max={36} value={displayDraft.headerFontSize} onChange={v=>setDisplayDraft(x=>({...x,headerFontSize:v}))} />
+                <RangeField label="내용 글씨" min={8} max={40} value={displayDraft.bodyFontSize} onChange={v=>setDisplayDraft(x=>({...x,bodyFontSize:v}))} />
+                <RangeField label="행 높이" min={24} max={90} value={displayDraft.rowHeight} onChange={v=>setDisplayDraft(x=>({...x,rowHeight:v}))} />
+                <RangeField label="전체 배율" min={50} max={150} value={displayDraft.scalePercent} suffix="%" onChange={v=>setDisplayDraft(x=>({...x,scalePercent:v}))} />
+                <RangeField label="열 간격" min={0} max={24} value={displayDraft.columnGap} onChange={v=>setDisplayDraft(x=>({...x,columnGap:v}))} />
+                <RangeField label="테두리 두께" min={0} max={14} value={displayDraft.borderWidth} onChange={v=>setDisplayDraft(x=>({...x,borderWidth:v}))} />
+                <RangeField label="테두리 둥글기" min={0} max={50} value={displayDraft.borderRadius} onChange={v=>setDisplayDraft(x=>({...x,borderRadius:v}))} />
+                <label className="grid gap-2 text-sm font-bold"><span>제목 정렬</span><select value={displayDraft.titleAlign} onChange={e=>setDisplayDraft(x=>({...x,titleAlign:e.target.value as DisplaySettings["titleAlign"]}))} className="rounded-lg border border-white/10 bg-[#151027] px-3 py-2"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></label>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <ToggleField label="그림자" checked={displayDraft.showShadow} onChange={v=>setDisplayDraft(x=>({...x,showShadow:v}))} />
+                <ToggleField label="천 단위 쉼표" checked={displayDraft.useCommas} onChange={v=>setDisplayDraft(x=>({...x,useCommas:v}))} />
+                <ColorField label="1위 색상" value={displayDraft.firstColor} onChange={v=>setDisplayDraft(x=>({...x,firstColor:v}))} />
+                <ColorField label="2위 색상" value={displayDraft.secondColor} onChange={v=>setDisplayDraft(x=>({...x,secondColor:v}))} />
+                <ColorField label="3위 색상" value={displayDraft.thirdColor} onChange={v=>setDisplayDraft(x=>({...x,thirdColor:v}))} />
+              </div>
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
@@ -410,6 +449,16 @@ export default function ContributionRankAdmin() {
       </div>
     </main>
   );
+}
+
+function RangeField({ label, min, max, value, suffix = "px", onChange }: { label:string; min:number; max:number; value:number; suffix?:string; onChange:(value:number)=>void }) {
+  return <label className="grid gap-2 text-sm font-bold"><span className="flex justify-between"><span>{label}</span><span className="text-violet-300">{value}{suffix}</span></span><input type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))} className="w-full accent-violet-500" /></label>;
+}
+function ToggleField({ label, checked, onChange }: { label:string; checked:boolean; onChange:(value:boolean)=>void }) {
+  return <label className="flex items-center justify-between rounded-lg border border-white/10 bg-[#151027] px-3 py-2 text-sm font-bold"><span>{label}</span><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} className="h-5 w-5 accent-violet-500" /></label>;
+}
+function ColorField({ label, value, onChange }: { label:string; value:string; onChange:(value:string)=>void }) {
+  return <label className="flex items-center justify-between rounded-lg border border-white/10 bg-[#151027] px-3 py-2 text-sm font-bold"><span>{label}</span><input type="color" value={value} onChange={e=>onChange(e.target.value)} className="h-8 w-12 cursor-pointer rounded border-0 bg-transparent" /></label>;
 }
 
 function CategoryEditor({

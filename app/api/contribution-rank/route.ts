@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [settingRows]: any = await db.query(
-    "SELECT title, show_title FROM contribution_rank_settings WHERE id = 1 LIMIT 1"
+    "SELECT title, show_title, title_font_size, header_font_size, body_font_size, row_height, scale_percent, border_width, border_radius, show_shadow, title_align, column_gap, use_commas, first_color, second_color, third_color FROM contribution_rank_settings WHERE id = 1 LIMIT 1"
   );
 
   const [categoryRows]: any = await db.query(
@@ -76,6 +76,22 @@ export async function GET() {
     {
       title: settingRows[0]?.title || "기여도 순위",
       showTitle: Number(settingRows[0]?.show_title ?? 1) === 1,
+      display: {
+        titleFontSize: Number(settingRows[0]?.title_font_size || 24),
+        headerFontSize: Number(settingRows[0]?.header_font_size || 13),
+        bodyFontSize: Number(settingRows[0]?.body_font_size || 15),
+        rowHeight: Number(settingRows[0]?.row_height || 42),
+        scalePercent: Number(settingRows[0]?.scale_percent || 100),
+        borderWidth: Number(settingRows[0]?.border_width || 5),
+        borderRadius: Number(settingRows[0]?.border_radius || 18),
+        showShadow: Number(settingRows[0]?.show_shadow ?? 1) === 1,
+        titleAlign: String(settingRows[0]?.title_align || "center"),
+        columnGap: Number(settingRows[0]?.column_gap || 0),
+        useCommas: Number(settingRows[0]?.use_commas ?? 1) === 1,
+        firstColor: String(settingRows[0]?.first_color || "#ef3340"),
+        secondColor: String(settingRows[0]?.second_color || "#00b94f"),
+        thirdColor: String(settingRows[0]?.third_color || "#1769e8"),
+      },
       categories,
       participants,
       updatedAt: Date.now(),

@@ -2,133 +2,72 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Category = {
-  id: number;
-  name: string;
+type Category = { id: number; name: string };
+type Participant = { id: number; rankName: string; streamerName: string; contribution: number; amounts: Record<string, number> };
+type DisplaySettings = {
+  titleFontSize: number; headerFontSize: number; bodyFontSize: number; rowHeight: number;
+  scalePercent: number; borderWidth: number; borderRadius: number; showShadow: boolean;
+  titleAlign: "left" | "center" | "right"; columnGap: number; useCommas: boolean;
+  firstColor: string; secondColor: string; thirdColor: string;
 };
+type RankData = { title: string; showTitle: boolean; display: DisplaySettings; categories: Category[]; participants: Participant[] };
 
-type Participant = {
-  id: number;
-  rankName: string;
-  streamerName: string;
-  contribution: number;
-  amounts: Record<string, number>;
-};
-
-type RankData = {
-  title: string;
-  showTitle: boolean;
-  categories: Category[];
-  participants: Participant[];
-};
-
-const rowColors = ["#ef3340", "#00b94f", "#1769e8"];
-
-function formatMoney(value: number) {
-  return Math.trunc(Number(value || 0)).toLocaleString("ko-KR");
-}
+const defaultDisplay: DisplaySettings = { titleFontSize:24, headerFontSize:13, bodyFontSize:15, rowHeight:42, scalePercent:100, borderWidth:5, borderRadius:18, showShadow:true, titleAlign:"center", columnGap:0, useCommas:true, firstColor:"#ef3340", secondColor:"#00b94f", thirdColor:"#1769e8" };
 
 export default function ContributionRankOverlay() {
-  const [data, setData] = useState<RankData>({
-    title: "기여도 순위",
-    showTitle: true,
-    categories: [],
-    participants: [],
-  });
+  const [data, setData] = useState<RankData>({ title:"기여도 순위", showTitle:true, display:defaultDisplay, categories:[], participants:[] });
 
   useEffect(() => {
     let active = true;
-
     async function load() {
       try {
-        const res = await fetch(`/api/contribution-rank?t=${Date.now()}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/contribution-rank?t=${Date.now()}`, { cache:"no-store" });
         const json = await res.json();
-        if (active) setData(json);
+        if (active) setData({ ...json, display: { ...defaultDisplay, ...(json.display || {}) } });
       } catch {}
     }
-
     load();
     const timer = window.setInterval(load, 700);
-
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
+    return () => { active = false; window.clearInterval(timer); };
   }, []);
 
-  const columns = useMemo(
-    () => [
-      { key: "rank", label: "직급", width: "0.85fr" },
-      { key: "streamer", label: "스트리머", width: "1.15fr" },
-      ...data.categories.map((category) => ({
-        key: `category-${category.id}`,
-        label: category.name,
-        width: "1fr",
-      })),
-      { key: "contribution", label: "기여도", width: "0.72fr" },
-    ],
-    [data.categories]
-  );
-
-  const gridTemplateColumns = columns.map((column) => column.width).join(" ");
+  const columns = useMemo(() => [
+    { key:"rank", label:"직급", width:"0.85fr" },
+    { key:"streamer", label:"스트리머", width:"1.15fr" },
+    ...data.categories.map(c => ({ key:`category-${c.id}`, label:c.name, width:"1fr" })),
+    { key:"contribution", label:"기여도", width:"0.72fr" },
+  ], [data.categories]);
+  const gridTemplateColumns = columns.map(c => c.width).join(" ");
+  const d = data.display || defaultDisplay;
+  const colors = [d.firstColor, d.secondColor, d.thirdColor];
+  const formatNumber = (v:number) => d.useCommas ? Math.trunc(Number(v||0)).toLocaleString("ko-KR") : String(Math.trunc(Number(v||0)));
 
   return (
-    <main className="min-h-screen bg-transparent p-3 font-sans text-white">
-      <div className="mx-auto w-full max-w-[1200px] rounded-[18px] border-[5px] border-[#bfc2c7] bg-[#090b0d] p-[5px] shadow-[0_0_0_2px_#36393e,0_0_0_7px_#e4e5e7,0_8px_30px_rgba(0,0,0,.48)]">
-        <section className="overflow-hidden rounded-[8px] border-2 border-[#555a60] bg-[#090b0d]">
-          {data.showTitle && data.title.trim() && (
-            <header className="px-3 pb-2.5 pt-3 text-center">
-              <h1 className="truncate text-[clamp(16px,2.35vw,27px)] font-black tracking-tight">
-                {data.title}
-              </h1>
-            </header>
-          )}
-
-          <div
-            className="grid items-center border-b-2 border-[#d61d66] px-2 text-center text-[clamp(10px,1.15vw,15px)] font-black"
-            style={{ gridTemplateColumns }}
-          >
-            {columns.map((column) => (
-              <div key={column.key} className="min-w-0 px-1 py-2">
-                <span className="block truncate">{column.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            {data.participants.map((participant, index) => (
-              <div
-                key={participant.id}
-                className="grid items-center text-center text-[clamp(11px,1.25vw,17px)] font-black leading-none"
-                style={{
-                  gridTemplateColumns,
-                  background: index < 3 ? rowColors[index] : "rgba(255,255,255,.025)",
-                  borderBottom: "1px solid rgba(255,255,255,.07)",
-                  minHeight: "42px",
-                }}
-              >
-                <div className="min-w-0 truncate px-1.5 py-2">{participant.rankName}</div>
-                <div className="min-w-0 truncate px-1.5 py-2">{participant.streamerName}</div>
-                {data.categories.map((category) => (
-                  <div key={category.id} className="min-w-0 truncate px-1.5 py-2 tabular-nums">
-                    {formatMoney(participant.amounts[String(category.id)] || 0)}
-                  </div>
-                ))}
-                <div className="min-w-0 truncate px-1.5 py-2 tabular-nums">
-                  {participant.contribution}
-                </div>
-              </div>
-            ))}
-
-            {data.participants.length === 0 && (
-              <div className="py-16 text-center text-lg font-bold text-white/50">
-                등록된 인원이 없습니다.
-              </div>
+    <main className="min-h-screen bg-transparent p-2 font-sans text-white">
+      <div className="mx-auto origin-top w-full max-w-[1200px]" style={{ transform:`scale(${d.scalePercent/100})`, transformOrigin:"top center" }}>
+        <div style={{ borderWidth:d.borderWidth, borderRadius:d.borderRadius, borderColor:"#bfc2c7", borderStyle:"solid", background:"transparent", padding:5, boxShadow:d.showShadow ? "0 0 0 2px #36393e,0 0 0 7px #e4e5e7,0 8px 30px rgba(0,0,0,.48)" : "0 0 0 2px #36393e,0 0 0 7px #e4e5e7" }}>
+          <section style={{ overflow:"hidden", borderRadius:Math.max(0,d.borderRadius-10), border:"2px solid #555a60", background:"#090b0d" }}>
+            {data.showTitle && data.title.trim() && (
+              <header style={{ padding:"10px 12px 8px", textAlign:d.titleAlign }}>
+                <h1 style={{ margin:0, fontSize:d.titleFontSize, fontWeight:900, lineHeight:1.15, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{data.title}</h1>
+              </header>
             )}
-          </div>
-        </section>
+            <div style={{ display:"grid", gridTemplateColumns, gap:d.columnGap, alignItems:"center", borderBottom:"2px solid #d61d66", padding:"0 8px", textAlign:"center", fontSize:d.headerFontSize, fontWeight:900 }}>
+              {columns.map(c => <div key={c.key} style={{ minWidth:0, padding:"8px 4px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{c.label}</div>)}
+            </div>
+            <div>
+              {data.participants.map((p,index) => (
+                <div key={p.id} style={{ display:"grid", gridTemplateColumns, gap:d.columnGap, alignItems:"center", minHeight:d.rowHeight, textAlign:"center", fontSize:d.bodyFontSize, fontWeight:900, lineHeight:1, background:index<3?colors[index]:"rgba(255,255,255,.025)", borderBottom:"1px solid rgba(255,255,255,.07)" }}>
+                  <div style={{ minWidth:0, padding:"8px 6px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.rankName}</div>
+                  <div style={{ minWidth:0, padding:"8px 6px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.streamerName}</div>
+                  {data.categories.map(c => <div key={c.id} style={{ minWidth:0, padding:"8px 6px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", fontVariantNumeric:"tabular-nums" }}>{formatNumber(p.amounts[String(c.id)]||0)}</div>)}
+                  <div style={{ minWidth:0, padding:"8px 6px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", fontVariantNumeric:"tabular-nums" }}>{formatNumber(p.contribution)}</div>
+                </div>
+              ))}
+              {data.participants.length===0 && <div style={{ padding:"55px 12px", textAlign:"center", fontSize:d.bodyFontSize, fontWeight:700, color:"rgba(255,255,255,.5)" }}>등록된 인원이 없습니다.</div>}
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
