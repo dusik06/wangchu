@@ -57,13 +57,15 @@ export default function ContributionRankAdmin() {
   const [copied, setCopied] = useState(false);
   const [displayDraft, setDisplayDraft] = useState<DisplaySettings>(emptyData.display);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (syncForm = false) => {
     try {
       const res = await fetch("/api/contribution-rank", { cache: "no-store" });
       const json = await res.json();
       setData(json);
-      setDisplayDraft({ ...emptyData.display, ...(json.display || {}) });
-      setTitleDraft((current) => current || json.title || "기여도 순위");
+      if (syncForm) {
+        setDisplayDraft({ ...emptyData.display, ...(json.display || {}) });
+        setTitleDraft(json.title || "");
+      }
     } catch {
       setMessage("데이터를 불러오지 못했습니다.");
     } finally {
@@ -72,8 +74,8 @@ export default function ContributionRankAdmin() {
   }, []);
 
   useEffect(() => {
-    load();
-    const timer = window.setInterval(load, 1500);
+    load(true);
+    const timer = window.setInterval(() => load(false), 1500);
     return () => window.clearInterval(timer);
   }, [load]);
 
@@ -93,7 +95,7 @@ export default function ContributionRankAdmin() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "처리하지 못했습니다.");
-      await load();
+      await load(true);
       return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "오류가 발생했습니다.");
