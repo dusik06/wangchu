@@ -76,18 +76,20 @@ export default function ContributionRankOverlay() {
     <main className="min-h-screen bg-transparent p-3 font-sans text-white">
       <div className="mx-auto w-full max-w-[1200px] rounded-[18px] border-[5px] border-[#bfc2c7] bg-[#090b0d] p-[5px] shadow-[0_0_0_2px_#36393e,0_0_0_7px_#e4e5e7,0_8px_30px_rgba(0,0,0,.48)]">
         <section className="overflow-hidden rounded-[8px] border-2 border-[#555a60] bg-[#090b0d]">
-          <header className="px-4 pb-4 pt-5 text-center">
-            <h1 className="truncate text-[clamp(22px,3.2vw,38px)] font-black tracking-tight">
-              {data.title}
-            </h1>
-          </header>
+          {data.title.trim() && (
+            <header className="px-3 pb-2.5 pt-3 text-center">
+              <h1 className="truncate text-[clamp(16px,2.35vw,27px)] font-black tracking-tight">
+                {data.title}
+              </h1>
+            </header>
+          )}
 
           <div
-            className="grid items-center border-b-2 border-[#d61d66] px-2 text-center text-[clamp(12px,1.55vw,20px)] font-black"
+            className="grid items-center border-b-2 border-[#d61d66] px-2 text-center text-[clamp(10px,1.15vw,15px)] font-black"
             style={{ gridTemplateColumns }}
           >
             {columns.map((column) => (
-              <div key={column.key} className="min-w-0 px-1.5 py-3">
+              <div key={column.key} className="min-w-0 px-1 py-2">
                 <span className="block truncate">{column.label}</span>
               </div>
             ))}
@@ -97,22 +99,22 @@ export default function ContributionRankOverlay() {
             {data.participants.map((participant, index) => (
               <div
                 key={participant.id}
-                className="grid items-center text-center text-[clamp(13px,1.65vw,22px)] font-black leading-none"
+                className="grid items-center text-center text-[clamp(11px,1.25vw,17px)] font-black leading-none"
                 style={{
                   gridTemplateColumns,
                   background: index < 3 ? rowColors[index] : "rgba(255,255,255,.025)",
                   borderBottom: "1px solid rgba(255,255,255,.07)",
-                  minHeight: "54px",
+                  minHeight: "42px",
                 }}
               >
-                <div className="min-w-0 truncate px-2 py-3">{participant.rankName}</div>
-                <div className="min-w-0 truncate px-2 py-3">{participant.streamerName}</div>
+                <div className="min-w-0 truncate px-1.5 py-2">{participant.rankName}</div>
+                <div className="min-w-0 truncate px-1.5 py-2">{participant.streamerName}</div>
                 {data.categories.map((category) => (
-                  <div key={category.id} className="min-w-0 truncate px-2 py-3 tabular-nums">
+                  <div key={category.id} className="min-w-0 truncate px-1.5 py-2 tabular-nums">
                     {formatMoney(participant.amounts[String(category.id)] || 0)}
                   </div>
                 ))}
-                <div className="min-w-0 truncate px-2 py-3 tabular-nums">
+                <div className="min-w-0 truncate px-1.5 py-2 tabular-nums">
                   {participant.contribution}
                 </div>
               </div>
