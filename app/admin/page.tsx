@@ -216,6 +216,13 @@ export default async function AdminPage() {
           >
             🎛️ 오버레이 컨트롤러
           </a>
+
+          <a
+            className="cursor-pointer rounded-xl bg-fuchsia-600 p-6 font-bold text-white hover:bg-fuchsia-500"
+            href="/admin/contribution-rank"
+          >
+            📋 기여도 순위 관리
+          </a>
         </div>
       </div>
     </main>
