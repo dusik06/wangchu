@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { simulateRace, type StoredDogRaceEntry } from "@/lib/dog-race/engine";
+import { GAME_BET_MAX, validateGameBet } from "@/lib/game-bet-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     );
     const settings = settingsRows[0] || { min_bet: 10, max_bet: 10000, is_active: 1 };
     const minBet = Math.max(1, Number(settings.min_bet || 10));
-    const maxBet = Math.max(minBet, Number(settings.max_bet || 10000));
+    const maxBet = Math.min(GAME_BET_MAX, Math.max(minBet, Number(settings.max_bet || GAME_BET_MAX)));
 
     if (Number(settings.is_active) !== 1) {
       await conn.rollback();
@@ -58,6 +59,17 @@ export async function POST(req: Request) {
     }
 
     const user = users[0];
+
+    const betValidation = await validateGameBet(conn, {
+      userId: user.id,
+      userEmail: String(session.user.email),
+      betAmount,
+    });
+
+    if (!betValidation.ok) {
+      await conn.rollback();
+      return NextResponse.json({ success: false, message: betValidation.message }, { status: 400 });
+    }
 
     if (Number(user.dotori || 0) < betAmount) {
       await conn.rollback();

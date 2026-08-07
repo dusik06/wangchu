@@ -205,6 +205,13 @@ setIsLoading(true);
 
     if (status === "ready" && (!Number.isInteger(amount) || amount <= 0)) {
       setMessage("배팅 도토리를 정확히 입력해주세요.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (status === "ready" && amount > 10000) {
+      setMessage("한 번에 최대 10,000도토리까지 배팅할 수 있습니다.");
+      setIsLoading(false);
       return;
     }
 
@@ -384,9 +391,10 @@ await animateToResult(
               </label>
               <input
                 value={betAmount}
-                onChange={(e) => setBetAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                inputMode="numeric"
+                onChange={(e) => setBetAmount(e.target.value.replace(/[^0-9]/g, "").slice(0, 5))}
                 className="w-full rounded-2xl border border-white/10 bg-[#09090f] px-4 py-3 text-lg font-bold outline-none focus:border-purple-400"
-                placeholder="배팅할 도토리"
+                placeholder="배팅할 도토리 (최대 10,000)"
               />
             </div>
           )}

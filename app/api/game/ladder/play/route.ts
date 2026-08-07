@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import db from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { GAME_BET_MAX, validateGameBet } from "@/lib/game-bet-limit";
 
 const MULTIPLIERS: Record<string, number> = {
   left: 1.9,
@@ -51,8 +52,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "배팅 항목이 올바르지 않습니다." });
     }
 
-    if (!betAmount || betAmount <= 0) {
+    if (!Number.isInteger(betAmount) || betAmount <= 0) {
       return NextResponse.json({ success: false, message: "배팅 도토리를 입력하세요." });
+    }
+
+    if (betAmount > GAME_BET_MAX) {
+      return NextResponse.json({ success: false, message: `한 번에 최대 ${GAME_BET_MAX.toLocaleString()}도토리까지 배팅할 수 있습니다.` });
     }
 
     connection = await db.getConnection();
@@ -69,6 +74,17 @@ export async function POST(req: Request) {
     }
 
     const user = users[0];
+
+    const betValidation = await validateGameBet(connection, {
+      userId: user.id,
+      userEmail: String(user.email || session.user.email),
+      betAmount,
+    });
+
+    if (!betValidation.ok) {
+      await connection.rollback();
+      return NextResponse.json({ success: false, message: betValidation.message });
+    }
 
     if (Number(user.dotori) < betAmount) {
       await connection.rollback();

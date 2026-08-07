@@ -93,6 +93,10 @@ setShowResult(true);
 
   const startGame = async () => {
     if (!betAmount || !choice || loading) return;
+    if (Number(betAmount) > 10000) {
+      alert("한 번에 최대 10,000도토리까지 배팅할 수 있습니다.");
+      return;
+    }
 
     setLoading(true);
     setRolling(true);
@@ -347,7 +351,8 @@ location.reload();
                 <input
                   type="number"
                   min="1"
-                  placeholder="배팅 도토리 입력"
+                  max="10000"
+                  placeholder="배팅 도토리 입력 (최대 10,000)"
                   value={betAmount}
                   disabled={loading || firstWin === true}
                   onChange={(e) => setBetAmount(e.target.value)}

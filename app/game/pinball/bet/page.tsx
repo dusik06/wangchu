@@ -447,6 +447,11 @@ export default function PinballBetPage() {
       return;
     }
 
+    if (Number(betAmount) > 10000) {
+      alert("한 번에 최대 10,000도토리까지 배팅할 수 있습니다.");
+      return;
+    }
+
     await fetchMap();
 
     setLoading(true);
@@ -567,11 +572,13 @@ export default function PinballBetPage() {
 
           <input
             type="number"
+            min="1"
+            max="10000"
             value={betAmount}
             onChange={(e) => setBetAmount(e.target.value)}
             disabled={loading}
             className="mb-4 w-full rounded-xl bg-zinc-900 px-4 py-4 outline-none"
-            placeholder="배팅 금액"
+            placeholder="배팅 금액 (최대 10,000)"
           />
 
           <button

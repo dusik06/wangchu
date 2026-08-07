@@ -109,6 +109,11 @@ export default function LadderPage() {
       return;
     }
 
+    if (Number(betAmount) > 10000) {
+      alert("한 번에 최대 10,000도토리까지 배팅할 수 있습니다.");
+      return;
+    }
+
     setLoading(true);
     setRevealed(false);
     setResult(null);
@@ -276,9 +281,11 @@ export default function LadderPage() {
             <div className="mt-5 grid gap-3 md:grid-cols-[1fr_220px]">
               <input
                 type="number"
+                min="1"
+                max="10000"
                 value={betAmount}
                 onChange={(e) => setBetAmount(e.target.value)}
-                placeholder="배팅 도토리 입력"
+                placeholder="배팅 도토리 입력 (최대 10,000)"
                 disabled={loading}
                 className="rounded-2xl border border-[#3b321f] bg-[#11131b] px-5 py-4 text-lg font-black outline-none focus:border-[#f7d36b]"
               />

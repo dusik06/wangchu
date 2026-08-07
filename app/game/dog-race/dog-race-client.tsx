@@ -403,6 +403,8 @@ export default function DogRaceClient() {
     if (!selectedDog) return alert("우승할 왈왈이를 선택해주세요.");
     if (!Number.isFinite(amount) || amount < 10)
       return alert("최소 10도토리부터 베팅할 수 있습니다.");
+    if (amount > 10000)
+      return alert("한 번에 최대 10,000도토리까지 베팅할 수 있습니다.");
     if (dotori !== null && amount > dotori)
       return alert("보유 도토리가 부족합니다.");
     if (loading || raceState !== "idle") return;
@@ -985,10 +987,10 @@ export default function DogRaceClient() {
                       value={betAmount}
                       onChange={(event) =>
                         setBetAmount(
-                          event.target.value.replace(/[^0-9]/g, "")
+                          event.target.value.replace(/[^0-9]/g, "").slice(0, 5)
                         )
                       }
-                      placeholder="최소 10"
+                      placeholder="10 ~ 10,000"
                       className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-lg font-black outline-none focus:border-violet-400"
                     />
 
@@ -1004,7 +1006,8 @@ export default function DogRaceClient() {
                       disabled={
                         loading ||
                         !selectedDog ||
-                        Number(betAmount) < 10
+                        Number(betAmount) < 10 ||
+                        Number(betAmount) > 10000
                       }
                       className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-600 py-4 text-sm font-black disabled:opacity-40"
                     >
