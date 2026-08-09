@@ -1,9 +1,12 @@
 import db from "@/lib/db";
-import ShopBuyButton from "./ShopBuyButton";
+import { getServerSession } from "next-auth";
+import ShopCart from "./ShopCart";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopPage() {
+  const session = await getServerSession();
+
   const [items]: any = await db.query(
     `
     SELECT *
@@ -13,70 +16,27 @@ export default async function ShopPage() {
     `
   );
 
-  return (
-    <main className="min-h-screen bg-[#09090f] text-white px-4 py-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-black mb-6">상점</h1>
+  let dotori: number | null = null;
 
-        {items.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-[#151522] p-8 text-center text-zinc-400">
-            등록된 아이템이 없습니다.
-          </div>
-        ) : (
-          <div className="grid gap-5 md:grid-cols-3">
-            {items.map((item: any) => (
-              <div
-                key={item.id}
-                className="rounded-2xl border border-white/10 bg-[#151522] p-5"
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-black ${
-                      item.item_type === "signature"
-                        ? "bg-pink-500 text-white"
-                        : "bg-slate-700 text-white"
-                    }`}
-                  >
-                    {item.item_type === "signature"
-                      ? "시그아이템"
-                      : "일반아이템"}
-                  </span>
+  if (session?.user?.email) {
+    const [users]: any = await db.query(
+      "SELECT dotori FROM users WHERE email = ? LIMIT 1",
+      [session.user.email]
+    );
 
-                  <span className="text-yellow-300 font-black">
-                    {Number(item.price).toLocaleString()} 도토리
-                  </span>
-                </div>
+    if (users[0]) {
+      dotori = Number(users[0].dotori) || 0;
+    }
+  }
 
-                <div className="w-full h-40 bg-black/30 rounded-xl mb-4 overflow-hidden flex items-center justify-center">
-                  {item.item_image ? (
-                    <img
-                      src={item.item_image}
-                      alt={item.item_name}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-5xl">🎁</span>
-                  )}
-                </div>
+  const shopItems = items.map((item: any) => ({
+    id: Number(item.id),
+    item_name: String(item.item_name || ""),
+    item_type: String(item.item_type || "normal"),
+    price: Number(item.price) || 0,
+    item_image: item.item_image ? String(item.item_image) : null,
+    item_audio: item.item_audio ? String(item.item_audio) : null,
+  }));
 
-                <h2 className="text-xl font-black">{item.item_name}</h2>
-
-                {item.item_audio && (
-                  <p className="mt-2 text-sm text-pink-300">
-                    방송 알림 노래 포함
-                  </p>
-                )}
-
-                <ShopBuyButton
-                  itemId={item.id}
-                  itemName={item.item_name}
-                  price={item.price}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </main>
-  );
+  return <ShopCart items={shopItems} initialDotori={dotori} />;
 }

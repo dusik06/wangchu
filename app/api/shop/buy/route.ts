@@ -3,6 +3,11 @@ import db from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+type CartRequestItem = {
+  itemId: number;
+  quantity: number;
+};
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
@@ -11,19 +16,44 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const itemId = Number(body.itemId);
-  const quantity = Math.floor(Number(body.quantity || 1));
+  const rawItems: any[] = Array.isArray(body.items)
+    ? body.items
+    : body.itemId
+      ? [{ itemId: body.itemId, quantity: body.quantity || 1 }]
+      : [];
 
-  if (!itemId) {
-    return NextResponse.json({ error: "아이템 정보가 없습니다." }, { status: 400 });
+  if (!rawItems.length) {
+    return NextResponse.json({ error: "장바구니가 비어 있습니다." }, { status: 400 });
   }
 
-  if (!quantity || quantity < 1 || quantity > 99) {
-    return NextResponse.json(
-      { error: "구매 수량은 1개부터 99개까지 가능합니다." },
-      { status: 400 }
-    );
+  const cartMap = new Map<number, number>();
+
+  for (const rawItem of rawItems) {
+    const itemId = Math.floor(Number(rawItem?.itemId));
+    const quantity = Math.floor(Number(rawItem?.quantity || 1));
+
+    if (!itemId || quantity < 1 || quantity > 99) {
+      return NextResponse.json(
+        { error: "구매 수량은 상품별 1개부터 99개까지 가능합니다." },
+        { status: 400 }
+      );
+    }
+
+    const nextQuantity = (cartMap.get(itemId) || 0) + quantity;
+    if (nextQuantity > 99) {
+      return NextResponse.json(
+        { error: "같은 상품은 한 번에 최대 99개까지 구매할 수 있습니다." },
+        { status: 400 }
+      );
+    }
+
+    cartMap.set(itemId, nextQuantity);
   }
+
+  const cart: CartRequestItem[] = Array.from(cartMap.entries()).map(([itemId, quantity]) => ({
+    itemId,
+    quantity,
+  }));
 
   const connection = await db.getConnection();
 
@@ -31,7 +61,7 @@ export async function POST(req: Request) {
     await connection.beginTransaction();
 
     const [users]: any = await connection.query(
-      "SELECT * FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, dotori FROM users WHERE email = ? LIMIT 1 FOR UPDATE",
       [session.user.email]
     );
 
@@ -42,27 +72,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "유저를 찾을 수 없습니다." }, { status: 404 });
     }
 
+    const itemIds = cart.map((row) => row.itemId);
+    const placeholders = itemIds.map(() => "?").join(",");
     const [items]: any = await connection.query(
-      "SELECT * FROM shop_items WHERE id = ? AND is_active = 1 LIMIT 1",
-      [itemId]
+      `SELECT * FROM shop_items WHERE is_active = 1 AND id IN (${placeholders})`,
+      itemIds
     );
 
-    const item = items[0];
-
-    if (!item) {
+    if (items.length !== itemIds.length) {
       await connection.rollback();
-      return NextResponse.json({ error: "아이템이 없습니다." }, { status: 404 });
+      return NextResponse.json(
+        { error: "장바구니에 판매가 종료된 아이템이 있습니다. 새로고침 후 다시 확인해주세요." },
+        { status: 400 }
+      );
     }
 
-    const price = Number(item.price) || 0;
-    const totalPrice = price * quantity;
+    const shopItemMap = new Map<number, any>(items.map((item: any) => [Number(item.id), item]));
+    let totalPrice = 0;
+    let totalQuantity = 0;
 
-    if (totalPrice <= 0) {
-      await connection.rollback();
-      return NextResponse.json({ error: "상품 가격이 올바르지 않습니다." }, { status: 400 });
+    for (const row of cart) {
+      const item = shopItemMap.get(row.itemId);
+      const price = Number(item?.price) || 0;
+
+      if (!item || price <= 0) {
+        await connection.rollback();
+        return NextResponse.json({ error: "상품 가격이 올바르지 않습니다." }, { status: 400 });
+      }
+
+      totalPrice += price * row.quantity;
+      totalQuantity += row.quantity;
     }
 
-    if ((Number(user.dotori) || 0) < totalPrice) {
+    const currentDotori = Number(user.dotori) || 0;
+
+    if (currentDotori < totalPrice) {
       await connection.rollback();
       return NextResponse.json({ error: "도토리가 부족합니다." }, { status: 400 });
     }
@@ -82,69 +126,84 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "도토리가 부족합니다." }, { status: 400 });
     }
 
+    const itemSummary = cart
+      .map((row) => {
+        const item = shopItemMap.get(row.itemId);
+        return `${item.item_name} ${row.quantity}개`;
+      })
+      .join(", ");
+
     await connection.query(
       "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-      [user.id, -totalPrice, `${item.item_name} ${quantity}개 구매`]
+      [user.id, -totalPrice, `상점 장바구니 구매: ${itemSummary}`]
     );
 
-    const [inventoryRows]: any = await connection.query(
-      "SELECT * FROM user_inventory WHERE user_id = ? AND item_name = ? LIMIT 1",
-      [user.id, item.item_name]
-    );
+    for (const row of cart) {
+      const item = shopItemMap.get(row.itemId);
 
-    const inventory = inventoryRows[0];
+      const [inventoryRows]: any = await connection.query(
+        "SELECT * FROM user_inventory WHERE user_id = ? AND item_name = ? LIMIT 1",
+        [user.id, item.item_name]
+      );
 
-    if (inventory) {
-      await connection.query(
-        `
-        UPDATE user_inventory
-        SET
-          item_count = item_count + ?,
-          media_type = ?,
-          item_image = ?,
-          item_audio = ?,
-          item_video = ?,
-          overlay_text = ?
-        WHERE id = ?
-        `,
-        [
-          quantity,
-          item.media_type === "video" ? "video" : "image",
-          item.media_type === "video" ? null : item.item_image || null,
-          item.media_type === "video" ? null : item.item_audio || null,
-          item.media_type === "video" ? item.item_video || null : null,
-          item.overlay_text || null,
-          inventory.id,
-        ]
-      );
-    } else {
-      await connection.query(
-        `
-        INSERT INTO user_inventory
-          (
-            user_id,
-            item_name,
-            media_type,
-            item_image,
-            item_audio,
-            item_video,
-            overlay_text,
-            item_count
-          )
-        VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        [
-          user.id,
-          item.item_name,
-          item.media_type === "video" ? "video" : "image",
-          item.media_type === "video" ? null : item.item_image || null,
-          item.media_type === "video" ? null : item.item_audio || null,
-          item.media_type === "video" ? item.item_video || null : null,
-          item.overlay_text || null,
-          quantity,
-        ]
-      );
+      const inventory = inventoryRows[0];
+      const mediaType = item.media_type === "video" ? "video" : "image";
+      const itemImage = mediaType === "video" ? null : item.item_image || null;
+      const itemAudio = mediaType === "video" ? null : item.item_audio || null;
+      const itemVideo = mediaType === "video" ? item.item_video || null : null;
+
+      if (inventory) {
+        await connection.query(
+          `
+          UPDATE user_inventory
+          SET
+            item_count = item_count + ?,
+            media_type = ?,
+            item_image = ?,
+            item_audio = ?,
+            item_video = ?,
+            overlay_text = ?
+          WHERE id = ?
+          `,
+          [
+            row.quantity,
+            mediaType,
+            itemImage,
+            itemAudio,
+            itemVideo,
+            item.overlay_text || null,
+            inventory.id,
+          ]
+        );
+      } else {
+        await connection.query(
+          `
+          INSERT INTO user_inventory
+            (
+              user_id,
+              item_name,
+              media_type,
+              item_image,
+              item_audio,
+              item_video,
+              overlay_text,
+              item_count
+            )
+          VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            user.id,
+            item.item_name,
+            mediaType,
+            itemImage,
+            itemAudio,
+            itemVideo,
+            item.overlay_text || null,
+            row.quantity,
+          ]
+        );
+      }
     }
 
     await connection.commit();
@@ -152,8 +211,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       message: "구매 완료",
-      quantity,
+      totalQuantity,
       totalPrice,
+      remainingDotori: currentDotori - totalPrice,
     });
   } catch (error) {
     await connection.rollback();
