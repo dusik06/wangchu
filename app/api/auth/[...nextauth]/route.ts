@@ -14,24 +14,9 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user }) {
-      if (!user.email) return false;
-
-      const [rows]: any = await db.query(
-        "SELECT id FROM users WHERE email = ? LIMIT 1",
-        [user.email]
-      );
-
-      if (rows.length === 0) {
-        await db.query(
-          `
-          INSERT INTO users (email, nickname, image, role, dotori)
-          VALUES (?, ?, ?, 'user', 0)
-          `,
-          [user.email, user.name || "회원", user.image || null]
-        );
-      }
-
-      return true;
+      // 신규 Google 로그인 사용자는 여기서 users 레코드를 미리 만들지 않습니다.
+      // /nickname 에서 직접 닉네임을 정한 뒤 가입이 완료됩니다.
+      return Boolean(user.email);
     },
 
     async session({ session }) {

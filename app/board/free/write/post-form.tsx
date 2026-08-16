@@ -9,6 +9,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isMainPost, setIsMainPost] = useState(false);
 
   async function uploadImage(file: File) {
     if (uploading) return;
@@ -70,6 +71,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
           content,
           category,
           imageUrls,
+          isMainPost: isAdmin ? isMainPost : false,
         }),
       });
 
@@ -108,6 +110,23 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
           )}
         </select>
       </div>
+
+      {isAdmin && (
+        <div className="border-b border-white/10 bg-amber-400/[0.06] px-4 py-3 sm:px-5">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-amber-300/20 bg-black/10 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={isMainPost}
+              onChange={(e) => setIsMainPost(e.target.checked)}
+              className="h-5 w-5 accent-amber-400"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-black text-amber-200">메인글</span>
+              <span className="mt-0.5 block text-xs leading-5 text-zinc-400">체크하면 홈페이지 최상단에 크게 표시됩니다.</span>
+            </span>
+          </label>
+        </div>
+      )}
 
       <div className="border-b border-white/10 px-4 py-3 sm:px-5">
         <input

@@ -99,7 +99,7 @@ export default function NotificationBell() {
           setOpen((prev) => !prev);
           loadNotifications();
         }}
-        className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/50 text-2xl shadow-xl backdrop-blur transition hover:scale-105 hover:bg-black/70"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/50 text-xl shadow-xl backdrop-blur transition hover:scale-105 hover:bg-black/70 sm:h-12 sm:w-12 sm:rounded-2xl sm:text-2xl"
         aria-label="알림"
       >
         🔔
@@ -112,7 +112,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute left-0 mt-3 w-[360px] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1018] shadow-2xl">
+        <div className="fixed left-3 right-3 top-[74px] z-[10001] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1018] shadow-2xl sm:absolute sm:left-0 sm:right-auto sm:top-auto sm:mt-3 sm:w-[360px]">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div className="text-lg font-black text-white">🔔 알림</div>
 

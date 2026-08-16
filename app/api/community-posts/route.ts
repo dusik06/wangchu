@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   const content = String(body.content || "").trim();
   let category = String(body.category || "free");
   const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+  const wantsMainPost = body.isMainPost === true;
 
   if (!title || !content) {
     return NextResponse.json({
@@ -95,6 +96,25 @@ export async function POST(req: Request) {
   );
 
   const postId = result.insertId;
+
+  // 관리자만 홈페이지 최상단 메인글을 지정할 수 있습니다.
+  // 별도 매핑 테이블을 사용해 기존 community_posts 구조는 건드리지 않습니다.
+  if (role === "admin" && wantsMainPost) {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS community_main_posts (
+        post_id INT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (post_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    `);
+
+    // 메인글은 한 번에 하나만 노출되도록 가장 최근 지정 글로 교체합니다.
+    await db.query("DELETE FROM community_main_posts");
+    await db.query(
+      "INSERT INTO community_main_posts (post_id) VALUES (?)",
+      [postId]
+    );
+  }
 
   for (const imageUrl of imageUrls) {
     await db.query(

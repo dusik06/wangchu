@@ -187,18 +187,6 @@ export default function ShopCart({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          className="mb-4 flex w-full items-center justify-between rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-4 py-3 text-left lg:hidden"
-        >
-          <span>
-            <span className="block text-sm font-black text-yellow-200">장바구니로 이동</span>
-            <span className="mt-0.5 block text-xs text-zinc-400">현재 {totalQuantity.toLocaleString()}개 · {totalPrice.toLocaleString()} 도토리</span>
-          </span>
-          <span className="text-xl text-yellow-300">↓</span>
-        </button>
-
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section>
             {items.length === 0 ? (
@@ -394,6 +382,21 @@ export default function ShopCart({
           </aside>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        className="fixed bottom-4 right-4 z-[9999] flex min-h-12 items-center gap-2 rounded-2xl border border-yellow-300/30 bg-yellow-400 px-4 py-3 text-sm font-black text-black shadow-2xl transition active:scale-95 lg:hidden"
+        aria-label="장바구니로 이동"
+      >
+        <span className="text-lg">🛒</span>
+        <span>장바구니</span>
+        {totalQuantity > 0 && (
+          <span className="flex min-w-6 items-center justify-center rounded-full bg-black px-1.5 py-0.5 text-xs font-black text-yellow-300">
+            {totalQuantity > 99 ? "99+" : totalQuantity}
+          </span>
+        )}
+      </button>
     </main>
   );
 }

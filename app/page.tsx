@@ -86,6 +86,7 @@ function formatSeasonRemaining(value: unknown) {
 
 async function getMainData() {
   const [
+    mainPostRows,
     noticePosts,
     recentPosts,
     bestPosts,
@@ -99,6 +100,21 @@ async function getMainData() {
     lotteryRoundRows,
     lotteryWinners,
   ] = await Promise.all([
+    safeQuery(`
+      SELECT
+        p.id,
+        p.title,
+        p.content,
+        p.created_at,
+        u.nickname
+      FROM community_main_posts mp
+      INNER JOIN community_posts p ON p.id = mp.post_id
+      LEFT JOIN users u ON u.id = p.user_id
+      WHERE p.is_blind = 0
+      ORDER BY mp.created_at DESC
+      LIMIT 1
+    `),
+
     safeQuery(`
       SELECT id, title
       FROM community_posts
@@ -242,6 +258,7 @@ async function getMainData() {
   ]);
 
   return {
+    mainPost: mainPostRows[0] || null,
     noticePosts,
     recentPosts,
     bestPosts,
@@ -280,6 +297,7 @@ export default async function Home() {
     : videos.slice(0, 10);
 
   const {
+    mainPost,
     noticePosts,
     recentPosts,
     bestPosts,
@@ -296,7 +314,7 @@ export default async function Home() {
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(199,151,56,0.18),transparent_32%),linear-gradient(180deg,#070912,#03040a)]" />
 
       <header className="sticky top-0 z-50 border-b border-[#3b321f] bg-[#05070d]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-3 py-3 sm:px-4 lg:px-6 lg:py-4">
           <a href="/" className="flex items-center gap-3">
             {siteLogo ? (
               <img
@@ -304,7 +322,7 @@ export default async function Home() {
                 alt="왕츄 로고"
                 loading="eager"
                 decoding="async"
-                className="h-12 max-w-[170px] object-contain"
+                className="h-9 max-w-[120px] object-contain sm:h-11 sm:max-w-[150px] lg:h-12 lg:max-w-[170px]"
               />
             ) : (
               <div>
@@ -314,7 +332,9 @@ export default async function Home() {
             )}
           </a>
 
-          <NotificationBell />
+          <div className="ml-auto flex min-w-0 items-center gap-2 lg:ml-0">
+            <NotificationBell />
+          </div>
 
           <nav className="hidden items-center gap-7 text-sm font-black text-zinc-300 lg:flex">
             <a href="/" className="hover:text-[#f7d36b]">홈</a>
@@ -387,7 +407,7 @@ export default async function Home() {
             )}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 lg:gap-3">
             {currentUser && (
               <div className="hidden items-center gap-2 rounded-xl border border-[#3b321f] bg-[#0d1018] px-4 py-2 lg:flex">
                 <span className="text-lg">🌰</span>
@@ -400,13 +420,50 @@ export default async function Home() {
             <LoginButton />
           </div>
         </div>
+
+        <div className="border-t border-white/5 lg:hidden">
+          <nav className="mx-auto flex max-w-[1500px] gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <a href="/" className="shrink-0 whitespace-nowrap rounded-xl bg-[#f7d36b] px-4 py-2 text-xs font-black text-black">홈</a>
+            <a href="/board/free" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">게시판</a>
+            <a href="/shop" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">상점</a>
+            <a href="/game" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">게임</a>
+            <a href="/stock" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">주식</a>
+            <a href="/schedule" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">방송일정</a>
+            {currentUser && (
+              <a href="/mypage/inventory" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">내 아이템</a>
+            )}
+            {isAdmin && (
+              <a href="/admin" className="shrink-0 whitespace-nowrap rounded-xl border border-[#f7d36b]/40 bg-[#2b2415] px-4 py-2 text-xs font-black text-[#f7d36b]">관리자</a>
+            )}
+          </nav>
+        </div>
       </header>
 
-      <div className="mx-auto max-w-[1500px] px-5 py-5">
+      <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5">
+        {mainPost && (
+          <a
+            href={`/board/free/${mainPost.id}`}
+            className="group mb-4 block overflow-hidden rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(247,211,107,.16),rgba(17,19,27,.98)_42%,rgba(126,34,206,.13))] p-4 shadow-[0_14px_40px_rgba(0,0,0,.28)] transition hover:border-amber-300/60 hover:-translate-y-0.5 sm:mb-5 sm:rounded-[26px] sm:p-5"
+          >
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#f7d36b] text-xl shadow-lg sm:h-12 sm:w-12">📌</div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#f7d36b] px-2.5 py-1 text-[10px] font-black text-black sm:text-xs">메인글</span>
+                  {mainPost.nickname && <span className="text-xs font-bold text-zinc-400">{mainPost.nickname}</span>}
+                </div>
+                <h2 className="truncate text-lg font-black text-white group-hover:text-[#f7d36b] sm:text-2xl">{mainPost.title}</h2>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400 sm:text-sm sm:leading-6">{mainPost.content}</p>
+              </div>
+              <span className="mt-2 shrink-0 text-xl font-black text-[#f7d36b] transition group-hover:translate-x-1">›</span>
+            </div>
+          </a>
+        )}
+
         <section className="grid gap-5 xl:grid-cols-[1.05fr_0.9fr_360px]">
-          <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5 shadow-2xl">
-            <div className="mb-4 flex items-center gap-2">
-              <h2 className="text-xl font-black text-[#f7d36b]">왕츄 LIVE</h2>
+          <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 shadow-2xl sm:rounded-[26px] sm:p-5">
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-4">
+              <h2 className="text-lg font-black text-[#f7d36b] sm:text-xl">왕츄 LIVE</h2>
               <span className={`rounded-md px-2 py-1 text-xs font-black ${isLiveOn ? "bg-red-600 text-white" : "bg-zinc-700 text-zinc-200"}`}>
                 {isLiveOn ? "LIVE" : "OFF"}
               </span>
@@ -422,7 +479,7 @@ export default async function Home() {
             </div>
 
             <div className="space-y-5">
-              <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-3xl border border-[#3b321f] bg-black">
+              <div className="mx-auto w-full max-w-[280px] overflow-hidden rounded-2xl border border-[#3b321f] bg-black sm:max-w-[340px] sm:rounded-3xl">
                 <VideoPlayer videos={videos} />
               </div>
 
@@ -431,9 +488,9 @@ export default async function Home() {
           </div>
 
           <div className="space-y-5">
-            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+            <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 sm:rounded-[26px] sm:p-5">
               <h2 className="mb-4 text-xl font-black text-[#f7d36b]">바로가기</h2>
-              <div className="grid grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
                 <a href="/schedule" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
                   <div className="text-3xl">📅</div>
                   <div className="mt-2 text-xs font-black">방송일정</div>
@@ -471,7 +528,7 @@ export default async function Home() {
               </div>
             </div>
 
-            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+            <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 sm:rounded-[26px] sm:p-5">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-xl font-black text-[#f7d36b]">출석 현황</h2>
                 <span className="text-sm font-black text-[#f7d36b]">연속 출석</span>
@@ -480,7 +537,7 @@ export default async function Home() {
               <DailyQuestCard userId={currentUser?.id || null} />
             </div>
 
-            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+            <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 sm:rounded-[26px] sm:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black text-[#f7d36b]">게임 현황</h2>
                 <a href="/game" className="text-xs text-zinc-400 hover:text-[#f7d36b]">
@@ -488,7 +545,7 @@ export default async function Home() {
                 </a>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 <a href="/game" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 hover:bg-[#2b2415]">
                   <div className="text-4xl">🎲</div>
                   <p className="mt-3 font-black">주사위 홀짝</p>
@@ -539,7 +596,7 @@ export default async function Home() {
 
             <BroadcastMissionCard isAdmin={isAdmin} />
 
-            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+            <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 sm:rounded-[26px] sm:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-black text-[#f7d36b]">🎟 도토리 로또</h2>
 
@@ -601,7 +658,7 @@ export default async function Home() {
           <aside id="ranking" className="space-y-5">
             <GameRanking dotoriRanking={dotoriRanking} />
 
-            <div className="rounded-[26px] border border-[#3b321f] bg-[#090c14]/90 p-5">
+            <div className="rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 sm:rounded-[26px] sm:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-black text-[#f7d36b]">📈 주식 현황</h2>
 
