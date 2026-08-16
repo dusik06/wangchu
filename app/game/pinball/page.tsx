@@ -5,13 +5,13 @@ export const dynamic = "force-dynamic";
 
 export default function PinballMainPage() {
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
+    <main className="min-h-screen bg-black px-3 py-5 text-white sm:px-6 sm:py-10">
       <div className="mx-auto max-w-[1200px]">
-        <div className="mb-8 rounded-3xl border border-yellow-400/30 bg-zinc-950 p-8 shadow-[0_0_35px_rgba(250,204,21,0.12)]">
+        <div className="mb-5 rounded-3xl border border-yellow-400/30 bg-zinc-950 p-5 sm:mb-8 sm:p-8 shadow-[0_0_35px_rgba(250,204,21,0.12)]">
           <p className="mb-3 text-sm font-black text-yellow-400">
             WANGCHU PINBALL
           </p>
-          <h1 className="text-4xl font-black">핀볼 게임</h1>
+          <h1 className="text-3xl font-black sm:text-4xl">핀볼 게임</h1>
           <p className="mt-4 text-zinc-400">
             원하는 방식으로 핀볼을 즐길 수 있습니다.
           </p>
@@ -20,7 +20,7 @@ export default function PinballMainPage() {
         <div className="grid gap-6 md:grid-cols-2">
           <Link
             href="/game/pinball/draw"
-            className="group rounded-3xl border border-cyan-400/30 bg-zinc-950 p-7 transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_35px_rgba(34,211,238,0.18)]"
+            className="group rounded-3xl border border-cyan-400/30 bg-zinc-950 p-5 transition sm:p-7 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-[0_0_35px_rgba(34,211,238,0.18)]"
           >
             <div className="mb-5 text-5xl">🎯</div>
             <h2 className="text-2xl font-black text-cyan-400">
@@ -37,7 +37,7 @@ export default function PinballMainPage() {
 
           <Link
             href="/game/pinball/bet"
-            className="group rounded-3xl border border-purple-400/30 bg-zinc-950 p-7 transition hover:-translate-y-1 hover:border-purple-300 hover:shadow-[0_0_35px_rgba(168,85,247,0.18)]"
+            className="group rounded-3xl border border-purple-400/30 bg-zinc-950 p-5 transition sm:p-7 hover:-translate-y-1 hover:border-purple-300 hover:shadow-[0_0_35px_rgba(168,85,247,0.18)]"
           >
             <div className="mb-5 text-5xl">🌰</div>
             <h2 className="text-2xl font-black text-purple-400">
@@ -53,7 +53,7 @@ export default function PinballMainPage() {
 
           <Link
             href="/game/pinball/maps"
-            className="group rounded-3xl border border-emerald-400/30 bg-zinc-950 p-7 transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-[0_0_35px_rgba(52,211,153,0.18)]"
+            className="group rounded-3xl border border-emerald-400/30 bg-zinc-950 p-5 transition sm:p-7 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-[0_0_35px_rgba(52,211,153,0.18)]"
           >
             <div className="mb-5 text-5xl">🗺️</div>
             <h2 className="text-2xl font-black text-emerald-400">
@@ -69,7 +69,7 @@ export default function PinballMainPage() {
 
           <Link
             href="/admin/pinball-map"
-            className="group rounded-3xl border border-yellow-400/30 bg-zinc-950 p-7 transition hover:-translate-y-1 hover:border-yellow-300 hover:shadow-[0_0_35px_rgba(250,204,21,0.18)]"
+            className="group rounded-3xl border border-yellow-400/30 bg-zinc-950 p-5 transition sm:p-7 hover:-translate-y-1 hover:border-yellow-300 hover:shadow-[0_0_35px_rgba(250,204,21,0.18)]"
           >
             <div className="mb-5 text-5xl">🛠️</div>
             <h2 className="text-2xl font-black text-yellow-400">맵 만들기</h2>

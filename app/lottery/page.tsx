@@ -53,7 +53,7 @@ export default async function LotteryPage() {
   `);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+    <main className="min-h-screen bg-slate-950 px-3 py-5 text-white sm:px-6 sm:py-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-6 text-3xl font-black text-yellow-400">
           🎟 도토리 로또

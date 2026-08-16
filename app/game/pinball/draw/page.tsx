@@ -504,7 +504,7 @@ export default function PinballDrawPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
+    <main className="min-h-screen bg-black px-3 py-5 text-white sm:px-6 sm:py-10">
       {showFireworks && (
         <div className="pointer-events-none fixed inset-0 z-[999] flex items-center justify-center">
           <div className="absolute h-[440px] w-[440px] animate-ping rounded-full bg-yellow-400/30" />
@@ -515,8 +515,8 @@ export default function PinballDrawPage() {
         </div>
       )}
 
-      <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[320px_1fr_340px]">
-        <section className="rounded-3xl bg-zinc-950 p-6">
+      <div className="mx-auto grid max-w-[1500px] gap-4 sm:gap-6 xl:grid-cols-[320px_1fr_340px]">
+        <section className="rounded-3xl bg-zinc-950 p-4 sm:p-6">
           <h1 className="mb-3 text-3xl font-black text-yellow-400">
             핀볼 추첨
           </h1>
@@ -564,24 +564,27 @@ export default function PinballDrawPage() {
           )}
         </section>
 
-        <section className="rounded-3xl bg-zinc-950 p-5">
-          <div className="relative h-[1000px] overflow-hidden rounded-3xl border border-cyan-400/40 bg-black shadow-[0_0_35px_rgba(34,211,238,0.25)]">
+        <section className="rounded-3xl bg-zinc-950 p-3 sm:p-5">
+          <div className="relative h-[580px] overflow-hidden rounded-3xl border sm:h-[1000px] border-cyan-400/40 bg-black shadow-[0_0_35px_rgba(34,211,238,0.25)]">
             <div
-              className="absolute left-1/2 top-0"
-              style={{
-                width: WORLD_WIDTH,
-                height: WORLD_HEIGHT,
-                transform: `translateX(-50%) translateY(-${cameraY}px)`,
-                transformOrigin: "top center",
-                transition: running ? "transform 0.18s linear" : "none",
-              }}
+              className="pinball-world-scale absolute left-1/2 top-0"
+              style={{ width: WORLD_WIDTH, height: WORLD_HEIGHT }}
             >
-              <div ref={sceneRef} />
+              <div
+                style={{
+                  width: WORLD_WIDTH,
+                  height: WORLD_HEIGHT,
+                  transform: `translateY(-${cameraY}px)`,
+                  transition: running ? "transform 0.18s linear" : "none",
+                }}
+              >
+                <div ref={sceneRef} />
+              </div>
             </div>
           </div>
         </section>
 
-        <aside className="rounded-3xl bg-zinc-950 p-6">
+        <aside className="rounded-3xl bg-zinc-950 p-4 sm:p-6">
           <h2 className="mb-5 text-2xl font-black text-cyan-400">추첨 기록</h2>
 
           <div className="mb-6 rounded-2xl bg-zinc-900 p-4">

@@ -471,7 +471,7 @@ export default function DogRaceClient() {
               </p>
             </div>
 
-            <div className="grid min-w-[290px] grid-cols-2 gap-3">
+            <div className="grid w-full grid-cols-2 gap-3 sm:min-w-[290px] lg:w-auto">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-xs font-bold text-white/40">보유 도토리</p>
                 <p className="mt-1 text-xl font-black text-amber-300">
@@ -563,7 +563,7 @@ export default function DogRaceClient() {
 
                 <div
                   ref={trackRef}
-                  className={`cinematic-track camera-${cameraMode} relative h-[610px] overflow-hidden md:h-[660px]`}
+                  className={`cinematic-track camera-${cameraMode} relative h-[430px] overflow-hidden sm:h-[540px] md:h-[660px]`}
                 >
                   <div className="stadium-sky absolute inset-x-0 top-0 h-[36%]" />
                   <div className="stadium-stands absolute inset-x-0 top-[18%] h-[21%]" />
@@ -868,26 +868,26 @@ export default function DogRaceClient() {
 
             {!isLocked ? (
               <>
-                <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <section className="mt-4 grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {entries.map((dog) => {
                     const selected = selectedLane === dog.lane;
                     return (
                       <button
                         key={dog.lane}
                         onClick={() => setSelectedLane(dog.lane)}
-                        className={`rounded-[26px] border p-5 text-left transition ${
+                        className={`rounded-2xl border p-4 text-left transition sm:rounded-[26px] sm:p-5 ${
                           selected
                             ? "border-violet-400 bg-violet-500/15 shadow-[0_18px_55px_rgba(109,40,217,.22)]"
                             : "border-white/10 bg-[#151027] hover:-translate-y-1 hover:border-violet-400/30"
                         }`}
                       >
                         <div className="flex items-start gap-4">
-                          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5"><img src={CHARACTER_ASSETS[dog.name]} alt={dog.name} className="h-full w-full object-contain" /></div>
+                          <div className="h-16 w-16 shrink-0 sm:h-20 sm:w-20 overflow-hidden rounded-2xl border border-white/10 bg-white/5"><img src={CHARACTER_ASSETS[dog.name]} alt={dog.name} className="h-full w-full object-contain" /></div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-black tracking-[.18em] text-violet-300">
                               LANE {dog.lane}
                             </p>
-                            <h3 className="mt-1 text-2xl font-black">
+                            <h3 className="mt-1 text-xl font-black sm:text-2xl">
                               {dog.name}
                             </h3>
                             <p className="mt-1 text-sm font-bold text-amber-200">

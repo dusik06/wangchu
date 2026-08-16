@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ShopItem = {
   id: number;
@@ -28,6 +28,7 @@ export default function ShopCart({
   const [loading, setLoading] = useState(false);
   const [dotori, setDotori] = useState<number | null>(initialDotori);
   const [hydrated, setHydrated] = useState(false);
+  const cartSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -160,7 +161,8 @@ export default function ShopCart({
       setCart({});
       setDotori(Number(data.remainingDotori) || 0);
       localStorage.removeItem(CART_STORAGE_KEY);
-      alert(`총 ${Number(data.totalQuantity || totalQuantity).toLocaleString()}개 구매 완료! 내 아이템에 추가되었습니다.`);
+      alert(`총 ${Number(data.totalQuantity || totalQuantity).toLocaleString()}개 구매 완료! 내 아이템으로 이동합니다.`);
+      window.location.href = "/mypage/inventory";
     } catch {
       alert("구매 중 오류가 발생했습니다.");
     } finally {
@@ -184,6 +186,18 @@ export default function ShopCart({
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => cartSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className="mb-4 flex w-full items-center justify-between rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-4 py-3 text-left lg:hidden"
+        >
+          <span>
+            <span className="block text-sm font-black text-yellow-200">장바구니로 이동</span>
+            <span className="mt-0.5 block text-xs text-zinc-400">현재 {totalQuantity.toLocaleString()}개 · {totalPrice.toLocaleString()} 도토리</span>
+          </span>
+          <span className="text-xl text-yellow-300">↓</span>
+        </button>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section>
@@ -277,7 +291,7 @@ export default function ShopCart({
             )}
           </section>
 
-          <aside className="h-fit rounded-2xl border border-white/10 bg-[#151522] p-5 lg:sticky lg:top-5">
+          <aside ref={cartSectionRef} className="scroll-mt-4 h-fit rounded-2xl border border-white/10 bg-[#151522] p-5 lg:sticky lg:top-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-black">장바구니</h2>
               <button

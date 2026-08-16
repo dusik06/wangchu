@@ -89,23 +89,17 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <div className="bg-slate-900 rounded-2xl p-6">
-      <div className="mb-4">
-        <label className="block mb-2 text-sm text-gray-300">
-          게시판 카테고리
-        </label>
-
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#151027] shadow-2xl sm:rounded-3xl">
+      <div className="border-b border-white/10 bg-black/15 p-4 sm:p-5">
+        <label className="mb-2 block text-xs font-black text-zinc-400">게시판 선택</label>
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="w-full bg-slate-800 rounded-xl px-4 py-3 outline-none"
+          className="w-full rounded-xl border border-white/10 bg-[#0b0718] px-4 py-3 font-bold text-white outline-none focus:border-purple-400"
         >
-          {/* 전체 가능 */}
           <option value="free">자유게시판</option>
           <option value="suggestion">건의사항</option>
           <option value="to_wangchu">팬이 왕츄한테</option>
-
-          {/* 관리자 전용 */}
           {isAdmin && (
             <>
               <option value="notice">공지사항</option>
@@ -115,71 +109,67 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
         </select>
       </div>
 
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="제목"
-        className="w-full bg-slate-800 rounded-xl px-4 py-3 mb-4 outline-none"
-      />
-
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="내용을 입력하세요."
-        className="w-full h-80 bg-slate-800 rounded-xl px-4 py-3 mb-4 outline-none resize-none"
-      />
-
-      <div className="mb-4">
-        <label className="block mb-2 text-sm text-gray-300">
-          이미지 / GIF 첨부
-        </label>
-
+      <div className="border-b border-white/10 px-4 py-3 sm:px-5">
         <input
-          type="file"
-          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
-          disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) uploadImage(file);
-            e.target.value = "";
-          }}
-          className="w-full bg-slate-800 rounded-xl px-4 py-3"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="제목을 입력해주세요"
+          maxLength={120}
+          className="w-full bg-transparent py-2 text-lg font-black text-white outline-none placeholder:text-zinc-600 sm:text-xl"
         />
+      </div>
 
-        {uploading && (
-          <p className="text-sm text-pink-400 mt-2">업로드 중...</p>
-        )}
+      <div className="border-b border-white/10 bg-black/10 px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold transition hover:bg-white/10 ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+            <span className="text-lg">📷</span>
+            <span>{uploading ? "업로드 중..." : "사진 / GIF"}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadImage(file);
+                e.target.value = "";
+              }}
+              className="hidden"
+            />
+          </label>
+          <span className="text-xs text-zinc-500">사진을 첨부하면 글 아래에 함께 등록됩니다.</span>
+        </div>
 
         {imageUrls.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mt-4">
+          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
             {imageUrls.map((url) => (
-              <div key={url} className="relative">
-                <img
-                  src={url}
-                  alt="첨부 이미지"
-                  className="w-full h-32 object-cover rounded-xl"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => removeImage(url)}
-                  className="absolute right-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-bold text-white"
-                >
-                  삭제
-                </button>
+              <div key={url} className="relative h-24 w-24 shrink-0 sm:h-28 sm:w-28">
+                <img src={url} alt="첨부 이미지" className="h-full w-full rounded-xl object-cover" />
+                <button type="button" onClick={() => removeImage(url)} className="absolute right-1 top-1 min-h-0 rounded-lg bg-black/80 px-2 py-1 text-xs font-black text-white">삭제</button>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <button
-        onClick={submitPost}
-        disabled={uploading || submitting}
-        className="bg-pink-500 px-6 py-3 rounded-xl font-bold disabled:opacity-50"
-      >
-        {submitting ? "등록 중..." : "글 등록하기"}
-      </button>
+      <div className="p-4 sm:p-5">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="내용을 입력해주세요.\n\n서로 편하게 이야기하는 왕츄 팬카페 공간입니다."
+          className="min-h-[48vh] w-full resize-y bg-transparent text-base leading-7 text-white outline-none placeholder:text-zinc-600 sm:min-h-[420px]"
+        />
+      </div>
+
+      <div className="sticky bottom-0 flex gap-2 border-t border-white/10 bg-[#151027]/95 p-3 backdrop-blur sm:justify-end sm:p-4">
+        <a href="/board/free" className="flex flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-center font-bold text-zinc-300 sm:flex-none">취소</a>
+        <button
+          onClick={submitPost}
+          disabled={uploading || submitting}
+          className="flex-1 rounded-xl bg-purple-600 px-6 py-3 font-black text-white shadow-lg transition active:scale-[.98] disabled:opacity-50 sm:flex-none"
+        >
+          {submitting ? "등록 중..." : "등록하기"}
+        </button>
+      </div>
     </div>
   );
 }

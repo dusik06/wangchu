@@ -25,10 +25,10 @@ export default async function AdminDotoriPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="mx-auto max-w-5xl px-3 py-5 sm:p-6">
         <div className="flex justify-between mb-6">
           <h1 className="text-3xl font-bold text-pink-400">
-            도토리 지급
+            도토리 지급 / 차감
           </h1>
 
           <a href="/admin" className="bg-slate-800 px-4 py-2 rounded-lg">
@@ -40,7 +40,7 @@ export default async function AdminDotoriPage() {
           {users.map((user: any) => (
             <div
               key={user.id}
-              className="bg-slate-900 rounded-xl p-5 flex items-center justify-between"
+              className="flex flex-col gap-4 rounded-xl bg-slate-900 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between"
             >
               <div>
                 <p className="font-bold">{user.nickname}</p>

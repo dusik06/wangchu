@@ -192,14 +192,14 @@ location.reload();
   const expectedDouble = betAmount ? Math.floor(Number(betAmount) * 4.5) : 0;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#fffaf0] via-white to-[#fff7df] px-4 py-8">
+    <main className="min-h-screen bg-gradient-to-b from-[#fffaf0] via-white to-[#fff7df] px-3 py-5 sm:px-4 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <section className="mb-6 rounded-[28px] border border-yellow-100 bg-white/90 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
+        <section className="mb-4 rounded-3xl border border-yellow-100 bg-white/90 p-4 sm:mb-6 sm:rounded-[28px] sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
           <p className="mb-2 text-sm font-bold text-yellow-600">WANGCHU GAME</p>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-3xl font-black text-zinc-900">
+              <h1 className="text-2xl font-black text-zinc-900 sm:text-3xl">
                 🎲 주사위 홀짝 게임
               </h1>
               <p className="mt-3 text-zinc-500">
@@ -220,7 +220,7 @@ location.reload();
 
         <section className="grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-6">
-            <div className="rounded-[28px] border border-yellow-100 bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.07)]">
+            <div className="rounded-3xl border border-yellow-100 bg-white p-4 sm:rounded-[28px] sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.07)]">
               <div className="mb-6 grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl bg-zinc-50 p-4">
                   <p className="text-xs font-bold text-zinc-400">1차 성공</p>
@@ -238,7 +238,7 @@ location.reload();
                 </div>
               </div>
 
-              <div className="flex flex-col items-center rounded-[26px] bg-gradient-to-b from-zinc-950 to-zinc-800 px-6 py-10 text-white">
+              <div className="flex flex-col items-center rounded-3xl bg-gradient-to-b from-zinc-950 to-zinc-800 px-3 py-6 text-white sm:rounded-[26px] sm:px-6 sm:py-10">
               <DiceRoller3D
   dice={dice}
   rolling={rolling}

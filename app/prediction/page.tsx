@@ -179,9 +179,9 @@ export default function PredictionPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#05070d] px-5 py-8 text-white">
+    <main className="min-h-screen bg-[#05070d] px-3 py-5 text-white sm:px-5 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <section className="mb-6 rounded-[28px] border border-[#3b321f] bg-[#090c14] p-6">
+        <section className="mb-5 rounded-3xl border border-[#3b321f] bg-[#090c14] p-4 sm:rounded-[28px] sm:p-6">
           <p className="mb-2 text-sm font-black text-[#f7d36b]">
             WANGCHU PREDICTION
           </p>
@@ -215,7 +215,7 @@ export default function PredictionPage() {
                 return (
                   <section
                     key={game.id}
-                    className="rounded-[28px] border border-[#3b321f] bg-[#090c14] p-6"
+                    className="rounded-3xl border border-[#3b321f] bg-[#090c14] p-4 sm:rounded-[28px] sm:p-6"
                   >
                     <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
@@ -377,7 +377,7 @@ export default function PredictionPage() {
               {historyGames.map((game) => (
                 <section
                   key={game.id}
-                  className="rounded-[28px] border border-[#3b321f] bg-[#090c14] p-6"
+                  className="rounded-3xl border border-[#3b321f] bg-[#090c14] p-4 sm:rounded-[28px] sm:p-6"
                 >
                   <button
                     type="button"

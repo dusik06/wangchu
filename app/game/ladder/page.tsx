@@ -172,7 +172,7 @@ export default function LadderPage() {
 
   return (
     <main className="min-h-screen bg-[#05070d] text-white">
-      <div className="mx-auto max-w-[1450px] px-5 py-8">
+      <div className="mx-auto max-w-[1450px] px-3 py-5 sm:px-5 sm:py-8">
         <div className="mb-6">
           <a href="/" className="text-sm font-bold text-zinc-400 hover:text-[#f7d36b]">
             ← 홈으로
@@ -180,8 +180,8 @@ export default function LadderPage() {
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[1fr_380px]">
-          <div className="rounded-[30px] border border-[#3b321f] bg-[#090c14]/95 p-6">
-            <div className="mb-6 flex items-center justify-between">
+          <div className="rounded-3xl border border-[#3b321f] bg-[#090c14]/95 p-4 sm:rounded-[30px] sm:p-6">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-black text-[#f7d36b]">사다리게임</h1>
 
@@ -204,7 +204,7 @@ export default function LadderPage() {
             </div>
 
             <div className="rounded-[28px] border border-[#3b321f] bg-[#0d1018] p-5">
-              <div className="relative mx-auto h-[360px] max-w-[760px] overflow-hidden rounded-[26px] border border-[#3b321f] bg-black/35">
+              <div className="relative mx-auto h-[300px] max-w-[760px] sm:h-[360px] overflow-hidden rounded-[26px] border border-[#3b321f] bg-black/35">
                 <div className="absolute left-[30%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
                 <div className="absolute left-[70%] top-8 h-[300px] w-2 rounded-full bg-[#3b321f]" />
 
@@ -260,7 +260,7 @@ export default function LadderPage() {
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-5 gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
               {BET_OPTIONS.map((option) => (
                 <button
                   key={option.value}

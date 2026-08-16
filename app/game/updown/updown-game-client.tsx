@@ -322,9 +322,9 @@ await animateToResult(
   const canPlayUp = multipliers.up > 0;
 
   return (
-    <main className="min-h-screen bg-[#0b0718] px-4 py-8 text-white">
+    <main className="min-h-screen bg-[#0b0718] px-3 py-5 text-white sm:px-4 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6 rounded-3xl border border-purple-500/20 bg-[#151027] p-6 shadow-2xl">
+        <div className="mb-4 rounded-3xl border border-purple-500/20 bg-[#151027] p-4 sm:mb-6 sm:p-6 shadow-2xl">
           <p className="text-sm font-semibold text-purple-300">왕츄 게임센터</p>
           <h1 className="mt-2 text-3xl font-black">업다운 게임</h1>
           <p className="mt-3 text-sm text-gray-300">
@@ -333,7 +333,7 @@ await animateToResult(
           </p>
         </div>
 
-        <section className="rounded-3xl border border-white/10 bg-[#151027] p-6 shadow-2xl">
+        <section className="rounded-3xl border border-white/10 bg-[#151027] p-4 sm:p-6 shadow-2xl">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-gray-400">현재 기준 숫자</p>
@@ -356,7 +356,7 @@ await animateToResult(
             </div>
           </div>
 
-          <div className="mb-8 grid grid-cols-9 gap-2">
+          <div className="mb-6 grid grid-cols-9 gap-1 sm:mb-8 sm:gap-2">
             {numbers.map((num) => {
               const isCurrent = num === currentNumber;
               const isHighlight = num === highlightNumber;
@@ -368,7 +368,7 @@ await animateToResult(
                 <div
                   key={num}
                   className={[
-                    "flex aspect-square items-center justify-center rounded-2xl border text-xl font-black transition-all duration-150",
+                    "flex aspect-square items-center justify-center rounded-lg border text-sm font-black transition-all duration-150 sm:rounded-2xl sm:text-xl",
                     isResult
                       ? "scale-125 border-green-300 bg-green-500 text-white shadow-[0_0_45px_rgba(34,197,94,0.9)]"
                       : isHighlight
