@@ -18,11 +18,9 @@ function timeAgo(value: string) {
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
 
   if (Number.isNaN(diff)) return "";
-
   if (diff < 60) return "방금 전";
   if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-
   return `${Math.floor(diff / 86400)}일 전`;
 }
 
@@ -35,14 +33,12 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [readingAll, setReadingAll] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
 
   async function loadNotifications() {
     try {
-      const res = await fetch("/api/notifications", {
-        cache: "no-store",
-      });
-
+      const res = await fetch("/api/notifications", { cache: "no-store" });
       const data = await res.json();
 
       if (data.success) {
@@ -54,16 +50,40 @@ export default function NotificationBell() {
     }
   }
 
+  async function markAllAsRead() {
+    if (readingAll || unreadCount === 0) return;
+    setReadingAll(true);
+
+    try {
+      const res = await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ readAll: true }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        alert(data.message || "알림 모두 읽음 처리에 실패했습니다.");
+        return;
+      }
+
+      setUnreadCount(0);
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, is_read: 1 }))
+      );
+    } catch {
+      alert("알림 모두 읽음 처리에 실패했습니다.");
+    } finally {
+      setReadingAll(false);
+    }
+  }
+
   async function openNotification(item: NotificationItem) {
     try {
       await fetch("/api/notifications/read", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          notificationId: item.id,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: item.id }),
       });
     } catch {}
 
@@ -77,17 +97,11 @@ export default function NotificationBell() {
 
     function handleClickOutside(e: MouseEvent) {
       if (!boxRef.current) return;
-
-      if (!boxRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (!boxRef.current.contains(e.target as Node)) setOpen(false);
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
@@ -103,7 +117,6 @@ export default function NotificationBell() {
         aria-label="알림"
       >
         🔔
-
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#ff2d55] px-1.5 text-xs font-black text-white shadow-lg">
             {badgeText}
@@ -113,15 +126,25 @@ export default function NotificationBell() {
 
       {open && (
         <div className="fixed left-3 right-3 top-[74px] z-[10001] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1018] shadow-2xl sm:absolute sm:left-0 sm:right-auto sm:top-auto sm:mt-3 sm:w-[360px]">
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <div className="text-lg font-black text-white">🔔 알림</div>
-
-            <button
-              onClick={loadNotifications}
-              className="text-xs font-bold text-zinc-400 hover:text-white"
-            >
-              새로고침
-            </button>
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+            <div className="shrink-0 text-lg font-black text-white">🔔 알림</div>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  disabled={readingAll}
+                  className="rounded-lg bg-purple-600/20 px-2.5 py-1.5 text-xs font-black text-purple-200 transition hover:bg-purple-600/35 disabled:opacity-50"
+                >
+                  {readingAll ? "처리 중..." : "모두 읽음"}
+                </button>
+              )}
+              <button
+                onClick={loadNotifications}
+                className="text-xs font-bold text-zinc-400 hover:text-white"
+              >
+                새로고침
+              </button>
+            </div>
           </div>
 
           <div className="max-h-[460px] overflow-y-auto p-2">
@@ -143,11 +166,9 @@ export default function NotificationBell() {
                 >
                   <div className="mb-2 flex items-center gap-2">
                     <span className="text-lg">💬</span>
-
                     <span className="font-black text-[#8dff8d]">
                       {item.actor_nickname || "익명"}
                     </span>
-
                     <span className="text-sm text-zinc-300">님이</span>
                   </div>
 
@@ -155,7 +176,6 @@ export default function NotificationBell() {
                     <span className="font-black text-white">
                       &quot;{shorten(item.post_title || "게시글")}&quot;
                     </span>
-
                     <span className="text-sm font-bold text-zinc-300">
                       에 댓글을 남겼습니다.
                     </span>

@@ -11,28 +11,30 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
   const [submitting, setSubmitting] = useState(false);
   const [isMainPost, setIsMainPost] = useState(false);
 
-  async function uploadImage(file: File) {
-    if (uploading) return;
+  async function uploadImages(files: File[]) {
+    if (uploading || files.length === 0) return;
 
     setUploading(true);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch("/api/community-upload", {
-        method: "POST",
-        body: formData,
-      });
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const data = await res.json();
+        const res = await fetch("/api/community-upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!res.ok || !data.success) {
-        alert(data.message || "업로드 실패");
-        return;
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          alert(`${file.name}: ${data.message || "업로드 실패"}`);
+          continue;
+        }
+
+        setImageUrls((prev) => [...prev, data.imageUrl]);
       }
-
-      setImageUrls((prev) => [...prev, data.imageUrl]);
     } catch (error) {
       console.error(error);
       alert("업로드 중 오류가 발생했습니다.");
@@ -80,7 +82,7 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
       alert(data.message || "처리되었습니다.");
 
       if (data.success) {
-        window.location.href = `/board/${category}`;
+        window.location.href = `/board/free?category=${category}`;
       }
     } catch (error) {
       console.error(error);
@@ -145,17 +147,18 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
             <span>{uploading ? "업로드 중..." : "사진 / GIF"}</span>
             <input
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+              accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,.gif"
+              multiple
               disabled={uploading}
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) uploadImage(file);
+                const files = Array.from(e.target.files || []);
+                if (files.length) uploadImages(files);
                 e.target.value = "";
               }}
               className="hidden"
             />
           </label>
-          <span className="text-xs text-zinc-500">사진을 첨부하면 글 아래에 함께 등록됩니다.</span>
+          <span className="text-xs text-zinc-500">JPG · PNG · WEBP · GIF 움짤 / 파일당 20MB 이하 · 여러 장 선택 가능</span>
         </div>
 
         {imageUrls.length > 0 && (
@@ -168,6 +171,13 @@ export default function PostForm({ isAdmin }: { isAdmin: boolean }) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="border-b border-white/10 bg-black/10 px-4 py-2 sm:px-5">
+        <div className="flex items-center gap-1 text-xs font-bold text-zinc-500">
+          <span className="rounded-lg bg-white/5 px-2 py-1">본문</span>
+          <span>사진과 GIF는 본문 아래에 첨부됩니다.</span>
+        </div>
       </div>
 
       <div className="p-4 sm:p-5">

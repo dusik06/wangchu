@@ -6,24 +6,18 @@ export async function POST(req: Request) {
   const session = await getServerSession();
 
   if (!session?.user?.email) {
-    return NextResponse.json({
-      success: false,
-      message: "로그인이 필요합니다.",
-    });
+    return NextResponse.json({ success: false, message: "로그인이 필요합니다." });
   }
 
   const body = await req.json();
-
   const postId = Number(body.postId);
   const title = String(body.title || "").trim();
   const content = String(body.content || "").trim();
   const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+  const wantsMainPost = body.isMainPost === true;
 
   if (!postId || !title || !content) {
-    return NextResponse.json({
-      success: false,
-      message: "잘못된 요청입니다.",
-    });
+    return NextResponse.json({ success: false, message: "잘못된 요청입니다." });
   }
 
   const [users]: any = await db.query(
@@ -32,10 +26,7 @@ export async function POST(req: Request) {
   );
 
   if (!users.length) {
-    return NextResponse.json({
-      success: false,
-      message: "회원 정보 없음",
-    });
+    return NextResponse.json({ success: false, message: "회원 정보 없음" });
   }
 
   const userId = users[0].id;
@@ -47,17 +38,11 @@ export async function POST(req: Request) {
   );
 
   if (!posts.length) {
-    return NextResponse.json({
-      success: false,
-      message: "게시글 없음",
-    });
+    return NextResponse.json({ success: false, message: "게시글 없음" });
   }
 
   if (role !== "admin" && posts[0].user_id !== userId) {
-    return NextResponse.json({
-      success: false,
-      message: "수정 권한 없음",
-    });
+    return NextResponse.json({ success: false, message: "수정 권한 없음" });
   }
 
   const connection = await db.getConnection();
@@ -72,26 +57,40 @@ export async function POST(req: Request) {
 
     for (const imageUrl of imageUrls) {
       const cleanUrl = String(imageUrl || "").trim();
-
       if (!cleanUrl) continue;
 
       await connection.query(
-        `
-        INSERT INTO post_images
-          (post_id, image_url)
-        VALUES
-          (?, ?)
-        `,
+        "INSERT INTO post_images (post_id, image_url) VALUES (?, ?)",
         [postId, cleanUrl]
       );
     }
 
+    if (role === "admin") {
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS community_main_posts (
+          post_id INT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (post_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+      `);
+
+      if (wantsMainPost) {
+        await connection.query("DELETE FROM community_main_posts");
+        await connection.query(
+          "INSERT INTO community_main_posts (post_id) VALUES (?)",
+          [postId]
+        );
+      } else {
+        await connection.query(
+          "DELETE FROM community_main_posts WHERE post_id = ?",
+          [postId]
+        );
+      }
+    }
+
     await connection.commit();
 
-    return NextResponse.json({
-      success: true,
-      message: "게시글 수정 완료",
-    });
+    return NextResponse.json({ success: true, message: "게시글 수정 완료" });
   } catch (error) {
     await connection.rollback();
     console.error(error);
