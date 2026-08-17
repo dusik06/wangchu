@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   }
 
   const [items]: any = await db.query(
-    "SELECT item_type FROM shop_items WHERE id = ? LIMIT 1",
+    "SELECT item_type, item_name FROM shop_items WHERE id = ? LIMIT 1",
     [itemId]
   );
 
@@ -67,30 +67,81 @@ export async function POST(req: Request) {
     }
   }
 
-  await db.query(
-    `
-    UPDATE shop_items
-    SET
-      item_name = ?,
-      price = ?,
-      media_type = ?,
-      item_image = ?,
-      item_audio = ?,
-      item_video = ?,
-      overlay_text = ?
-    WHERE id = ?
-    `,
-    [
-      itemName,
-      price,
-      item.item_type === "signature" ? mediaType : "image",
-      item.item_type === "signature" && mediaType === "image" ? itemImage : null,
-      item.item_type === "signature" && mediaType === "image" ? itemAudio : null,
-      item.item_type === "signature" && mediaType === "video" ? itemVideo : null,
-      overlayText || null,
-      itemId,
-    ]
-  );
+  const nextMediaType = item.item_type === "signature" ? mediaType : "image";
+  const nextItemImage =
+    item.item_type === "signature" && mediaType === "image" ? itemImage : null;
+  const nextItemAudio =
+    item.item_type === "signature" && mediaType === "image" ? itemAudio : null;
+  const nextItemVideo =
+    item.item_type === "signature" && mediaType === "video" ? itemVideo : null;
+  const nextOverlayText = overlayText || null;
+  const oldItemName = String(item.item_name || "");
 
-  return NextResponse.json({ ok: true });
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    await connection.query(
+      `
+      UPDATE shop_items
+      SET
+        item_name = ?,
+        price = ?,
+        media_type = ?,
+        item_image = ?,
+        item_audio = ?,
+        item_video = ?,
+        overlay_text = ?
+      WHERE id = ?
+      `,
+      [
+        itemName,
+        price,
+        nextMediaType,
+        nextItemImage,
+        nextItemAudio,
+        nextItemVideo,
+        nextOverlayText,
+        itemId,
+      ]
+    );
+
+    // 이미 구매해서 보관함에 들어가 있는 같은 아이템도 상점 수정값과 함께 갱신한다.
+    // 기존 구조는 user_inventory에 shop_item_id가 없으므로 수정 전 아이템명으로 연결한다.
+    await connection.query(
+      `
+      UPDATE user_inventory
+      SET
+        item_name = ?,
+        media_type = ?,
+        item_image = ?,
+        item_audio = ?,
+        item_video = ?,
+        overlay_text = ?
+      WHERE item_name = ?
+      `,
+      [
+        itemName,
+        nextMediaType,
+        nextItemImage,
+        nextItemAudio,
+        nextItemVideo,
+        nextOverlayText,
+        oldItemName,
+      ]
+    );
+
+    await connection.commit();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    return NextResponse.json(
+      { error: "아이템 수정 중 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  } finally {
+    connection.release();
+  }
 }
