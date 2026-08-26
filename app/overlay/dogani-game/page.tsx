@@ -175,6 +175,15 @@ function TransparentPageStyle() {
         background-color: rgba(0, 0, 0, 0) !important;
       }
 
+      body > header,
+      body > nav,
+      body > footer,
+      body > div > header,
+      body > div > nav,
+      body > div > footer {
+        display: none !important;
+      }
+
       * {
         box-sizing: border-box;
       }
