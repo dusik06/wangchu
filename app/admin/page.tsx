@@ -219,9 +219,9 @@ export default async function AdminPage() {
 
           <a
             className="cursor-pointer rounded-xl bg-fuchsia-600 p-6 font-bold text-white hover:bg-fuchsia-500"
-            href="/admin/contribution-rank"
+            href="/admin/broadcast-overlay"
           >
-            📋 기여도 순위 관리
+            📺 방송 오버레이 관리
           </a>
         </div>
       </div>

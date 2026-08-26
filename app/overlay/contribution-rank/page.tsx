@@ -18,6 +18,24 @@ export default function ContributionRankOverlay() {
   const [data, setData] = useState<RankData>({ title:"기여도 순위", showTitle:true, display:defaultDisplay, categories:[], participants:[] });
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlBackground = html.style.background;
+    const prevBodyBackground = body.style.background;
+    const prevBodyBackgroundColor = body.style.backgroundColor;
+
+    html.style.setProperty("background", "transparent", "important");
+    body.style.setProperty("background", "transparent", "important");
+    body.style.setProperty("background-color", "rgba(0, 0, 0, 0)", "important");
+
+    return () => {
+      html.style.background = prevHtmlBackground;
+      body.style.background = prevBodyBackground;
+      body.style.backgroundColor = prevBodyBackgroundColor;
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     async function load() {
       try {
@@ -43,7 +61,8 @@ export default function ContributionRankOverlay() {
   const formatNumber = (v:number) => d.useCommas ? Math.trunc(Number(v||0)).toLocaleString("ko-KR") : String(Math.trunc(Number(v||0)));
 
   return (
-    <main className="min-h-screen bg-transparent p-2 font-sans text-white">
+    <main className="min-h-screen bg-transparent p-2 font-sans text-white" style={{ backgroundColor:"rgba(0,0,0,0)" }}>
+      <style>{`html,body,body>div,#__next{background:transparent!important;background-color:rgba(0,0,0,0)!important;}`}</style>
       <div className="mx-auto origin-top w-full max-w-[1200px]" style={{ transform:`scale(${d.scalePercent/100})`, transformOrigin:"top center" }}>
         <div style={{ borderWidth:d.borderWidth, borderRadius:d.borderRadius, borderColor:"#bfc2c7", borderStyle:"solid", background:"transparent", padding:5, boxShadow:d.showShadow ? "0 0 0 2px #36393e,0 0 0 7px #e4e5e7,0 8px 30px rgba(0,0,0,.48)" : "0 0 0 2px #36393e,0 0 0 7px #e4e5e7" }}>
           <section style={{ overflow:"hidden", borderRadius:Math.max(0,d.borderRadius-10), border:"2px solid #555a60", background:"#090b0d" }}>
