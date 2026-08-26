@@ -75,6 +75,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: Number(result.insertId) });
   }
 
+
+  if (action === "edit_name") {
+    const id = intValue(body.id);
+    const name = String(body.name || "").trim().slice(0, 100);
+
+    if (!id) {
+      return NextResponse.json({ error: "대상을 찾을 수 없습니다." }, { status: 400 });
+    }
+    if (!name) {
+      return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
+    }
+
+    await db.query(
+      `UPDATE dogani_game_players
+       SET name = ?
+       WHERE id = ? AND is_active = 1`,
+      [name, id]
+    );
+
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "success") {
     const id = intValue(body.id);
     if (!id) {

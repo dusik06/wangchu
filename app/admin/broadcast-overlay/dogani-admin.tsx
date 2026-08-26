@@ -24,6 +24,8 @@ export default function DoganiAdmin() {
   const [drafts, setDrafts] = useState<DraftPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
@@ -98,6 +100,46 @@ export default function DoganiAdmin() {
       setMessage(error instanceof Error ? error.message : "오류가 발생했습니다.");
     } finally {
       setSavingKey(null);
+    }
+  }
+
+
+  function startEdit(player: DoganiPlayer) {
+    setEditingId(player.id);
+    setEditingName(player.name);
+    setMessage("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingName("");
+  }
+
+  async function saveName(player: DoganiPlayer) {
+    const name = editingName.trim();
+    if (!name) {
+      setMessage("이름을 입력해주세요.");
+      return;
+    }
+
+    setWorkingId(player.id);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/dogani-game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit_name", id: player.id, name }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "수정하지 못했습니다.");
+      setPlayers((current) =>
+        current.map((item) => (item.id === player.id ? { ...item, name } : item))
+      );
+      cancelEdit();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "오류가 발생했습니다.");
+    } finally {
+      setWorkingId(null);
     }
   }
 
@@ -246,19 +288,62 @@ export default function DoganiAdmin() {
                   className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-[#0d0918] p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-base font-black">{player.name}</div>
+                    {editingId === player.id ? (
+                      <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveName(player);
+                          if (e.key === "Escape") cancelEdit();
+                        }}
+                        className="min-h-12 w-full rounded-xl border border-rose-400/50 bg-[#090613] px-3 text-base font-black outline-none focus:border-rose-400"
+                      />
+                    ) : (
+                      <div className="truncate text-base font-black">{player.name}</div>
+                    )}
                     <div className="mt-1 text-lg font-black text-amber-300 tabular-nums">
                       {player.amount.toLocaleString("ko-KR")}원
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={workingId === player.id}
-                    onClick={() => success(player)}
-                    className="min-h-12 shrink-0 rounded-xl bg-emerald-600 px-5 text-base font-black active:scale-[.98] disabled:opacity-50"
-                  >
-                    {workingId === player.id ? "처리 중" : "성공"}
-                  </button>
+                  <div className="flex shrink-0 gap-2">
+                    {editingId === player.id ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={workingId === player.id}
+                          onClick={() => saveName(player)}
+                          className="min-h-12 rounded-xl bg-rose-600 px-4 text-sm font-black active:scale-[.98] disabled:opacity-50"
+                        >
+                          {workingId === player.id ? "저장 중" : "저장"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={workingId === player.id}
+                          onClick={cancelEdit}
+                          className="min-h-12 rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-black text-white/65 disabled:opacity-50"
+                        >
+                          취소
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(player)}
+                        className="min-h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-black text-white/80 active:scale-[.98]"
+                      >
+                        이름 수정
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={workingId === player.id}
+                      onClick={() => success(player)}
+                      className="min-h-12 rounded-xl bg-emerald-600 px-5 text-base font-black active:scale-[.98] disabled:opacity-50"
+                    >
+                      {workingId === player.id ? "처리 중" : "성공"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
