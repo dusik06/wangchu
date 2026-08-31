@@ -34,6 +34,9 @@ export default function DotoriWalkOverlay() {
 
   const stateRef = useRef<WalkState | null>(null);
   const lastIdRef = useRef(0);
+  const queuedIdsRef = useRef<Set<number>>(new Set());
+  const playedIdsRef = useRef<Set<number>>(new Set());
+  const pollingRef = useRef(false);
   const queueRef = useRef<WalkAlert[]>([]);
   const processingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -103,6 +106,13 @@ export default function DotoriWalkOverlay() {
     const alert = queueRef.current.shift();
     if (!alert) return;
 
+    queuedIdsRef.current.delete(alert.id);
+    if (playedIdsRef.current.has(alert.id)) {
+      setTimeout(processNext, 0);
+      return;
+    }
+    playedIdsRef.current.add(alert.id);
+
     processingRef.current = true;
     setCurrentAlert(alert);
     setAlertVisible(true);
@@ -146,6 +156,8 @@ export default function DotoriWalkOverlay() {
     let alive = true;
 
     const poll = async () => {
+      if (pollingRef.current) return;
+      pollingRef.current = true;
       try {
         const response = await fetch(`/api/dotori-walk?after=${lastIdRef.current}`, {
           cache: "no-store",
@@ -170,12 +182,29 @@ export default function DotoriWalkOverlay() {
             nickname: String(item.nickname || "익명"),
           })) as WalkAlert[];
 
-          queueRef.current.push(...alerts);
-          lastIdRef.current = alerts[alerts.length - 1].id;
-          setTimeout(processNext, 0);
+          const uniqueAlerts = alerts.filter((item) => {
+            if (!item.id || item.id <= lastIdRef.current) return false;
+            if (queuedIdsRef.current.has(item.id) || playedIdsRef.current.has(item.id)) return false;
+            queuedIdsRef.current.add(item.id);
+            return true;
+          });
+
+          if (alerts.length > 0) {
+            lastIdRef.current = Math.max(
+              lastIdRef.current,
+              ...alerts.map((item) => item.id)
+            );
+          }
+
+          if (uniqueAlerts.length > 0) {
+            queueRef.current.push(...uniqueAlerts);
+            setTimeout(processNext, 0);
+          }
         }
       } catch (error) {
         console.error("도토리 국토대장정 오버레이 갱신 실패:", error);
+      } finally {
+        pollingRef.current = false;
       }
     };
 
