@@ -516,6 +516,11 @@ export default async function Home() {
                   <div className="mt-2 text-xs font-black">투네이션</div>
                 </a>
 
+                <a href="/dotori-walk" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
+                  <div className="text-3xl">🌰</div>
+                  <div className="mt-2 text-xs font-black">도토리 국토</div>
+                </a>
+
                 <a href="/shop" className="rounded-2xl border border-[#3b321f] bg-[#11131b] p-4 text-center hover:bg-[#2b2415]">
                   <div className="text-3xl">🛒</div>
                   <div className="mt-2 text-xs font-black">상점</div>
