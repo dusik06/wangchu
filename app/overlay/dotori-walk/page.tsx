@@ -229,7 +229,23 @@ export default function DotoriWalkOverlay() {
   const meters = (plus - minus) / 10;
   const outlineWidth = Math.max(0, Number(state.outline_width || 0));
   const outlineColor = state.outline_color || "#000000";
-  const strokeWidth = `${outlineWidth}px`;
+
+
+  const cleanOutline = (fontSize: number) => {
+    // PRISM/모바일 Chromium에서 굵은 text-stroke가 한글을 겹쳐 보이게 하는 문제 방지
+    // 설정값은 유지하되 실제 렌더링은 글자 크기에 맞춰 안전한 두께로 제한한다.
+    const safeWidth = Math.min(outlineWidth, Math.max(0.6, fontSize * 0.028));
+    return outlineWidth > 0
+      ? {
+          WebkitTextStroke: `${safeWidth}px ${outlineColor}`,
+          WebkitTextStrokeWidth: `${safeWidth}px`,
+          WebkitTextStrokeColor: outlineColor,
+          paintOrder: "stroke fill" as const,
+          }
+      : {
+          WebkitTextStroke: "0 transparent",
+          };
+  };
 
   const formatDistance = (m: number) => {
     const sign = m < 0 ? "-" : "";
@@ -253,11 +269,6 @@ export default function DotoriWalkOverlay() {
         padding: 12,
         textAlign: "center",
         fontWeight: 900,
-        WebkitTextStroke: outlineWidth > 0 ? `${strokeWidth} ${outlineColor}` : "0 transparent",
-        WebkitTextStrokeWidth: outlineWidth > 0 ? strokeWidth : "0px",
-        WebkitTextStrokeColor: outlineWidth > 0 ? outlineColor : "transparent",
-        paintOrder: "stroke fill",
-        textShadow: "none",
         minHeight: 0,
       }}
     >
@@ -299,6 +310,7 @@ export default function DotoriWalkOverlay() {
               fontSize: Math.max(30, Number(state.total_size || 30) + 8),
               lineHeight: 1.25,
               wordBreak: "keep-all",
+              ...cleanOutline(Math.max(30, Number(state.total_size || 30) + 8)),
             }}
           >
             <span style={{ color: "#FFFFFF" }}>{currentAlert.nickname}</span>
@@ -313,6 +325,7 @@ export default function DotoriWalkOverlay() {
               fontSize: Math.max(42, Number(state.distance_size || 72) * 0.72),
               lineHeight: 1.08,
               color: alertColor,
+              ...cleanOutline(Math.max(42, Number(state.distance_size || 72) * 0.72)),
             }}
           >
             도토리 {alertAmount.toLocaleString()}개
@@ -324,6 +337,7 @@ export default function DotoriWalkOverlay() {
               fontSize: Math.max(30, Number(state.total_size || 30) + 8),
               lineHeight: 1.2,
               color: "#FFFFFF",
+              ...cleanOutline(Math.max(30, Number(state.total_size || 30) + 8)),
             }}
           >
             사용했습니다.
@@ -334,6 +348,7 @@ export default function DotoriWalkOverlay() {
               marginTop: 10,
               fontSize: Math.max(24, Number(state.sub_size || 26)),
               color: alertColor,
+              ...cleanOutline(Math.max(24, Number(state.sub_size || 26))),
             }}
           >
             {isPlus ? "+" : "-"}{formatDistance(alertMeters)}
@@ -341,7 +356,7 @@ export default function DotoriWalkOverlay() {
         </div>
       ) : (
         <div>
-          <div style={{ fontSize: Math.max(16, Number(state.total_size || 30) * 0.72) }}>
+          <div style={{ fontSize: Math.max(16, Number(state.total_size || 30) * 0.72), ...cleanOutline(Math.max(16, Number(state.total_size || 30) * 0.72)) }}>
             총 이동해야 하는 거리
           </div>
           <div
@@ -349,11 +364,12 @@ export default function DotoriWalkOverlay() {
               fontSize: Number(state.distance_size || 72),
               lineHeight: 1.05,
               marginTop: 4,
+              ...cleanOutline(Number(state.distance_size || 72)),
             }}
           >
             {formatDistance(meters)}
           </div>
-          <div style={{ fontSize: Number(state.total_size || 30), marginTop: 12 }}>
+          <div style={{ fontSize: Number(state.total_size || 30), marginTop: 12, ...cleanOutline(Number(state.total_size || 30)) }}>
             총 사용 도토리 {Number(state.total_used || 0).toLocaleString()}개
           </div>
           <div
@@ -366,10 +382,10 @@ export default function DotoriWalkOverlay() {
               marginTop: 10,
             }}
           >
-            <span style={{ color: state.plus_color || "#67E8F9" }}>
+            <span style={{ color: state.plus_color || "#67E8F9", ...cleanOutline(Number(state.sub_size || 26)) }}>
               +거리 {formatDistance(plus / 10)}
             </span>
-            <span style={{ color: state.minus_color || "#FB7185" }}>
+            <span style={{ color: state.minus_color || "#FB7185", ...cleanOutline(Number(state.sub_size || 26)) }}>
               -거리 {formatDistance(minus / 10)}
             </span>
           </div>
