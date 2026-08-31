@@ -229,12 +229,7 @@ export default function DotoriWalkOverlay() {
   const meters = (plus - minus) / 10;
   const outlineWidth = Math.max(0, Number(state.outline_width || 0));
   const outlineColor = state.outline_color || "#000000";
-  const shadow = [
-    `-${outlineWidth}px -${outlineWidth}px 0 ${outlineColor}`,
-    `${outlineWidth}px -${outlineWidth}px 0 ${outlineColor}`,
-    `-${outlineWidth}px ${outlineWidth}px 0 ${outlineColor}`,
-    `${outlineWidth}px ${outlineWidth}px 0 ${outlineColor}`,
-  ].join(", ");
+  const strokeWidth = `${outlineWidth}px`;
 
   const formatDistance = (m: number) => {
     const sign = m < 0 ? "-" : "";
@@ -258,7 +253,11 @@ export default function DotoriWalkOverlay() {
         padding: 12,
         textAlign: "center",
         fontWeight: 900,
-        textShadow: shadow,
+        WebkitTextStroke: outlineWidth > 0 ? `${strokeWidth} ${outlineColor}` : "0 transparent",
+        WebkitTextStrokeWidth: outlineWidth > 0 ? strokeWidth : "0px",
+        WebkitTextStrokeColor: outlineWidth > 0 ? outlineColor : "transparent",
+        paintOrder: "stroke fill",
+        textShadow: "none",
         minHeight: 0,
       }}
     >
@@ -273,7 +272,11 @@ export default function DotoriWalkOverlay() {
         body > div > header, body > div > nav, body > div > footer {
           display: none !important;
         }
-        * { box-sizing: border-box; }
+        * {
+          box-sizing: border-box;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: geometricPrecision;
+        }
       `}</style>
 
       <audio ref={audioRef} preload="auto" playsInline />
