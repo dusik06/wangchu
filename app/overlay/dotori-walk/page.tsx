@@ -1,8 +1,348 @@
 "use client";
-import { useEffect,useRef,useState } from "react";
-const DING="/sounds/mission-support.mp3";
-export default function DotoriWalkOverlay(){const [s,setS]=useState<any>(null);const last=useRef(0);const queue=useRef<any[]>([]);const playing=useRef(false);
-const playNext=()=>{if(playing.current||!queue.current.length)return;const a=queue.current.shift();const src=Number(a.dotori_amount)<1000?DING:(a.direction==="plus"?s?.plus_song_url:s?.minus_song_url);if(!src){playNext();return}playing.current=true;const audio=new Audio(src);audio.volume=1;audio.onended=()=>{playing.current=false;playNext()};audio.onerror=()=>{playing.current=false;playNext()};audio.play().catch(()=>{playing.current=false;playNext()})};
-useEffect(()=>{let alive=true;const poll=async()=>{try{const r=await fetch(`/api/dotori-walk?after=${last.current}`,{cache:"no-store"});const d=await r.json();if(!alive||!d.success)return;setS(d.state);if(last.current===0){last.current=Number(d.latest_id||0)}else if(d.alerts?.length){queue.current.push(...d.alerts);last.current=d.alerts[d.alerts.length-1].id;setTimeout(playNext,0)}}catch{}};poll();const t=setInterval(poll,1200);return()=>{alive=false;clearInterval(t)}},[]);
-if(!s)return <main style={{background:"transparent"}}/>;const plus=Number(s.plus_dotori||0),minus=Number(s.minus_dotori||0),meters=(plus-minus)/10;const fmt=(m:number)=>Math.abs(m)>=1000?`${(m/1000).toFixed(2)} KM`:`${m.toLocaleString()} M`;const stroke=`${Number(s.outline_width||0)}px ${s.outline_color||"#000"}`;const textStyle:any={color:s.font_color,textShadow:`-${stroke}, ${stroke}, ${stroke.replace(/^/,'-')}`};const shadow=`-${s.outline_width}px -${s.outline_width}px 0 ${s.outline_color}, ${s.outline_width}px -${s.outline_width}px 0 ${s.outline_color}, -${s.outline_width}px ${s.outline_width}px 0 ${s.outline_color}, ${s.outline_width}px ${s.outline_width}px 0 ${s.outline_color}`;
-return <main style={{background:"transparent",backgroundColor:"rgba(0,0,0,0)",color:s.font_color,fontFamily:"Arial, sans-serif",padding:12,textAlign:"center",fontWeight:900,textShadow:shadow}}><style>{`html,body,body>div,#__next,[data-nextjs-scroll-focus-boundary]{margin:0!important;background:transparent!important;background-color:rgba(0,0,0,0)!important}body>header,body>nav,body>footer,body>div>header,body>div>nav,body>div>footer{display:none!important}*{box-sizing:border-box}`}</style><div style={{fontSize:Math.max(16,Number(s.total_size)*.72)}}>총 이동해야 하는 거리</div><div style={{fontSize:Number(s.distance_size),lineHeight:1.05,marginTop:4}}>{fmt(meters)}</div><div style={{fontSize:Number(s.total_size),marginTop:12}}>총 사용 도토리 {Number(s.total_used||0).toLocaleString()}개</div><div style={{display:"flex",justifyContent:"center",gap:28,flexWrap:"wrap",fontSize:Number(s.sub_size),marginTop:10}}><span style={{color:s.plus_color}}>+거리 {fmt(plus/10)}</span><span style={{color:s.minus_color}}>-거리 {fmt(minus/10)}</span></div></main>}
+
+import { useEffect, useRef, useState } from "react";
+
+const DING = "/sounds/mission-support.mp3";
+
+type WalkState = {
+  plus_dotori?: number | string;
+  minus_dotori?: number | string;
+  total_used?: number | string;
+  font_color?: string;
+  plus_color?: string;
+  minus_color?: string;
+  outline_color?: string;
+  outline_width?: number | string;
+  distance_size?: number | string;
+  total_size?: number | string;
+  sub_size?: number | string;
+  plus_song_url?: string | null;
+  minus_song_url?: string | null;
+};
+
+type WalkAlert = {
+  id: number;
+  direction: "plus" | "minus";
+  dotori_amount: number;
+  nickname: string;
+};
+
+export default function DotoriWalkOverlay() {
+  const [state, setState] = useState<WalkState | null>(null);
+  const [currentAlert, setCurrentAlert] = useState<WalkAlert | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+
+  const stateRef = useRef<WalkState | null>(null);
+  const lastIdRef = useRef(0);
+  const queueRef = useRef<WalkAlert[]>([]);
+  const processingRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const stopAudio = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    try {
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    } catch {}
+  };
+
+  const finishCurrent = (delay = 0) => {
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
+      setAlertVisible(false);
+
+      timerRef.current = setTimeout(() => {
+        if (!mountedRef.current) return;
+        setCurrentAlert(null);
+        processingRef.current = false;
+        processNext();
+      }, 300);
+    }, delay);
+  };
+
+  const playSource = (src: string, onEnded: () => void, onError: () => void) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      onError();
+      return;
+    }
+
+    try {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      audio.volume = 1;
+      audio.muted = false;
+      audio.loop = false;
+      audio.src = src;
+      audio.onended = onEnded;
+      audio.onerror = onError;
+      audio.load();
+      audio.play().catch(onError);
+    } catch {
+      onError();
+    }
+  };
+
+  const processNext = () => {
+    if (processingRef.current || !mountedRef.current) return;
+    const alert = queueRef.current.shift();
+    if (!alert) return;
+
+    processingRef.current = true;
+    setCurrentAlert(alert);
+    setAlertVisible(true);
+
+    const amount = Number(alert.dotori_amount || 0);
+
+    // 1,000개 미만: 기존 미션 띠링 + 문구 5초 유지
+    if (amount < 1000) {
+      playSource(DING, () => {}, () => {});
+      finishCurrent(5000);
+      return;
+    }
+
+    // 1,000개 이상: + / - 전용 노래를 끝까지 재생하고, 끝난 뒤 2초 더 유지
+    const latestState = stateRef.current;
+    const songUrl = String(
+      alert.direction === "plus"
+        ? latestState?.plus_song_url || ""
+        : latestState?.minus_song_url || ""
+    ).trim();
+
+    if (!songUrl) {
+      // URL이 비어 있으면 방송이 멈추지 않도록 띠링으로 대체
+      playSource(DING, () => {}, () => {});
+      finishCurrent(5000);
+      return;
+    }
+
+    playSource(
+      songUrl,
+      () => finishCurrent(2000),
+      () => {
+        // 링크 재생 실패 시에도 다음 알림이 막히지 않도록 5초 표시 후 진행
+        finishCurrent(5000);
+      }
+    );
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    let alive = true;
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/dotori-walk?after=${lastIdRef.current}`, {
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (!alive || !data.success) return;
+
+        setState(data.state);
+        stateRef.current = data.state;
+
+        if (lastIdRef.current === 0) {
+          // 오버레이를 처음 켰을 때 과거 알림은 재생하지 않음
+          lastIdRef.current = Number(data.latest_id || 0);
+          return;
+        }
+
+        if (Array.isArray(data.alerts) && data.alerts.length > 0) {
+          const alerts = data.alerts.map((item: any) => ({
+            id: Number(item.id),
+            direction: item.direction === "minus" ? "minus" : "plus",
+            dotori_amount: Number(item.dotori_amount || 0),
+            nickname: String(item.nickname || "익명"),
+          })) as WalkAlert[];
+
+          queueRef.current.push(...alerts);
+          lastIdRef.current = alerts[alerts.length - 1].id;
+          setTimeout(processNext, 0);
+        }
+      } catch (error) {
+        console.error("도토리 국토대장정 오버레이 갱신 실패:", error);
+      }
+    };
+
+    poll();
+    const pollTimer = setInterval(poll, 1000);
+
+    return () => {
+      alive = false;
+      mountedRef.current = false;
+      clearInterval(pollTimer);
+      clearTimer();
+      stopAudio();
+    };
+  }, []);
+
+  if (!state) {
+    return <main style={{ background: "transparent" }} />;
+  }
+
+  const plus = Number(state.plus_dotori || 0);
+  const minus = Number(state.minus_dotori || 0);
+  const meters = (plus - minus) / 10;
+  const outlineWidth = Math.max(0, Number(state.outline_width || 0));
+  const outlineColor = state.outline_color || "#000000";
+  const shadow = [
+    `-${outlineWidth}px -${outlineWidth}px 0 ${outlineColor}`,
+    `${outlineWidth}px -${outlineWidth}px 0 ${outlineColor}`,
+    `-${outlineWidth}px ${outlineWidth}px 0 ${outlineColor}`,
+    `${outlineWidth}px ${outlineWidth}px 0 ${outlineColor}`,
+  ].join(", ");
+
+  const formatDistance = (m: number) => {
+    const sign = m < 0 ? "-" : "";
+    const absolute = Math.abs(m);
+    if (absolute >= 1000) return `${sign}${(absolute / 1000).toFixed(2)} KM`;
+    return `${sign}${absolute.toLocaleString()} M`;
+  };
+
+  const alertAmount = Number(currentAlert?.dotori_amount || 0);
+  const alertMeters = alertAmount / 10;
+  const isPlus = currentAlert?.direction === "plus";
+  const alertColor = isPlus ? state.plus_color || "#67E8F9" : state.minus_color || "#FB7185";
+
+  return (
+    <main
+      style={{
+        background: "transparent",
+        backgroundColor: "rgba(0,0,0,0)",
+        color: state.font_color || "#FFFFFF",
+        fontFamily: "'Jua', 'BM JUA', 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif",
+        padding: 12,
+        textAlign: "center",
+        fontWeight: 900,
+        textShadow: shadow,
+        minHeight: 0,
+      }}
+    >
+      <style>{`
+        html, body, body > div, #__next, [data-nextjs-scroll-focus-boundary] {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: transparent !important;
+          background-color: rgba(0,0,0,0) !important;
+        }
+        body > header, body > nav, body > footer,
+        body > div > header, body > div > nav, body > div > footer {
+          display: none !important;
+        }
+        * { box-sizing: border-box; }
+      `}</style>
+
+      <audio ref={audioRef} preload="auto" playsInline />
+
+      {currentAlert ? (
+        <div
+          style={{
+            opacity: alertVisible ? 1 : 0,
+            transform: alertVisible ? "scale(1)" : "scale(.96)",
+            transition: "opacity .25s ease, transform .25s ease",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "18px 12px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: Math.max(30, Number(state.total_size || 30) + 8),
+              lineHeight: 1.25,
+              wordBreak: "keep-all",
+            }}
+          >
+            <span style={{ color: "#FFFFFF" }}>{currentAlert.nickname}</span>
+            <span style={{ color: "#FFFFFF" }}>님이 </span>
+            <span style={{ color: alertColor }}>{isPlus ? "플러스" : "마이너스"}</span>
+            <span style={{ color: "#FFFFFF" }}>에</span>
+          </div>
+
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: Math.max(42, Number(state.distance_size || 72) * 0.72),
+              lineHeight: 1.08,
+              color: alertColor,
+            }}
+          >
+            도토리 {alertAmount.toLocaleString()}개
+          </div>
+
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: Math.max(30, Number(state.total_size || 30) + 8),
+              lineHeight: 1.2,
+              color: "#FFFFFF",
+            }}
+          >
+            사용했습니다.
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: Math.max(24, Number(state.sub_size || 26)),
+              color: alertColor,
+            }}
+          >
+            {isPlus ? "+" : "-"}{formatDistance(alertMeters)}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: Math.max(16, Number(state.total_size || 30) * 0.72) }}>
+            총 이동해야 하는 거리
+          </div>
+          <div
+            style={{
+              fontSize: Number(state.distance_size || 72),
+              lineHeight: 1.05,
+              marginTop: 4,
+            }}
+          >
+            {formatDistance(meters)}
+          </div>
+          <div style={{ fontSize: Number(state.total_size || 30), marginTop: 12 }}>
+            총 사용 도토리 {Number(state.total_used || 0).toLocaleString()}개
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 28,
+              flexWrap: "wrap",
+              fontSize: Number(state.sub_size || 26),
+              marginTop: 10,
+            }}
+          >
+            <span style={{ color: state.plus_color || "#67E8F9" }}>
+              +거리 {formatDistance(plus / 10)}
+            </span>
+            <span style={{ color: state.minus_color || "#FB7185" }}>
+              -거리 {formatDistance(minus / 10)}
+            </span>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
