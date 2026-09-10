@@ -1,9 +1,16 @@
+import type { Viewport } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import OnlineTracker from "./online-tracker";
 import db from "@/lib/db";
 import GlobalHomeLogo from "@/components/GlobalHomeLogo";
 import StockMarketGlobalAlert from "@/components/StockMarketGlobalAlert";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 async function getSiteLogo() {
   try {

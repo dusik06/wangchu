@@ -69,3 +69,51 @@ button, select, input[type="button"], input[type="submit"] {
     transform: translateX(-50%) scale(0.58);
   }
 }
+
+/* iPhone Safari viewport / width stabilization */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+main,
+header,
+footer,
+section,
+aside,
+nav,
+div {
+  min-width: 0;
+}
+
+img,
+video,
+iframe,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+iframe {
+  display: block;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
