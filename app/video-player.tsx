@@ -96,9 +96,9 @@ export default function VideoPlayer({ videos }: { videos: Video[] }) {
   }
 
   return (
-    <div className="w-full max-w-full overflow-hidden rounded-[28px] bg-black">
-      <div className="h-[540px] w-full max-w-full origin-center scale-[1.15]">
-        <div ref={containerRef} className="h-full w-full max-w-full overflow-hidden" />
+    <div className="w-full min-w-0 max-w-full overflow-hidden rounded-[28px] bg-black">
+      <div className="h-[540px] w-full min-w-0 max-w-full scale-[1.15]">
+        <div ref={containerRef} className="h-full w-full min-w-0 max-w-full" />
       </div>
     </div>
   );

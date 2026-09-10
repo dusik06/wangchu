@@ -6,6 +6,7 @@ import db from "@/lib/db";
 import GlobalHomeLogo from "@/components/GlobalHomeLogo";
 import StockMarketGlobalAlert from "@/components/StockMarketGlobalAlert";
 
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

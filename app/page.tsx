@@ -310,11 +310,11 @@ export default async function Home() {
   } = mainData;
 
   return (
-    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#05070d] text-white">
+    <main className="min-h-screen w-full min-w-0 overflow-x-clip bg-[#05070d] text-white">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(199,151,56,0.18),transparent_32%),linear-gradient(180deg,#070912,#03040a)]" />
 
       <header className="sticky top-0 z-50 border-b border-[#3b321f] bg-[#05070d]/95 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[1500px] min-w-0 items-center justify-between gap-2 px-3 py-3 sm:px-4 lg:px-6 lg:py-4">
+        <div className="mx-auto flex w-full min-w-0 max-w-[1500px] items-center justify-between gap-2 px-3 py-3 sm:px-4 lg:px-6 lg:py-4">
           <a href="/" className="flex items-center gap-3">
             {siteLogo ? (
               <img
@@ -439,7 +439,7 @@ export default async function Home() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[1500px] min-w-0 px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1500px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5">
         {mainPost && (
           <a
             href={`/board/free/${mainPost.id}`}
@@ -461,7 +461,7 @@ export default async function Home() {
         )}
 
         <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.9fr)_minmax(0,360px)]">
-          <div className="min-w-0 overflow-hidden rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 shadow-2xl sm:rounded-[26px] sm:p-5">
+          <div className="min-w-0 rounded-2xl border border-[#3b321f] bg-[#090c14]/90 p-3 shadow-2xl sm:rounded-[26px] sm:p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2 sm:mb-4">
               <h2 className="text-lg font-black text-[#f7d36b] sm:text-xl">왕츄 LIVE</h2>
               <span className={`rounded-md px-2 py-1 text-xs font-black ${isLiveOn ? "bg-red-600 text-white" : "bg-zinc-700 text-zinc-200"}`}>
@@ -478,7 +478,7 @@ export default async function Home() {
               </a>
             </div>
 
-            <div className="space-y-5">
+            <div className="min-w-0 space-y-5">
               <div className="mx-auto w-full max-w-[280px] overflow-hidden rounded-2xl border border-[#3b321f] bg-black sm:max-w-[340px] sm:rounded-3xl">
                 <VideoPlayer videos={videos} />
               </div>
@@ -675,11 +675,11 @@ export default async function Home() {
               {stockSeasonCard.season && (
                 <a
                   href="/stock"
-                  className="mb-4 block min-w-0 overflow-hidden rounded-2xl border border-[#f7d36b]/35 bg-[linear-gradient(135deg,rgba(247,211,107,0.14),rgba(21,25,37,0.9))] p-4"
+                  className="mb-4 block rounded-2xl border border-[#f7d36b]/35 bg-[linear-gradient(135deg,rgba(247,211,107,0.14),rgba(21,25,37,0.9))] p-4"
                 >
                   <p className="text-xs font-black tracking-[0.16em] text-[#f7d36b]">진행 중인 주식 시즌</p>
                   <h3 className="mt-2 text-lg font-black">{stockSeasonCard.season.title}</h3>
-                  <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-sm">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <div className="rounded-xl bg-black/25 p-3">
                       <p className="text-zinc-500">현재 1등</p>
                       <p className="mt-1 truncate font-black">{stockSeasonCard.leader?.nickname || "아직 순위 없음"}</p>
@@ -690,9 +690,9 @@ export default async function Home() {
                         {Number(stockSeasonCard.leader?.current_profit_rate || 0) >= 0 ? "+" : ""}{Number(stockSeasonCard.leader?.current_profit_rate || 0).toFixed(2)}%
                       </p>
                     </div>
-                    <div className="min-w-0 rounded-xl bg-black/25 p-3">
+                    <div className="rounded-xl bg-black/25 p-3">
                       <p className="text-zinc-500">총 상금</p>
-                      <p className="mt-1 break-words font-black text-yellow-300">{Number(stockSeasonCard.season.total_prize || 0).toLocaleString()} 도토리</p>
+                      <p className="mt-1 font-black text-yellow-300">{Number(stockSeasonCard.season.total_prize || 0).toLocaleString()} 도토리</p>
                     </div>
                     <div className="rounded-xl bg-black/25 p-3">
                       <p className="text-zinc-500">참가자</p>
@@ -700,9 +700,9 @@ export default async function Home() {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex min-w-0 items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                     <span className="text-xs font-bold text-zinc-400">시즌 종료까지</span>
-                    <span className="shrink-0 text-sm font-black text-white">{formatSeasonRemaining(stockSeasonCard.season.ends_at_text)}</span>
+                    <span className="text-sm font-black text-white">{formatSeasonRemaining(stockSeasonCard.season.ends_at_text)}</span>
                   </div>
 
                   {stockSeasonCard.latestEvents.length > 0 && (
@@ -742,7 +742,7 @@ export default async function Home() {
                         className="block rounded-2xl border border-[#2c2f3a] bg-[#151925] p-4 hover:border-[#f7d36b]/60"
                       >
                         <div className="flex min-w-0 items-center justify-between gap-2">
-                          <span className="min-w-0 truncate font-black">{stock.stock_name}</span>
+                          <span className="font-black">{stock.stock_name}</span>
 
                           {stock.is_listed ? (
                             <span className="text-xs text-emerald-400">상장중</span>
@@ -779,7 +779,7 @@ export default async function Home() {
           </aside>
         </section>
 
-        <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_1.5fr]">
+        <section className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
           <GameHighlights />
 
           <div className="rounded-3xl border border-[#3b321f] bg-[#0d1018] p-5">
@@ -826,7 +826,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="notice" className="mt-5 grid gap-5 lg:grid-cols-5">
+        <section id="notice" className="mt-5 grid min-w-0 gap-5 lg:grid-cols-5">
           <div className="rounded-3xl border border-[#3b321f] bg-[#0d1018] p-5">
             <h2 className="mb-4 text-lg font-black text-[#f7d36b]">공지사항</h2>
             <div className="space-y-3">
