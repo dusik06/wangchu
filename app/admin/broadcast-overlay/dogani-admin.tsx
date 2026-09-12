@@ -50,7 +50,7 @@ export default function DoganiAdmin() {
 
   useEffect(() => {
     load();
-    const timer = window.setInterval(load, 1200);
+    const timer = window.setInterval(load, 5000);
     return () => window.clearInterval(timer);
   }, [load]);
 

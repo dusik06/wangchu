@@ -310,7 +310,7 @@ export default function Page() {
   
     const timer = setInterval(() => {
       loadQueue();
-    }, 2000);
+    }, 5000);
   
     return () => {
       clearInterval(timer);

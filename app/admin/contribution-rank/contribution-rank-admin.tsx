@@ -75,7 +75,7 @@ export default function ContributionRankAdmin() {
 
   useEffect(() => {
     load(true);
-    const timer = window.setInterval(() => load(false), 1500);
+    const timer = window.setInterval(() => load(false), 5000);
     return () => window.clearInterval(timer);
   }, [load]);
 

@@ -45,7 +45,7 @@ export default function ContributionRankOverlay() {
       } catch {}
     }
     load();
-    const timer = window.setInterval(load, 700);
+    const timer = window.setInterval(load, 5000);
     return () => { active = false; window.clearInterval(timer); };
   }, []);
 

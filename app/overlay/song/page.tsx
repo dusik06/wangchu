@@ -63,7 +63,7 @@ export default function SongOverlayPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       fetchNextSong();
-    }, 2000);
+    }, 4000);
 
     return () => clearInterval(timer);
   }, [isPlaying]);

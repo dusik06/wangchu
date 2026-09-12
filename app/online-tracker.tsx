@@ -13,7 +13,7 @@ export default function OnlineTracker() {
 
     const timer = setInterval(() => {
       fetch("/api/online", { method: "POST" });
-    }, 30000);
+    }, 60000);
 
     return () => clearInterval(timer);
   }, [status]);

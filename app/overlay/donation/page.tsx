@@ -89,7 +89,7 @@ export default function Page() {
 
     const interval = setInterval(() => {
       checkNext();
-    }, 1500);
+    }, 4000);
 
     return () => {
       clearInterval(interval);

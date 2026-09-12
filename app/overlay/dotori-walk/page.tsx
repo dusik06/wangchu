@@ -209,7 +209,7 @@ export default function DotoriWalkOverlay() {
     };
 
     poll();
-    const pollTimer = setInterval(poll, 1000);
+    const pollTimer = setInterval(poll, 3000);
 
     return () => {
       alive = false;

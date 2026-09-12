@@ -94,7 +94,7 @@ export default function Page() {
 
     const interval = setInterval(() => {
       loadAlerts();
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);

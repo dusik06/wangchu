@@ -25,7 +25,7 @@ export default function DoganiGameOverlay() {
     }
 
     load();
-    const timer = window.setInterval(load, 600);
+    const timer = window.setInterval(load, 3000);
     return () => {
       active = false;
       window.clearInterval(timer);

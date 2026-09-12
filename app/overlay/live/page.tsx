@@ -378,7 +378,7 @@ export default function Page() {
 
     backupTimerRef.current = setInterval(() => {
       fetchEngine();
-    }, 8000);
+    }, 4000);
   }
 
   function startStream() {
@@ -484,8 +484,8 @@ export default function Page() {
     mountedRef.current = true;
     clientIdRef.current = makeClientId();
 
+    // Vercel 최적화: 장시간 유지되는 SSE Function 대신 짧은 polling만 사용합니다.
     startBackupLoop();
-    startStream();
 
     return () => {
       mountedRef.current = false;

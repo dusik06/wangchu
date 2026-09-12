@@ -20,7 +20,7 @@ export default function DotoriWalkAdmin(){
   useEffect(()=>{
     load(true);
     setOverlayUrl(`${window.location.origin}/overlay/dotori-walk`);
-    const t=setInterval(()=>load(false),3000);
+    const t=setInterval(()=>load(false),5000);
     return()=>clearInterval(t);
   },[]);
 

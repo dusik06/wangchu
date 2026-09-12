@@ -182,7 +182,7 @@ export default function ItemOverlayPage() {
   }
 
   useEffect(() => {
-    const timer = setInterval(fetchNext, 2000);
+    const timer = setInterval(fetchNext, 4000);
 
     return () => {
       clearInterval(timer);

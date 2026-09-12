@@ -10,7 +10,7 @@ export default function OnlineUsers() {
 
     const timer = setInterval(() => {
       fetchOnlineUsers();
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(timer);
   }, []);
