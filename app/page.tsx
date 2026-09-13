@@ -11,6 +11,9 @@ import DailyQuestCard from "@/components/home/DailyQuestCard";
 import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
 import NotificationBell from "@/components/NotificationBell";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function safeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
   try {
     const [rows]: any = await db.query(query, params);
@@ -128,21 +131,39 @@ async function getCurrentYoutubeLiveVideo(apiKey: string, channelId: string) {
 
 async function getRecentYoutubeShorts(apiKey: string, uploadsPlaylistId: string) {
   const playlistData = await fetchYoutubeJson(
-    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=30`
+    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=50`
   );
 
-  const ids = (playlistData?.items || [])
+  const playlistItems = playlistData?.items || [];
+
+  const ids = playlistItems
     .map((item: any) => item.snippet?.resourceId?.videoId)
     .filter(Boolean);
 
   if (ids.length === 0) return [];
 
   const detailData = await fetchYoutubeJson(
-    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${ids.join(",")}&part=snippet,contentDetails`
+    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${ids.join(",")}&part=snippet,contentDetails,status`
   );
 
-  return (detailData?.items || [])
-    .filter((item: any) => parseYoutubeDurationToSeconds(item.contentDetails?.duration || "") <= 90)
+  const detailMap = new Map(
+    (detailData?.items || []).map((item: any) => [item.id, item])
+  );
+
+  return ids
+    .map((videoId: string) => detailMap.get(videoId))
+    .filter(Boolean)
+    .filter((item: any) => {
+      const seconds = parseYoutubeDurationToSeconds(
+        item.contentDetails?.duration || ""
+      );
+
+      const isShortsLength = seconds > 0 && seconds <= 90;
+      const isPublic = item?.status?.privacyStatus === "public";
+      const isEmbeddable = item?.status?.embeddable !== false;
+
+      return isShortsLength && isPublic && isEmbeddable;
+    })
     .map((item: any) => ({
       videoId: item.id,
       title: item.snippet?.title || "왕츄 쇼츠",
@@ -187,14 +208,10 @@ async function getYoutubeVideo() {
     const detectedLiveVideo = await getCurrentYoutubeLiveVideo(apiKey, channelId);
 
     if (forceState.liveForce === "on") {
-      const liveVideo =
-        detectedLiveVideo ||
-        (await getYoutubeVideoDetail(apiKey, FALLBACK_LIVE_VIDEO_ID));
-
       return {
         isLive: true,
-        title: liveVideo.title,
-        videos: [liveVideo],
+        title: shorts[0]?.title || "표시할 쇼츠가 없습니다.",
+        videos: shorts,
         shorts,
         liveStatus: "on",
         liveForce: "on",
@@ -205,8 +222,8 @@ async function getYoutubeVideo() {
       await saveYoutubeAutoLiveStatus("on");
       return {
         isLive: true,
-        title: detectedLiveVideo.title,
-        videos: [detectedLiveVideo],
+        title: shorts[0]?.title || "표시할 쇼츠가 없습니다.",
+        videos: shorts,
         shorts,
         liveStatus: "on",
         liveForce: "auto",
