@@ -191,7 +191,7 @@ export default async function FreeBoardDetailPage({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-black/10 px-4 py-4 sm:px-6">
-            <VoteButtons postId={postId} />
+            {!isOwner ? <VoteButtons postId={postId} /> : null}
             <ReportButton postId={postId} />
             <span className="ml-auto hidden text-xs text-zinc-600 sm:inline">추천 {post.likes} · 비추천 {post.dislikes}</span>
           </div>
