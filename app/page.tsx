@@ -131,21 +131,56 @@ async function getCurrentYoutubeLiveVideo(apiKey: string, channelId: string) {
 
 async function getRecentYoutubeShorts(apiKey: string, uploadsPlaylistId: string) {
   const playlistData = await fetchYoutubeJson(
-    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=30`
+    `https://www.googleapis.com/youtube/v3/playlistItems?key=${apiKey}&playlistId=${uploadsPlaylistId}&part=snippet&maxResults=50`
   );
 
-  const ids = (playlistData?.items || [])
+  const playlistItems = playlistData?.items || [];
+
+  const ids = playlistItems
     .map((item: any) => item.snippet?.resourceId?.videoId)
     .filter(Boolean);
 
   if (ids.length === 0) return [];
 
   const detailData = await fetchYoutubeJson(
-    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${ids.join(",")}&part=snippet,contentDetails`
+    `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${ids.join(",")}&part=snippet,contentDetails,status`
   );
 
-  return (detailData?.items || [])
-    .filter((item: any) => parseYoutubeDurationToSeconds(item.contentDetails?.duration || "") <= 90)
+  const detailMap = new Map(
+    (detailData?.items || []).map((item: any) => [item.id, item])
+  );
+
+  return ids
+    .map((videoId: string) => detailMap.get(videoId))
+    .filter(Boolean)
+    .filter((item: any) => {
+      const seconds = parseYoutubeDurationToSeconds(
+        item.contentDetails?.duration || ""
+      );
+
+      const isShortsLength = seconds > 0 && seconds <= 90;
+      const isPublic = item?.status?.privacyStatus === "public";
+      const isEmbeddable = item?.status?.embeddable !== false;
+
+      const isVertical =
+        Number(
+          item?.snippet?.thumbnails?.maxres?.height ||
+          item?.snippet?.thumbnails?.high?.height ||
+          0
+        ) >
+        Number(
+          item?.snippet?.thumbnails?.maxres?.width ||
+          item?.snippet?.thumbnails?.high?.width ||
+          0
+        );
+
+      return (
+        isShortsLength &&
+        isPublic &&
+        isEmbeddable &&
+        isVertical
+      );
+    })
     .map((item: any) => ({
       videoId: item.id,
       title: item.snippet?.title || "왕츄 쇼츠",
