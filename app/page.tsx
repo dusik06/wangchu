@@ -11,6 +11,9 @@ import DailyQuestCard from "@/components/home/DailyQuestCard";
 import BroadcastMissionCard from "@/components/home/BroadcastMissionCard";
 import NotificationBell from "@/components/NotificationBell";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function safeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
   try {
     const [rows]: any = await db.query(query, params);
