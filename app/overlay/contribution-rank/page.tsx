@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useMemo, useState } from "react";
 
 type Category = { id: number; name: string };
@@ -44,9 +45,9 @@ export default function ContributionRankOverlay() {
         if (active) setData({ ...json, display: { ...defaultDisplay, ...(json.display || {}) } });
       } catch {}
     }
-    load();
-    const timer = window.setInterval(load, 5000);
-    return () => { active = false; window.clearInterval(timer); };
+    void load();
+    const unsubscribe = subscribeOverlayEvents(() => { void load(); }, () => { void load(); });
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   const columns = useMemo(() => [

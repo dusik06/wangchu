@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -53,6 +54,8 @@ export async function POST(req: Request) {
       `,
       [command, targetAlertId]
     );
+
+    await broadcastOverlayChange("donation-control");
 
     return NextResponse.json({
       success: true,

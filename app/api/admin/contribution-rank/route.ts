@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -38,7 +39,8 @@ export async function POST(req: Request) {
        ON DUPLICATE KEY UPDATE title = VALUES(title)`,
       [title]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "setShowTitle") {
@@ -49,7 +51,8 @@ export async function POST(req: Request) {
        WHERE id = 1`,
       [showTitle]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
 
@@ -85,7 +88,8 @@ export async function POST(req: Request) {
         color(body.thirdColor, "#1769e8"),
       ]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "addParticipant") {
@@ -100,7 +104,8 @@ export async function POST(req: Request) {
        VALUES (?, ?, 0, ?, 1)`,
       [rankName, streamerName, Number(orderRows[0]?.next_order || 1)]
     );
-    return NextResponse.json({ ok: true, id: Number(result.insertId) });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true, id: Number(result.insertId)  });
   }
 
   if (action === "updateParticipant") {
@@ -116,14 +121,16 @@ export async function POST(req: Request) {
        WHERE id = ?`,
       [rankName, streamerName, id]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "deleteParticipant") {
     const id = intValue(body.id);
     await db.query("DELETE FROM contribution_rank_amounts WHERE participant_id = ?", [id]);
     await db.query("DELETE FROM contribution_rank_participants WHERE id = ?", [id]);
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "adjustAmount") {
@@ -141,7 +148,8 @@ export async function POST(req: Request) {
        ON DUPLICATE KEY UPDATE amount = GREATEST(0, amount + ?)`,
       [participantId, categoryId, delta, delta]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "setAmount") {
@@ -155,7 +163,8 @@ export async function POST(req: Request) {
        ON DUPLICATE KEY UPDATE amount = VALUES(amount)`,
       [participantId, categoryId, amount]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "adjustManualContribution") {
@@ -167,7 +176,8 @@ export async function POST(req: Request) {
        WHERE id = ?`,
       [delta, participantId]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "setManualContribution") {
@@ -179,7 +189,8 @@ export async function POST(req: Request) {
        WHERE id = ?`,
       [value, participantId]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "addCategory") {
@@ -192,7 +203,8 @@ export async function POST(req: Request) {
        VALUES (?, 1, ?)`,
       [name, Number(orderRows[0]?.next_order || 1)]
     );
-    return NextResponse.json({ ok: true, id: Number(result.insertId) });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true, id: Number(result.insertId)  });
   }
 
   if (action === "updateCategory") {
@@ -208,20 +220,23 @@ export async function POST(req: Request) {
        WHERE id = ?`,
       [name, isCalculated, id]
     );
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "deleteCategory") {
     const id = intValue(body.id);
     await db.query("DELETE FROM contribution_rank_amounts WHERE category_id = ?", [id]);
     await db.query("DELETE FROM contribution_rank_categories WHERE id = ?", [id]);
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "resetAll") {
     await db.query("UPDATE contribution_rank_participants SET manual_contribution = 0");
     await db.query("UPDATE contribution_rank_amounts SET amount = 0");
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("contribution-rank");
+    return NextResponse.json({ ok: true  });
   }
 
   return NextResponse.json({ error: "지원하지 않는 작업입니다." }, { status: 400 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
@@ -55,10 +56,7 @@ export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const backupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clientIdRef = useRef("");
   const isOwnerRef = useRef(false);
@@ -107,12 +105,6 @@ export default function Page() {
     }
   }
 
-  function clearReconnectTimer() {
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-  }
 
   function stopAudio() {
     const audio = audioRef.current;
@@ -138,12 +130,6 @@ export default function Page() {
     } catch {}
   }
 
-  function closeStream() {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-  }
 
   function clearCurrentItem() {
     clearPlayTimer();
@@ -170,11 +156,6 @@ export default function Page() {
 
     doneKeyRef.current = key;
     clearPlayTimer();
-
-    if (!isOwnerRef.current) {
-      clearCurrentItem();
-      return;
-    }
 
     try {
       await fetch("/api/overlay/engine-done", {
@@ -368,52 +349,6 @@ export default function Page() {
     }
   }
 
-  function startBackupLoop() {
-    if (backupTimerRef.current) {
-      clearInterval(backupTimerRef.current);
-      backupTimerRef.current = null;
-    }
-
-    fetchEngine();
-
-    backupTimerRef.current = setInterval(() => {
-      fetchEngine();
-    }, 4000);
-  }
-
-  function startStream() {
-    closeStream();
-    clearReconnectTimer();
-
-    if (!clientIdRef.current) return;
-
-    try {
-      const source = new EventSource(
-        `/api/overlay/stream?clientId=${encodeURIComponent(clientIdRef.current)}`
-      );
-
-      source.onopen = () => {
-        fetchEngine();
-      };
-
-      source.onmessage = () => {
-        fetchEngine();
-      };
-
-      source.onerror = () => {
-        closeStream();
-
-        reconnectTimerRef.current = setTimeout(() => {
-          if (!mountedRef.current) return;
-          startStream();
-        }, 3000);
-      };
-
-      eventSourceRef.current = source;
-    } catch (error) {
-      console.error(error);
-    }
-  }
 
   function getOverlayText(item: OverlayQueueItem) {
     if (item.type === "mission") {
@@ -484,22 +419,27 @@ export default function Page() {
     mountedRef.current = true;
     clientIdRef.current = makeClientId();
 
-    // Vercel 최적화: 장시간 유지되는 SSE Function 대신 짧은 polling만 사용합니다.
-    startBackupLoop();
+    // 최초 1회만 현재 상태를 맞추고, 이후에는 명령이 들어올 때만 조회한다.
+    void fetchEngine();
+
+    const unsubscribe = subscribeOverlayEvents(
+      () => {
+        if (!mountedRef.current) return;
+        void fetchEngine();
+      },
+      () => {
+        // 재연결 시 놓친 명령/상태가 없는지 딱 한 번 동기화한다.
+        if (mountedRef.current) void fetchEngine();
+      }
+    );
 
     return () => {
       mountedRef.current = false;
-
-      if (backupTimerRef.current) {
-        clearInterval(backupTimerRef.current);
-        backupTimerRef.current = null;
-      }
-
-      closeStream();
-      clearReconnectTimer();
+      unsubscribe();
       clearPlayTimer();
       clearHideTimer();
       stopAudio();
+      stopVideo();
     };
   }, []);
 

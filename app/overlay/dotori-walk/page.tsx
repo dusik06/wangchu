@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useRef, useState } from "react";
 
 const DING = "/sounds/mission-support.mp3";
@@ -208,13 +209,13 @@ export default function DotoriWalkOverlay() {
       }
     };
 
-    poll();
-    const pollTimer = setInterval(poll, 3000);
+    void poll();
+    const unsubscribe = subscribeOverlayEvents(() => { void poll(); }, () => { void poll(); });
 
     return () => {
       alive = false;
       mountedRef.current = false;
-      clearInterval(pollTimer);
+      unsubscribe();
       clearTimer();
       stopAudio();
     };

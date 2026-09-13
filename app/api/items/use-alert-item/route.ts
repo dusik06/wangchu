@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -173,6 +174,8 @@ export async function POST(req: Request) {
     `);
 
     await connection.commit();
+
+    await broadcastOverlayChange("item");
 
     return NextResponse.json({
       ok: true,

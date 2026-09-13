@@ -59,16 +59,6 @@ button, select, input[type="button"], input[type="submit"] {
   }
 }
 
-.pinball-world-scale {
-  transform: translateX(-50%) scale(1);
-  transform-origin: top center;
-}
-
-@media (max-width: 639px) {
-  .pinball-world-scale {
-    transform: translateX(-50%) scale(0.58);
-  }
-}
 
 /* iPhone Safari viewport / overflow 안정화 */
 *, *::before, *::after {

@@ -10,7 +10,6 @@ export async function GET() {
         (
           IFNULL(d.total_dice, 0) +
           IFNULL(l.total_ladder, 0) +
-          IFNULL(p.total_pinball, 0) +
           IFNULL(pr.total_prediction, 0) +
           IFNULL(ud.total_updown, 0)
         ) AS total_bet
@@ -28,11 +27,6 @@ export async function GET() {
         GROUP BY user_id
       ) l ON l.user_id = u.id
 
-      LEFT JOIN (
-        SELECT user_id, SUM(bet_amount) AS total_pinball
-        FROM pinball_game_logs
-        GROUP BY user_id
-      ) p ON p.user_id = u.id
 
       LEFT JOIN (
         SELECT user_id, SUM(bet_amount) AS total_prediction

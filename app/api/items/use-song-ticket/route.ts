@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getServerSession } from "next-auth";
@@ -71,6 +72,7 @@ export async function POST() {
     );
 
     await connection.commit();
+    await broadcastOverlayChange("song");
 
     return NextResponse.json({ ok: true, message: "노래 재생 요청이 등록되었습니다." });
   } catch (error) {

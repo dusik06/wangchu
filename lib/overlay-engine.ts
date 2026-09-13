@@ -631,16 +631,6 @@ export const OverlayEngine = {
       const currentType = state.current_type || "";
       const currentId = Number(state.current_id || 0);
 
-      if (ownerClientId !== clientId) {
-        await conn.commit();
-
-        return {
-          success: true,
-          ignored: true,
-          message: "대표 재생자가 아니므로 무시했습니다.",
-        };
-      }
-
       if (currentType !== type || currentId !== id) {
         await conn.commit();
 

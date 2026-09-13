@@ -21,13 +21,6 @@ const games = [
     color: "bg-blue-600 text-white hover:bg-blue-500",
   },
   {
-    href: "/admin/game/pinball",
-    icon: "🕹️",
-    title: "핀볼",
-    desc: "핀볼 배팅 / 결과 기록",
-    color: "bg-pink-600 text-white hover:bg-pink-500",
-  },
-  {
     href: "/admin/game/prediction",
     icon: "📊",
     title: "승패예측",

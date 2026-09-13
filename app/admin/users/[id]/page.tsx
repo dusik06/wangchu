@@ -11,7 +11,6 @@ function formatReason(reason: string | null) {
   if (reason.includes("출석")) return `✅ 출석 보상 - ${reason}`;
   if (reason.includes("주사위")) return `🎲 주사위 게임 - ${reason}`;
   if (reason.includes("사다리")) return `🪜 사다리 게임 - ${reason}`;
-  if (reason.includes("핀볼")) return `🕹️ 핀볼 게임 - ${reason}`;
   if (reason.includes("예측")) return `📊 승패예측 - ${reason}`;
   if (reason.includes("관리자")) return `👑 관리자 지급 - ${reason}`;
 

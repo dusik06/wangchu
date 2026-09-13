@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
       [id]
     );
 
+    await broadcastOverlayChange("item-done");
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);

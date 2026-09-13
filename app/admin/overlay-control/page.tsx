@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useState } from "react";
 
 type Mission = {
@@ -306,15 +307,9 @@ export default function Page() {
   }
 
   useEffect(() => {
-    refreshAll();
-  
-    const timer = setInterval(() => {
-      loadQueue();
-    }, 5000);
-  
-    return () => {
-      clearInterval(timer);
-    };
+    void refreshAll();
+    const unsubscribe = subscribeOverlayEvents(() => { void refreshAll(); }, () => { void refreshAll(); });
+    return unsubscribe;
   }, []);
 
   const activeMissions = missions.filter((mission) => mission.status === "active");

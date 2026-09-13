@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useRef, useState } from "react";
 
 type DonationAlert = {
@@ -85,18 +86,12 @@ export default function Page() {
   }
 
   useEffect(() => {
-    checkNext();
-
-    const interval = setInterval(() => {
-      checkNext();
-    }, 4000);
+    void checkNext();
+    const unsubscribe = subscribeOverlayEvents(() => { void checkNext(); }, () => { void checkNext(); });
 
     return () => {
-      clearInterval(interval);
-
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
+      unsubscribe();
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 

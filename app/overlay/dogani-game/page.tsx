@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useState } from "react";
 
 type DoganiPlayer = {
@@ -24,11 +25,11 @@ export default function DoganiGameOverlay() {
       } catch {}
     }
 
-    load();
-    const timer = window.setInterval(load, 3000);
+    void load();
+    const unsubscribe = subscribeOverlayEvents(() => { void load(); }, () => { void load(); });
     return () => {
       active = false;
-      window.clearInterval(timer);
+      unsubscribe();
     };
   }, []);
 

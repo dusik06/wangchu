@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import db from "@/lib/db";
@@ -53,6 +54,8 @@ export async function POST(req: Request) {
         [missionId]
       );
     }
+
+    await broadcastOverlayChange("mission-select");
 
     return NextResponse.json({
       success: true,

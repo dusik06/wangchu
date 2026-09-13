@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useRef, useState } from "react";
 
 type SongItem = {
@@ -61,11 +62,9 @@ export default function SongOverlayPage() {
   }
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      fetchNextSong();
-    }, 4000);
-
-    return () => clearInterval(timer);
+    void fetchNextSong();
+    const unsubscribe = subscribeOverlayEvents(() => { void fetchNextSong(); }, () => { void fetchNextSong(); });
+    return unsubscribe;
   }, [isPlaying]);
 
   return (

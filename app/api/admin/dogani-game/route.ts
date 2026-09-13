@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -72,7 +73,9 @@ export async function POST(req: Request) {
       [name, amount, Number(orderRows[0]?.next_order || 1)]
     );
 
-    return NextResponse.json({ ok: true, id: Number(result.insertId) });
+    await broadcastOverlayChange("dogani-game");
+
+    return NextResponse.json({ ok: true, id: Number(result.insertId)  });
   }
 
 
@@ -94,7 +97,9 @@ export async function POST(req: Request) {
       [name, id]
     );
 
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("dogani-game");
+
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "success") {
@@ -110,7 +115,9 @@ export async function POST(req: Request) {
       [id]
     );
 
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("dogani-game");
+
+    return NextResponse.json({ ok: true  });
   }
 
   if (action === "delete") {
@@ -120,7 +127,8 @@ export async function POST(req: Request) {
     }
 
     await db.query("DELETE FROM dogani_game_players WHERE id = ?", [id]);
-    return NextResponse.json({ ok: true });
+    await broadcastOverlayChange("dogani-game");
+    return NextResponse.json({ ok: true  });
   }
 
   return NextResponse.json({ error: "지원하지 않는 작업입니다." }, { status: 400 });

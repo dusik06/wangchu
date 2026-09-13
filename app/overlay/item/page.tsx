@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribeOverlayEvents } from "@/lib/overlay-realtime-client";
 import { useEffect, useRef, useState } from "react";
 
 type AlertItem = {
@@ -182,16 +183,17 @@ export default function ItemOverlayPage() {
   }
 
   useEffect(() => {
-    const timer = setInterval(fetchNext, 4000);
+    void fetchNext();
+    const unsubscribe = subscribeOverlayEvents(() => { void fetchNext(); }, () => { void fetchNext(); });
 
     return () => {
-      clearInterval(timer);
       clearTimer();
 
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
+      unsubscribe();
     };
   }, [isPlaying]);
 

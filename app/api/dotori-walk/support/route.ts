@@ -1,3 +1,4 @@
+import { broadcastOverlayChange } from "@/lib/overlay-realtime-server";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import db from "@/lib/db";
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     else await conn.query(`UPDATE dotori_walk_state SET minus_dotori=minus_dotori+?,total_used=total_used+?,updated_at=NOW() WHERE id=1`,[amount,amount]);
     await conn.query(`INSERT INTO dotori_logs(user_id,amount,reason,created_at) VALUES(?, ?, ?, NOW())`,[user.id,-amount,direction==="plus"?"도토리 국토대장정 +거리":"도토리 국토대장정 -거리"]);
     await conn.commit();
+    await broadcastOverlayChange("dotori-walk");
     return NextResponse.json({success:true,message:`${amount.toLocaleString()}개를 ${direction==="plus"?"플러스":"마이너스"}에 사용했습니다.`});
   } catch(e){ try{await conn.rollback();}catch{} console.error(e); return NextResponse.json({success:false,message:"처리에 실패했습니다."},{status:500}); }
   finally{conn.release();}
