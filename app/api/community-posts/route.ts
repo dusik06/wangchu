@@ -17,7 +17,12 @@ export async function POST(req: Request) {
   const title = String(body.title || "").trim();
   const content = String(body.content || "").trim();
   let category = String(body.category || "free");
-  const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+  const imageUrls = Array.isArray(body.imageUrls)
+    ? body.imageUrls
+        .filter((imageUrl: unknown) => typeof imageUrl === "string")
+        .map((imageUrl: string) => imageUrl.trim())
+        .filter(Boolean)
+    : [];
   const wantsMainPost = body.isMainPost === true;
 
   if (!title || !content) {
@@ -72,7 +77,9 @@ export async function POST(req: Request) {
     noticeValue = 1;
   }
 
-  const postReward = 20;
+  const textPostReward = 10;
+  const imagePostReward = 20;
+  const postReward = imageUrls.length > 0 ? imagePostReward : textPostReward;
   const postDailyLimit = 3;
 
   const [todayRewardPosts]: any = await db.query(
@@ -131,7 +138,11 @@ export async function POST(req: Request) {
 
     await db.query(
       "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
-      [userId, postReward, "게시글 작성 보상"]
+      [
+        userId,
+        postReward,
+        imageUrls.length > 0 ? "사진 게시글 작성 보상" : "일반 게시글 작성 보상",
+      ]
     );
   }
 

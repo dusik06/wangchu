@@ -80,12 +80,14 @@ function QuestRow({
   current,
   max,
   reward,
+  rewardText,
 }: {
   icon: string;
   title: string;
   current: number;
   max: number;
   reward: number;
+  rewardText?: string;
 }) {
   const done = current >= max;
 
@@ -96,7 +98,7 @@ function QuestRow({
           {icon} {title}
         </p>
         <p className="mt-1 text-xs text-zinc-400">
-          +{reward} 도토리 · {current}/{max}
+          {rewardText || `+${reward} 도토리`} · {current}/{max}
         </p>
       </div>
 
@@ -142,7 +144,8 @@ export default async function DailyQuestCard({ userId }: Props) {
             title="게시글 작성"
             current={quest.posts}
             max={3}
-            reward={20}
+            reward={10}
+            rewardText="글 +10 · 사진 +20 도토리"
           />
 
           <QuestRow
