@@ -50,9 +50,11 @@ export async function POST(req: Request) {
       color(body.left_amount_color, "#FF73AE"), color(body.right_amount_color, "#7DD3FC"), color(body.total_label_color, "#FFFFFF"),
       color(body.total_amount_color, "#FFFFFF"), color(body.accent_color, "#FF4F9A"), color(body.panel_color, "#120C1E"),
       num(body.panel_opacity, 0, 100), color(body.border_color, "#FFFFFF"), num(body.border_opacity, 0, 100), body.shadow_enabled ? 1 : 0,
-      num(body.compact_scale, 70, 130)
+      num(body.compact_scale, 70, 130),
+      num(body.title_font_size, 10, 60), num(body.name_font_size, 8, 40), num(body.amount_font_size, 10, 60),
+      num(body.vs_font_size, 8, 40), num(body.bottom_label_font_size, 8, 40), num(body.total_amount_font_size, 10, 60)
     ];
-    await db.query(`UPDATE donation_game_overlay SET title=?, left_name=?, right_name=?, bottom_label=?, title_color=?, name_color=?, left_amount_color=?, right_amount_color=?, total_label_color=?, total_amount_color=?, accent_color=?, panel_color=?, panel_opacity=?, border_color=?, border_opacity=?, shadow_enabled=?, compact_scale=?, updated_at=NOW() WHERE id=1`, values);
+    await db.query(`UPDATE donation_game_overlay SET title=?, left_name=?, right_name=?, bottom_label=?, title_color=?, name_color=?, left_amount_color=?, right_amount_color=?, total_label_color=?, total_amount_color=?, accent_color=?, panel_color=?, panel_opacity=?, border_color=?, border_opacity=?, shadow_enabled=?, compact_scale=?, title_font_size=?, name_font_size=?, amount_font_size=?, vs_font_size=?, bottom_label_font_size=?, total_amount_font_size=?, updated_at=NOW() WHERE id=1`, values);
   } else {
     return NextResponse.json({ error: "지원하지 않는 작업입니다." }, { status: 400 });
   }
