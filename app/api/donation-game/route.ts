@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server";
+import db from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export async function ensureDonationGameTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS donation_game_overlay (
+      id INT NOT NULL,
+      title VARCHAR(100) NOT NULL DEFAULT '기부가 좋다',
+      left_name VARCHAR(100) NOT NULL DEFAULT '왕츄 이사님',
+      right_name VARCHAR(100) NOT NULL DEFAULT '마예준 대표님',
+      bottom_label VARCHAR(100) NOT NULL DEFAULT '현재 총 기부금',
+      left_amount BIGINT NOT NULL DEFAULT 0,
+      right_amount BIGINT NOT NULL DEFAULT 0,
+      title_color VARCHAR(20) NOT NULL DEFAULT '#FFFFFF',
+      name_color VARCHAR(20) NOT NULL DEFAULT '#FFFFFF',
+      left_amount_color VARCHAR(20) NOT NULL DEFAULT '#FF73AE',
+      right_amount_color VARCHAR(20) NOT NULL DEFAULT '#7DD3FC',
+      total_label_color VARCHAR(20) NOT NULL DEFAULT '#FFFFFF',
+      total_amount_color VARCHAR(20) NOT NULL DEFAULT '#FFFFFF',
+      accent_color VARCHAR(20) NOT NULL DEFAULT '#FF4F9A',
+      panel_color VARCHAR(20) NOT NULL DEFAULT '#120C1E',
+      panel_opacity INT NOT NULL DEFAULT 78,
+      border_color VARCHAR(20) NOT NULL DEFAULT '#FFFFFF',
+      border_opacity INT NOT NULL DEFAULT 18,
+      shadow_enabled TINYINT(1) NOT NULL DEFAULT 1,
+      compact_scale INT NOT NULL DEFAULT 100,
+      updated_at DATETIME NOT NULL,
+      PRIMARY KEY (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+  `);
+
+  await db.query(`
+    INSERT IGNORE INTO donation_game_overlay (id, updated_at)
+    VALUES (1, NOW())
+  `);
+}
+
+export async function GET() {
+  await ensureDonationGameTable();
+  const [rows]: any = await db.query(
+    "SELECT * FROM donation_game_overlay WHERE id = 1 LIMIT 1"
+  );
+  return NextResponse.json({ ok: true, state: rows[0] || null });
+}

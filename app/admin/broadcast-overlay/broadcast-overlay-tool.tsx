@@ -4,8 +4,9 @@ import { useState } from "react";
 import ContributionRankAdmin from "@/app/admin/contribution-rank/contribution-rank-admin";
 import DoganiAdmin from "./dogani-admin";
 import DotoriWalkAdmin from "./dotori-walk-admin";
+import DonationGameAdmin from "./donation-game-admin";
 
-type Tab = "contribution" | "dogani" | "dotoriWalk";
+type Tab = "contribution" | "dogani" | "dotoriWalk" | "donationGame";
 
 export default function BroadcastOverlayTool() {
   const [tab, setTab] = useState<Tab>("contribution");
@@ -44,6 +45,17 @@ export default function BroadcastOverlayTool() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("donationGame")}
+              className={`shrink-0 rounded-xl px-4 py-3 text-sm font-black transition ${
+                tab === "donationGame"
+                  ? "bg-pink-600 text-white"
+                  : "border border-white/10 bg-white/5 text-white/70"
+              }`}
+            >
+              기부가 좋다
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("dotoriWalk")}
               className={`shrink-0 rounded-xl px-4 py-3 text-sm font-black transition ${
                 tab === "dotoriWalk"
@@ -63,7 +75,7 @@ export default function BroadcastOverlayTool() {
         </div>
       </div>
 
-      {tab === "contribution" ? <ContributionRankAdmin /> : tab === "dogani" ? <DoganiAdmin /> : <DotoriWalkAdmin />}
+      {tab === "contribution" ? <ContributionRankAdmin /> : tab === "dogani" ? <DoganiAdmin /> : tab === "donationGame" ? <DonationGameAdmin /> : <DotoriWalkAdmin />}
     </div>
   );
 }
