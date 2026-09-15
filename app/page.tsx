@@ -593,6 +593,7 @@ export default async function Home() {
                 <div className="invisible absolute left-0 top-8 w-56 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
                   <a href="/mypage" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">마이페이지</a>
                   <a href="/mypage/inventory" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">내 아이템</a>
+                  <a href="/mypage/dotori-history" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">도토리 내역</a>
                   <a href="/mypage/titles" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">칭호 변경</a>
                   <a href="/mypage/posts" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">내가 쓴 글</a>
                   <a href="/mypage/comments" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">내가 쓴 댓글</a>
@@ -1107,6 +1108,10 @@ export default async function Home() {
                 </a>
                 <a href="/mypage/inventory" className="flex justify-between rounded-xl bg-[#151925] px-4 py-3 hover:bg-[#2b2415]">
                   <span>보유 아이템</span>
+                  <span className="text-[#f7d36b]">보기</span>
+                </a>
+                <a href="/mypage/dotori-history" className="flex justify-between rounded-xl bg-[#151925] px-4 py-3 hover:bg-[#2b2415]">
+                  <span>도토리 내역</span>
                   <span className="text-[#f7d36b]">보기</span>
                 </a>
                 <a href="/mypage/titles" className="flex justify-between rounded-xl bg-[#151925] px-4 py-3 hover:bg-[#2b2415]">

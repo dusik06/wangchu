@@ -86,6 +86,11 @@ export default async function MyPage() {
             <h2 className="text-2xl font-bold mb-2">내가 쓴 댓글</h2>
             <p className="text-zinc-400">내가 작성한 댓글 전체 보기</p>
           </Link>
+
+          <Link href="/mypage/dotori-history" className="bg-[#151522] border border-white/10 rounded-2xl p-6 hover:bg-[#1c1c2b] transition">
+            <h2 className="text-2xl font-bold mb-2">최근 도토리 내역</h2>
+            <p className="text-zinc-400">최근 도토리 지급·사용 내역 보기</p>
+          </Link>
         </div>
       </div>
     </main>
