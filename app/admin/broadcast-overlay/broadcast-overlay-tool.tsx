@@ -5,8 +5,9 @@ import ContributionRankAdmin from "@/app/admin/contribution-rank/contribution-ra
 import DoganiAdmin from "./dogani-admin";
 import DotoriWalkAdmin from "./dotori-walk-admin";
 import DonationGameAdmin from "./donation-game-admin";
+import DonationBoxAdmin from "./donation-box-admin";
 
-type Tab = "contribution" | "dogani" | "dotoriWalk" | "donationGame";
+type Tab = "contribution" | "dogani" | "dotoriWalk" | "donationGame" | "donationBox";
 
 export default function BroadcastOverlayTool() {
   const [tab, setTab] = useState<Tab>("contribution");
@@ -56,6 +57,17 @@ export default function BroadcastOverlayTool() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("donationBox")}
+              className={`shrink-0 rounded-xl px-4 py-3 text-sm font-black transition ${
+                tab === "donationBox"
+                  ? "bg-red-600 text-white"
+                  : "border border-white/10 bg-white/5 text-white/70"
+              }`}
+            >
+              시청자 기부함
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("dotoriWalk")}
               className={`shrink-0 rounded-xl px-4 py-3 text-sm font-black transition ${
                 tab === "dotoriWalk"
@@ -75,7 +87,7 @@ export default function BroadcastOverlayTool() {
         </div>
       </div>
 
-      {tab === "contribution" ? <ContributionRankAdmin /> : tab === "dogani" ? <DoganiAdmin /> : tab === "donationGame" ? <DonationGameAdmin /> : <DotoriWalkAdmin />}
+      {tab === "contribution" ? <ContributionRankAdmin /> : tab === "dogani" ? <DoganiAdmin /> : tab === "donationGame" ? <DonationGameAdmin /> : tab === "donationBox" ? <DonationBoxAdmin /> : <DotoriWalkAdmin />}
     </div>
   );
 }
