@@ -24,7 +24,9 @@ echo.
 echo [3/4] Commit...
 git diff --cached --quiet
 if errorlevel 1 (
-    git commit -m "update homepage"
+    rem Disable Git automatic gc/repack during commit.
+    rem This avoids Windows pack .idx unlink prompts caused by another process holding the file.
+    git -c gc.auto=0 commit -m "update homepage"
     if errorlevel 1 goto :git_error
 ) else (
     echo No changed files to commit.
@@ -32,11 +34,11 @@ if errorlevel 1 (
 
 echo.
 echo [4/4] Push...
-git push
+git -c gc.auto=0 push
 if errorlevel 1 (
     echo First push failed. Retrying in 3 seconds...
     timeout /t 3 /nobreak >nul
-    git push
+    git -c gc.auto=0 push
     if errorlevel 1 goto :push_error
 )
 
