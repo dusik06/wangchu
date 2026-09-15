@@ -20,8 +20,8 @@ export default function DonationGameAdmin(){
   {msg&&<div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-bold text-red-200">{msg}</div>}
   <section className="rounded-2xl border border-white/10 bg-[#151027] p-4"><div className="mb-2 font-black">방송 오버레이 주소</div><div className="flex gap-2"><input readOnly value={overlayUrl} className="min-w-0 flex-1 rounded-xl bg-black/30 px-3 py-3 text-sm"/><button onClick={()=>navigator.clipboard.writeText(overlayUrl)} className="rounded-xl bg-violet-600 px-4 font-black">복사</button></div></section>
   <section className="grid gap-4 md:grid-cols-2">
-   <Player title={s.left_name} amount={s.left_amount} value={customL} setValue={setCustomL} disabled={busy} onAdd={(n)=>add("left",n)} onDirect={()=>direct("left",customL)}/>
-   <Player title={s.right_name} amount={s.right_amount} value={customR} setValue={setCustomR} disabled={busy} onAdd={(n)=>add("right",n)} onDirect={()=>direct("right",customR)}/>
+   <Player title={s.left_name} amount={s.left_amount} value={customL} setValue={setCustomL} disabled={busy} onAdd={(n:number)=>add("left",n)} onDirect={()=>direct("left",customL)}/>
+   <Player title={s.right_name} amount={s.right_amount} value={customR} setValue={setCustomR} disabled={busy} onAdd={(n:number)=>add("right",n)} onDirect={()=>direct("right",customR)}/>
   </section>
   <section className="rounded-2xl border border-white/10 bg-[#151027] p-4 md:p-5"><div className="flex items-center justify-between"><div><div className="font-black">현재 총 기부금</div><div className="mt-1 text-2xl font-black">{money(Number(s.left_amount)+Number(s.right_amount))}원</div></div><button disabled={busy} onClick={()=>{if(confirm("양쪽 기부금을 모두 0원으로 초기화할까요?"))send({action:"reset_amounts"})}} className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-black text-red-200">금액 초기화</button></div></section>
   <section className="rounded-2xl border border-white/10 bg-[#151027] p-4 md:p-5"><h2 className="mb-4 text-lg font-black">문구 · 디자인</h2>
