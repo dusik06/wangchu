@@ -73,22 +73,12 @@ export async function POST(req: Request) {
     }
 
     await conn.query(
-      "UPDATE users SET dotori = dotori + ? WHERE id = ?",
-      [payout, user.id]
-    );
-
-    await conn.query(
       `
       UPDATE updown_game_sessions
       SET status = 'cashed_out', ended_at = NOW()
       WHERE id = ? AND user_id = ?
       `,
       [sessionId, user.id]
-    );
-
-    await conn.query(
-      "INSERT INTO dotori_logs (user_id, amount, reason, created_at) VALUES (?, ?, ?, NOW())",
-      [user.id, payout, "업다운게임 당첨금 받기"]
     );
 
     await conn.commit();

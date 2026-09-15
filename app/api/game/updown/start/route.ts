@@ -177,6 +177,18 @@ export async function POST(req: Request) {
 
     const sessionId = sessionResult.insertId;
 
+    // 당첨 결과가 확정되는 즉시 실제 도토리 잔액에도 지급한다.
+    if (payoutAmount > 0) {
+      await conn.query(
+        "UPDATE users SET dotori = dotori + ? WHERE id = ?",
+        [payoutAmount, user.id]
+      );
+      await conn.query(
+        "INSERT INTO dotori_logs (user_id, amount, reason, created_at) VALUES (?, ?, ?, NOW())",
+        [user.id, payoutAmount, "업다운게임 당첨 즉시 지급"]
+      );
+    }
+
     await conn.query(
       `
       INSERT INTO updown_game_rounds

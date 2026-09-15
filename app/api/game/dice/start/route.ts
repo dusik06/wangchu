@@ -108,6 +108,7 @@ export async function POST(req: Request) {
     const { dice, result } = getDiceResult(choice);
     const firstWin = choice === result;
     const status = firstWin ? "PENDING_CHOICE" : "LOSE";
+    const firstPayoutAmount = firstWin ? Math.floor(betAmount * 1.9) : 0;
 
     const [gameResult]: any = await connection.query(
       `
@@ -143,6 +144,19 @@ export async function POST(req: Request) {
       [userId, -betAmount, `주사위 배팅 (${choice})`]
     );
 
+    // 1차 당첨은 결과 확정과 동시에 DB에 지급한다.
+    // 이후 새로고침/창 닫기가 발생해도 이미 지급된 금액은 사라지지 않는다.
+    if (firstPayoutAmount > 0) {
+      await connection.query(
+        "UPDATE users SET dotori = dotori + ? WHERE id = ?",
+        [firstPayoutAmount, userId]
+      );
+      await connection.query(
+        "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
+        [userId, firstPayoutAmount, "주사위 1차 당첨 즉시 지급"]
+      );
+    }
+
     await connection.commit();
 
     return NextResponse.json({
@@ -152,6 +166,7 @@ export async function POST(req: Request) {
       result,
       firstWin,
       status,
+      payoutAmount: firstPayoutAmount,
     });
   } catch (error) {
     await connection.rollback();

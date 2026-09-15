@@ -48,11 +48,6 @@ export async function POST(req: Request) {
     const payoutAmount = Math.floor(game.bet_amount * 1.9);
 
     await connection.query(
-      "UPDATE users SET dotori = dotori + ? WHERE id = ?",
-      [payoutAmount, userId]
-    );
-
-    await connection.query(
       `
       UPDATE dice_game_logs
       SET

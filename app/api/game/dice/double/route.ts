@@ -70,6 +70,19 @@ export async function POST(req: Request) {
     }
 
     const game = games[0];
+    const firstPayoutAmount = Math.floor(Number(game.bet_amount) * 1.9);
+
+    // 1차 당첨금은 이미 즉시 지급되어 있으므로 엎기를 선택하는 순간 다시 걸어 둔다.
+    // 차감 + 2차 결과 + 최종 지급은 같은 트랜잭션에서 처리된다.
+    await connection.query(
+      "UPDATE users SET dotori = dotori - ? WHERE id = ?",
+      [firstPayoutAmount, userId]
+    );
+    await connection.query(
+      "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
+      [userId, -firstPayoutAmount, "주사위 엎기 재배팅"]
+    );
+
     const { dice, result } = getDiceResult(doubleChoice);
 
     const doubleWin = doubleChoice === result;
@@ -79,6 +92,10 @@ export async function POST(req: Request) {
       await connection.query(
         "UPDATE users SET dotori = dotori + ? WHERE id = ?",
         [payoutAmount, userId]
+      );
+      await connection.query(
+        "INSERT INTO dotori_logs (user_id, amount, reason) VALUES (?, ?, ?)",
+        [userId, payoutAmount, "주사위 엎기 당첨 즉시 지급"]
       );
     }
 

@@ -135,6 +135,17 @@ export async function POST(req: Request) {
       });
     }
 
+    // 현재 누적 당첨금은 이미 잔액에 지급되어 있다.
+    // 엎어치기를 누르면 그 금액을 다시 걸고 다음 결과를 처리한다.
+    await conn.query(
+      "UPDATE users SET dotori = dotori - ? WHERE id = ?",
+      [accumulatedPayout, user.id]
+    );
+    await conn.query(
+      "INSERT INTO dotori_logs (user_id, amount, reason, created_at) VALUES (?, ?, ?, NOW())",
+      [user.id, -accumulatedPayout, "업다운게임 엎어치기 재배팅"]
+    );
+
     const picked = pickResultNumber(currentNumber, choice, step);
 
     const nextPayout = picked.isWin
@@ -163,6 +174,16 @@ export async function POST(req: Request) {
     );
 
     if (picked.isWin) {
+      // 다음 당첨금도 결과 확정과 동시에 지급한다.
+      await conn.query(
+        "UPDATE users SET dotori = dotori + ? WHERE id = ?",
+        [nextPayout, user.id]
+      );
+      await conn.query(
+        "INSERT INTO dotori_logs (user_id, amount, reason, created_at) VALUES (?, ?, ?, NOW())",
+        [user.id, nextPayout, "업다운게임 엎어치기 당첨 즉시 지급"]
+      );
+
       await conn.query(
         `
         UPDATE updown_game_sessions
