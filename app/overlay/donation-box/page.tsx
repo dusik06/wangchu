@@ -15,7 +15,9 @@ export default function DonationBoxOverlay(){
  const pileHeight=Math.max(0,(s.boxHeight-42)*(stage/10));
  const notes=Array.from({length:pileCount},(_,i)=>i);
  return <><Transparent/><main style={{width:s.boxWidth+80,padding:"22px 40px 28px",fontFamily:'Pretendard,"Noto Sans KR",sans-serif',color:"white",textAlign:"center"}}>
-   <div style={{position:"relative",width:s.boxWidth,height:s.boxHeight,overflow:"visible",margin:"0 auto"}}>
+   <div style={{fontSize:s.titleFontSize,fontWeight:950,color:"#ff334f",textShadow:"0 2px 8px rgba(0,0,0,.65)",marginBottom:10}}>♥ {s.title} ♥</div>
+   <div style={{position:"relative",width:s.boxWidth,height:s.boxHeight,border:"5px solid rgba(255,255,255,.82)",borderTop:"10px solid rgba(255,255,255,.9)",borderRadius:24,background:"linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,45,70,.045))",boxShadow:"inset 0 0 30px rgba(255,255,255,.12),0 12px 35px rgba(0,0,0,.25)",overflow:"hidden",backdropFilter:"blur(2px)",margin:"0 auto"}}>
+     <div style={{position:"absolute",left:"50%",top:10,transform:"translateX(-50%)",width:"42%",height:10,borderRadius:99,background:"rgba(15,15,18,.75)",boxShadow:"0 2px 5px rgba(0,0,0,.5)",zIndex:100}}/>
      <div style={{position:"absolute",left:0,right:0,bottom:0,height:Math.max(6,pileHeight),overflow:"visible"}}>
        {notes.map((i)=>{
          const scale=Math.max(.55,Number(s.noteScale||100)/100);
@@ -32,11 +34,12 @@ export default function DonationBoxOverlay(){
          return <Bill key={i} x={x} y={y} w={w} h={h} rot={rot} fontSize={Number(s.noteFontSize||10)}/>;
        })}
      </div>
-     {stage>=2&&<Bill x={s.boxWidth*.18} y={Math.max(5,s.boxHeight-pileHeight-105)} w={82*(s.noteScale/100)} h={35*(s.noteScale/100)} rot={-18} fontSize={s.noteFontSize}/>} 
-     {stage>=5&&<Bill x={s.boxWidth*.62} y={Math.max(12,s.boxHeight-pileHeight-145)} w={88*(s.noteScale/100)} h={37*(s.noteScale/100)} rot={13} fontSize={s.noteFontSize}/>} 
-     {stage>=8&&<Bill x={s.boxWidth*.42} y={Math.max(8,s.boxHeight-pileHeight-205)} w={78*(s.noteScale/100)} h={33*(s.noteScale/100)} rot={-7} fontSize={s.noteFontSize}/>} 
+     {stage>=2&&<Bill x={s.boxWidth*.18} y={Math.max(25,s.boxHeight-pileHeight-80)} w={82*(s.noteScale/100)} h={35*(s.noteScale/100)} rot={-18} fontSize={s.noteFontSize}/>} 
+     {stage>=5&&<Bill x={s.boxWidth*.62} y={Math.max(35,s.boxHeight-pileHeight-120)} w={88*(s.noteScale/100)} h={37*(s.noteScale/100)} rot={13} fontSize={s.noteFontSize}/>} 
+     {stage>=8&&<Bill x={s.boxWidth*.42} y={Math.max(28,s.boxHeight-pileHeight-165)} w={78*(s.noteScale/100)} h={33*(s.noteScale/100)} rot={-7} fontSize={s.noteFontSize}/>} 
    </div>
-   <div style={{marginTop:12,fontSize:s.amountFontSize,lineHeight:1.05,fontWeight:950,color:"#fff",letterSpacing:"-1px",textShadow:"0 3px 10px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.9)"}}>{money(data.total)}</div>
+   <div style={{marginTop:12,fontSize:s.labelFontSize,fontWeight:900,textShadow:"0 2px 6px #000"}}>{s.bottomLabel}</div>
+   <div style={{fontSize:s.amountFontSize,lineHeight:1.15,fontWeight:950,color:"#ff334f",textShadow:"0 2px 8px rgba(0,0,0,.75)"}}>{money(data.total)}</div>
  </main></>;
 }
 
