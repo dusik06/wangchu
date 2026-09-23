@@ -12,6 +12,12 @@ export function random(seed: number) {
   return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 export function makeBoard(seed: number) { const r = random(seed), b = Array.from({ length: COLS * ROWS }, () => 1 + Math.floor(r() * 9)); b[1] = 10 - b[0]; return b; }
+export function gridSelection(x1:number,y1:number,x2:number,y2:number,left=34,top=44,cell=44){
+  const col=(x:number)=>Math.max(0,Math.min(COLS-1,Math.floor((x-left)/cell)));
+  const row=(y:number)=>Math.max(0,Math.min(ROWS-1,Math.floor((y-top)/cell)));
+  const c1=col(x1),c2=col(x2),r1=row(y1),r2=row(y2);
+  return [Math.min(c1,c2),Math.min(r1,r2),Math.max(c1,c2),Math.max(r1,r2)] as [number,number,number,number];
+}
 export function selection(b: number[], l: number, t: number, r: number, bb: number) { let sum = 0, count = 0; for (let y=t;y<=bb;y++) for(let x=l;x<=r;x++){const n=b[y*COLS+x];sum+=n;if(n)count++;} return {sum,count}; }
 export function removeSelection(b: number[], l: number,t: number,r: number,bb: number) { const s=selection(b,l,t,r,bb); if(s.sum!==10)return 0; for(let y=t;y<=bb;y++)for(let x=l;x<=r;x++)b[y*COLS+x]=0;return s.count; }
 export type Walker = { tick:number; angle:number; velocity:number; fallen:boolean };
