@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type AlertItem = {
   id: number;
@@ -14,10 +15,13 @@ type AlertItem = {
 const STORAGE_KEY = "wangchu_seen_stock_auto_event_id";
 
 export default function StockMarketGlobalAlert() {
+  const pathname = usePathname();
+  const miniGame = pathname.startsWith("/game/mini");
   const [item, setItem] = useState<AlertItem | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (miniGame) return;
     let active = true;
 
     async function load() {
@@ -46,9 +50,9 @@ export default function StockMarketGlobalAlert() {
       clearInterval(interval);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, []);
+  }, [miniGame]);
 
-  if (!item) return null;
+  if (miniGame || !item) return null;
 
   const rate = Number(item.event_rate || 0);
 

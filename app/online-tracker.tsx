@@ -2,12 +2,14 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export default function OnlineTracker() {
   const { status } = useSession();
+  const miniGame = usePathname().startsWith("/game/mini");
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (miniGame || status !== "authenticated") return;
 
     fetch("/api/online", { method: "POST" });
 
@@ -16,7 +18,7 @@ export default function OnlineTracker() {
     }, 60000);
 
     return () => clearInterval(timer);
-  }, [status]);
+  }, [status, miniGame]);
 
   return null;
 }

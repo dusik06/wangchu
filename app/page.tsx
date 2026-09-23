@@ -576,6 +576,7 @@ export default async function Home() {
             <div className="group relative">
               <button className="hover:text-[#f7d36b]">게임 ▾</button>
               <div className="invisible absolute left-0 top-8 w-56 rounded-2xl border border-[#3b321f] bg-[#0d1018] p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+                <a href="/game/mini" className="block rounded-xl px-4 py-3 text-[#d7eea0] hover:bg-[#2b2415]">🌰 왕츄 오락실</a>
                 <a href="/game" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">주사위 홀짝</a>
                 <a href="/prediction" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">승패 예측</a>
                 <a href="/game/ladder" className="block rounded-xl px-4 py-3 hover:bg-[#2b2415]">사다리게임</a>
@@ -638,6 +639,7 @@ export default async function Home() {
             <a href="/board/free" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">게시판</a>
             <a href="/shop" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">상점</a>
             <a href="/game" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">게임</a>
+            <a href="/game/mini" className="shrink-0 whitespace-nowrap rounded-xl border border-[#d7eea0]/30 bg-[#263322] px-4 py-2 text-xs font-black text-[#d7eea0]">🌰 오락실</a>
             <a href="/stock" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">주식</a>
             <a href="/schedule" className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 bg-[#11131b] px-4 py-2 text-xs font-black text-white">방송일정</a>
             {currentUser && (

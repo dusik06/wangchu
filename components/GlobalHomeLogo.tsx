@@ -9,7 +9,7 @@ export default function GlobalHomeLogo({
 }) {
   const pathname = usePathname();
 
-  if (pathname === "/" || pathname.startsWith("/overlay")) {
+  if (pathname === "/" || pathname.startsWith("/overlay") || pathname.startsWith("/game/mini")) {
     return null;
   }
 

@@ -1,14 +1,2 @@
-import NextAuth from "next-auth";
-
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: number;
-      email: string;
-      name?: string | null;
-      image?: string | null;
-      role?: string | null;
-      dotori?: number;
-    };
-  }
-}
+import type { DefaultSession } from "next-auth";
+declare module "next-auth" { interface Session { user: DefaultSession["user"] & { id?: number; role?: string; dotori?: number }; } }

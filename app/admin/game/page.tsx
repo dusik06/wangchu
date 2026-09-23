@@ -1,4 +1,5 @@
 const games = [
+  { href: "/admin/game/mini", icon: "🌰", title: "미니게임 기록", desc: "모든 판 상세 기록과 랭킹 제외·복구", color: "bg-lime-200 text-slate-950 hover:bg-lime-100" },
   {
     href: "/admin/game/dice",
     icon: "🎲",

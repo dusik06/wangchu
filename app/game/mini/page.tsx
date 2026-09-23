@@ -1,0 +1,1 @@
+import Arcade from "@/components/minigame/Arcade";import "./mini.css";export const metadata={title:"왕츄 오락실 | 도토리 10 만들기 · 오래걷기",description:"무료 왕츄 미니게임과 최고기록 랭킹"};export default function Page(){return <Arcade/>;}

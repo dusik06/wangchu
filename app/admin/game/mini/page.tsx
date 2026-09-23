@@ -1,0 +1,1 @@
+import{redirect}from"next/navigation";import{ApiError,currentUser}from"@/lib/minigame/server";import Records from"./records";export const dynamic="force-dynamic";export default async function Page(){try{await currentUser(true);}catch(e){if(e instanceof ApiError)redirect("/");throw e;}return <Records/>;}
